@@ -3,6 +3,7 @@ import { useUserStore } from '../../state/useUserStore';
 import { useHabitStore } from '../../state/useHabitStore';
 import { useTheme } from '../../theme/ThemeContext';
 import { soundFx } from '../../utils/audio';
+import { ShinobiBackground } from '../ui/ShinobiBackground';
 import { 
   Sparkles, 
   ChevronRight, 
@@ -55,12 +56,9 @@ export const OnboardingQuiz: React.FC<OnboardingQuizProps> = ({ onFinishOnboardi
   };
 
   return (
-    <div className="min-h-screen bg-shinobi-bg text-slate-100 flex flex-col items-center justify-center p-4">
-      {/* Background Decorativo */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-shinobi-crimson/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-10 right-10 w-80 h-80 bg-shinobi-chakra/10 rounded-full blur-3xl" />
-      </div>
+    <div className="min-h-screen bg-shinobi-bg text-slate-100 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      {/* Fundo Shinobi Animado em Loop */}
+      <ShinobiBackground opacity={0.65} showNinjaDash={true} />
 
       <div className="w-full max-w-xl relative z-10 space-y-6">
         {/* Header da Academia */}
@@ -78,7 +76,7 @@ export const OnboardingQuiz: React.FC<OnboardingQuizProps> = ({ onFinishOnboardi
 
         {/* FLUXO DO QUIZ (Passos 1 a 6) */}
         {!showPaywall ? (
-          <div className="bg-shinobi-card border border-shinobi-border rounded-2xl p-6 shadow-2xl space-y-6">
+          <div className="bg-shinobi-card/90 backdrop-blur-xl border border-shinobi-border/80 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden shinobi-gradient-border">
             {/* Barra de Progresso do Quiz */}
             <div className="space-y-1">
               <div className="flex justify-between text-[11px] font-mono text-slate-400">

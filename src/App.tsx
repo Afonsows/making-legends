@@ -17,6 +17,7 @@ import { BossVictoryModal } from './components/modals/BossVictoryModal';
 import { IosInstallModal } from './components/pwa/IosInstallModal';
 import { NotificationSettingsModal } from './components/pwa/NotificationSettingsModal';
 import { AuthModal } from './components/auth/AuthModal';
+import { ShinobiBackground } from './components/ui/ShinobiBackground';
 
 export const AppContent: React.FC = () => {
   const { profile, checkDayTransition } = useUserStore();
@@ -82,7 +83,10 @@ export const AppContent: React.FC = () => {
   const pendingMissionsCount = missions.filter((m) => !m.isCompletedToday).length;
 
   return (
-    <div className="min-h-screen bg-shinobi-bg text-slate-100 flex flex-col selection:bg-shinobi-crimson selection:text-white">
+    <div className="min-h-screen bg-shinobi-bg text-slate-100 flex flex-col selection:bg-shinobi-crimson selection:text-white relative overflow-x-hidden">
+      {/* Ambientação Shinobi Animada */}
+      <ShinobiBackground opacity={0.35} showNinjaDash={true} />
+
       {/* Navbar Superior com Nível, Rank, Streak, Escudo e Status Nuvem */}
       <Navbar
         onOpenNotifications={() => setIsNotifModalOpen(true)}
