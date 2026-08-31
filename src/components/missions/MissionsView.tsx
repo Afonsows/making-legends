@@ -5,6 +5,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { evaluateProtocolStatus } from '../../core/streakEngine';
 import { MissionCard } from './MissionCard';
 import { AddMissionModal } from './AddMissionModal';
+import { MissionHistoryModal } from '../modals/MissionHistoryModal';
 import { Mission, TimeOfDay } from '../../core/types';
 import { PillarId } from '../../theme/types';
 import { 
@@ -15,7 +16,8 @@ import {
   Sparkles, 
   Compass, 
   Calendar,
-  CheckCircle2
+  CheckCircle2,
+  History
 } from 'lucide-react';
 
 interface MissionsViewProps {
@@ -41,6 +43,7 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
   const { getPhaseInfo, theme } = useTheme();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [editingMission, setEditingMission] = useState<Mission | null>(null);
 
   const protocolStatus = evaluateProtocolStatus(profile, missions);
@@ -170,7 +173,16 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          <button
+            onClick={() => setIsHistoryModalOpen(true)}
+            className="px-3 py-2 bg-shinobi-bg border border-shinobi-border hover:border-shinobi-gold/60 text-slate-200 text-xs font-medium rounded-xl transition-colors flex items-center gap-1.5"
+            title="Ver histórico de missões e sincronizar XP/Ryō"
+          >
+            <History className="w-3.5 h-3.5 text-shinobi-gold" />
+            <span>Histórico & Sincronizar</span>
+          </button>
+
           {onOpenCard && (
             <button
               onClick={onOpenCard}
@@ -288,6 +300,12 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
         }}
         onSave={handleSaveModal}
         initialData={editingMission}
+      />
+
+      {/* Modal de Histórico & Auditoria de Missões */}
+      <MissionHistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
       />
     </div>
   );
