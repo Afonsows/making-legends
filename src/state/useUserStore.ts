@@ -1,12 +1,19 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { UserProfile, AvatarConfig, NotificationSettings, Item } from '../core/types';
+import { UserProfile, AvatarConfig, NotificationSettings, Item, ProtocolChallengeCycle } from '../core/types';
 import { PillarId, UserRankId } from '../theme/types';
 import { getLevelFromTotalXp, getRankIdFromLevel, calculateXpGainWithBuffs } from '../core/xpEngine';
-import { getTodayString, processDayTransition } from '../core/streakEngine';
+import { 
+  getTodayString, 
+  processDayTransition, 
+  ensureActiveChallenge, 
+  calculateDailyXpProgress, 
+  createNewChallengeCycle 
+} from '../core/streakEngine';
 import { allGameItems } from '../core/itemsData';
 import { soundFx } from '../utils/audio';
-import { triggerLevelUpConfetti } from '../utils/confetti';
+import { triggerLevelUpConfetti, triggerMissionConfetti } from '../utils/confetti';
+import { useHabitStore } from './useHabitStore';
 
 const defaultProfile: UserProfile = {
   id: 'user_shinobi_01',
@@ -49,12 +56,17 @@ const defaultProfile: UserProfile = {
   unlockedCards: ['card_tai_01', 'card_nin_01', 'card_cha_01', 'card_esp_01', 'card_gen_01'],
   equippedItems: ['pesos_ferro_negro'],
   inventory: ['pesos_ferro_negro', 'pergaminho_da_sabedoria_antiga'],
+  activeChallenge: createNewChallengeCycle(1, getTodayString()),
+  challengeHistory: [],
   createdAt: new Date().toISOString(),
 };
 
 interface UserStoreState {
   profile: UserProfile;
   activeLevelUpModal: { oldLevel: number; newLevel: number; oldRank: UserRankId; newRank: UserRankId } | null;
+  activeResetModal: { cycle: ProtocolChallengeCycle } | null;
+  isChallengeHistoryModalOpen: boolean;
+  isChallengeMapModalOpen: boolean;
   
   // Actions
   updateProfile: (updates: Partial<UserProfile>) => void;
@@ -83,6 +95,15 @@ interface UserStoreState {
   // Day checking & streaks
   checkDayTransition: () => void;
   consumeWeeklyShield: () => boolean;
+
+  // 66-Day Challenge & Daily Presence Check-in
+  toggleDailyCheckIn: (dayNumber?: number) => { success: boolean; reason?: string; isChecked?: boolean };
+  startNewChallengeCycle: () => void;
+  dismissResetModal: () => void;
+  openChallengeHistoryModal: () => void;
+  closeChallengeHistoryModal: () => void;
+  openChallengeMapModal: () => void;
+  closeChallengeMapModal: () => void;
 }
 
 export const useUserStore = create<UserStoreState>()(
@@ -316,15 +337,20 @@ export const useUserStore = create<UserStoreState>()(
         }
       },
 
+      activeResetModal: null,
+      isChallengeHistoryModalOpen: false,
+      isChallengeMapModalOpen: false,
+
       checkDayTransition: () => {
         const { profile } = get();
         const today = getTodayString();
+        const missions = useHabitStore.getState().missions;
 
         if (profile.lastActiveDate === today) {
           return;
         }
 
-        const transition = processDayTransition(profile, today);
+        const transition = processDayTransition(profile, today, missions);
 
         if (transition.updatedProfile && Object.keys(transition.updatedProfile).length > 0) {
           set((state) => ({
@@ -332,6 +358,9 @@ export const useUserStore = create<UserStoreState>()(
               ...state.profile,
               ...transition.updatedProfile,
             },
+            activeResetModal: transition.resetOccurred && transition.archivedCycle
+              ? { cycle: transition.archivedCycle }
+              : state.activeResetModal,
           }));
         }
       },
@@ -349,9 +378,127 @@ export const useUserStore = create<UserStoreState>()(
         }
         return false;
       },
+
+      toggleDailyCheckIn: (dayNumber?: number) => {
+        const { profile } = get();
+        const missions = useHabitStore.getState().missions;
+        const xpProgress = calculateDailyXpProgress(missions);
+
+        const activeCycle = ensureActiveChallenge(profile);
+        const targetDay = dayNumber !== undefined 
+          ? Math.min(66, Math.max(1, dayNumber)) 
+          : Math.min(66, Math.max(1, activeCycle.currentDay || profile.currentProtocolDay || 1));
+
+        const currentlyChecked = Boolean(activeCycle.checkIns[targetDay]?.checked);
+
+        // Se está tentando marcar e ainda não atingiu 50% de XP
+        if (!currentlyChecked && !xpProgress.isUnlocked) {
+          return {
+            success: false,
+            reason: `Você precisa atingir pelo menos 50% do XP previsto de hoje (${xpProgress.currentXp}/${xpProgress.target50PctXp} XP) para marcar presença!`,
+            isChecked: false,
+          };
+        }
+
+        const willBeChecked = !currentlyChecked;
+        const todayStr = getTodayString();
+
+        const updatedCheckIns = {
+          ...activeCycle.checkIns,
+          [targetDay]: {
+            dayNumber: targetDay,
+            date: todayStr,
+            checked: willBeChecked,
+            xpEarned: xpProgress.currentXp,
+            targetXp: xpProgress.totalTargetXp,
+            checkedAt: new Date().toISOString(),
+          },
+        };
+
+        const daysCompleted = Object.values(updatedCheckIns).filter((r) => r.checked).length;
+        const totalXpEarned = Object.values(updatedCheckIns).reduce((acc, r) => acc + (r.checked ? r.xpEarned : 0), 0);
+
+        const updatedCycle: ProtocolChallengeCycle = {
+          ...activeCycle,
+          daysCompleted,
+          totalXpEarned,
+          checkIns: updatedCheckIns,
+        };
+
+        let newStreak = profile.currentStreak;
+        if (willBeChecked) {
+          soundFx.playMissionComplete();
+          triggerMissionConfetti();
+        }
+
+        const bestStreak = Math.max(profile.bestStreak, newStreak);
+
+        set((state) => ({
+          profile: {
+            ...state.profile,
+            currentStreak: newStreak,
+            bestStreak,
+            activeChallenge: updatedCycle,
+          },
+        }));
+
+        return {
+          success: true,
+          isChecked: willBeChecked,
+        };
+      },
+
+      startNewChallengeCycle: () => {
+        const { profile } = get();
+        const todayStr = getTodayString();
+        const activeCycle = ensureActiveChallenge(profile);
+        const history = [...(profile.challengeHistory || [])];
+
+        const archived: ProtocolChallengeCycle = {
+          ...activeCycle,
+          endDate: todayStr,
+          status: activeCycle.daysCompleted >= 50 ? 'completed' : 'failed',
+          failedReason: activeCycle.daysCompleted >= 50 ? 'Concluído com Honra' : 'Reiniciado pelo Usuário',
+        };
+
+        const nextCycleNum = (activeCycle.cycleNumber || 1) + 1;
+        const newCycle = createNewChallengeCycle(nextCycleNum, todayStr);
+
+        set((state) => ({
+          profile: {
+            ...state.profile,
+            currentProtocolDay: 1,
+            currentStreak: 1,
+            activeChallenge: newCycle,
+            challengeHistory: [archived, ...history],
+          },
+          activeResetModal: null,
+        }));
+      },
+
+      dismissResetModal: () => {
+        set({ activeResetModal: null });
+      },
+
+      openChallengeHistoryModal: () => {
+        set({ isChallengeHistoryModalOpen: true });
+      },
+
+      closeChallengeHistoryModal: () => {
+        set({ isChallengeHistoryModalOpen: false });
+      },
+
+      openChallengeMapModal: () => {
+        set({ isChallengeMapModalOpen: true });
+      },
+
+      closeChallengeMapModal: () => {
+        set({ isChallengeMapModalOpen: false });
+      },
     }),
     {
       name: 'shinobi_user_store_v1',
     }
   )
 );
+

@@ -5,7 +5,10 @@ import { useTheme } from '../../theme/ThemeContext';
 import { evaluateProtocolStatus } from '../../core/streakEngine';
 import { MissionCard } from './MissionCard';
 import { AddMissionModal } from './AddMissionModal';
+import { DailyCheckInCard } from './DailyCheckInCard';
 import { MissionHistoryModal } from '../modals/MissionHistoryModal';
+import { ChallengeMapModal } from '../modals/ChallengeMapModal';
+import { ChallengeHistoryModal } from '../modals/ChallengeHistoryModal';
 import { Mission, TimeOfDay } from '../../core/types';
 import { PillarId } from '../../theme/types';
 import { 
@@ -41,7 +44,13 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
     moveMission 
   } = useHabitStore();
 
-  const { profile } = useUserStore();
+  const { 
+    profile, 
+    isChallengeMapModalOpen, 
+    closeChallengeMapModal,
+    isChallengeHistoryModalOpen,
+    closeChallengeHistoryModal 
+  } = useUserStore();
   const { getPhaseInfo, theme } = useTheme();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -124,64 +133,8 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
 
   return (
     <div className="pb-24 pt-3 max-w-4xl mx-auto px-4 space-y-4">
-      {/* Banner Superior: O Protocolo dos 66 Dias (Phillippa Lally) */}
-      <div className="pergaminho-bg rounded-2xl border border-shinobi-border p-4 shadow-xl relative overflow-hidden">
-        <div className="absolute -right-8 -bottom-8 w-36 h-36 bg-shinobi-crimson/10 rounded-full blur-2xl pointer-events-none" />
-        
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded-full bg-shinobi-crimson/20 text-shinobi-crimson font-bold border border-shinobi-crimson/40">
-                Fase {currentPhase.phaseIndex} — {currentPhase.name}
-              </span>
-              <span className="text-xs text-slate-400 font-mono">
-                {currentPhase.daysRange}
-              </span>
-            </div>
-
-            <h2 className="font-cinzel text-lg sm:text-xl font-bold text-slate-100 flex items-center gap-2">
-              <span>Dia {protocolStatus.currentDay} de 66</span>
-              <span className="text-xs font-mono font-normal text-shinobi-gold">
-                ({protocolStatus.totalDaysRemaining} dias para o Kage)
-              </span>
-            </h2>
-
-            <p className="text-xs text-slate-300 mt-1 line-clamp-1 italic text-slate-400">
-              "{currentPhase.quote}"
-            </p>
-          </div>
-
-          {/* Progresso do Protocolo */}
-          <div className="flex items-center gap-3 self-end sm:self-center">
-            <div className="text-right">
-              <div className="text-xs font-mono font-bold text-shinobi-gold">
-                {protocolStatus.protocolProgressPercent}% Concluído
-              </div>
-              <div className="text-[10px] text-slate-400">
-                {protocolStatus.daysRemainingInPhase} dias p/ próxima fase
-              </div>
-            </div>
-            <div className="w-12 h-12 rounded-full border-2 border-shinobi-gold/40 flex items-center justify-center bg-shinobi-bg/80 font-mono font-bold text-xs text-slate-100">
-              {protocolStatus.currentDay}/66
-            </div>
-          </div>
-        </div>
-
-        {/* Barra de Progresso dos 66 Dias com 3 Fases Demarcadas */}
-        <div className="mt-3 relative">
-          <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
-            <div
-              className="h-full bg-gradient-to-r from-shinobi-crimson via-shinobi-gold to-shinobi-jade transition-all duration-500 rounded-full"
-              style={{ width: `${protocolStatus.protocolProgressPercent}%` }}
-            />
-          </div>
-          <div className="flex justify-between text-[9px] font-mono text-slate-500 mt-1 px-1">
-            <span>Despertar (1-22)</span>
-            <span>Forja (23-44)</span>
-            <span>Mestria (45-66)</span>
-          </div>
-        </div>
-      </div>
+      {/* Card Principal: Presença Diária dos 66 Dias com Validação de 50% de XP */}
+      <DailyCheckInCard />
 
       {/* Cartão de Progresso Diário e Chamada para Ação */}
       <div className="bg-slate-900 border-2 border-slate-700/80 rounded-2xl p-4 shadow-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -406,6 +359,18 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
       <MissionHistoryModal
         isOpen={isHistoryModalOpen}
         onClose={() => setIsHistoryModalOpen(false)}
+      />
+
+      {/* Modal do Mapa Visual dos 66 Dias */}
+      <ChallengeMapModal
+        isOpen={isChallengeMapModalOpen}
+        onClose={closeChallengeMapModal}
+      />
+
+      {/* Modal da Área de Histórico de Desafios dos 66 Dias */}
+      <ChallengeHistoryModal
+        isOpen={isChallengeHistoryModalOpen}
+        onClose={closeChallengeHistoryModal}
       />
     </div>
   );

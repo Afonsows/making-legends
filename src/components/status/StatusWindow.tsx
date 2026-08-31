@@ -25,13 +25,16 @@ import {
   CheckCircle2,
   Cloud,
   Coins,
-  History,
-  RotateCcw,
-  BarChart3,
-  Sliders
+  History, 
+  RotateCcw, 
+  BarChart3, 
+  Sliders,
+  Map
 } from 'lucide-react';
 import { allGameItems } from '../../core/itemsData';
 import { EditProfileModal, AVATAR_OPTIONS } from '../modals/EditProfileModal';
+import { ChallengeMapModal } from '../modals/ChallengeMapModal';
+import { ChallengeHistoryModal } from '../modals/ChallengeHistoryModal';
 import { triggerLevelUpConfetti } from '../../utils/confetti';
 
 interface StatusWindowProps {
@@ -45,7 +48,13 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
     equipItem, 
     unequipItem, 
     getEquippedItems,
-    updateProfile 
+    updateProfile,
+    isChallengeMapModalOpen,
+    openChallengeMapModal,
+    closeChallengeMapModal,
+    isChallengeHistoryModalOpen,
+    openChallengeHistoryModal,
+    closeChallengeHistoryModal
   } = useUserStore();
   const { missionLogs, recalibrateFromMissions, missions } = useHabitStore();
   const { getRankByLevel, theme } = useTheme();
@@ -289,17 +298,22 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
             </div>
 
             {/* Dia do Protocolo */}
-            <div className="bg-slate-900 border-2 border-slate-700 p-4 rounded-2xl text-center space-y-1 shadow-xl">
-              <span className="text-[10px] font-mono font-bold uppercase text-slate-300 tracking-wider">
-                PROTOCOLO UCL
+            <button
+              type="button"
+              onClick={openChallengeMapModal}
+              className="bg-slate-900 border-2 border-slate-700 hover:border-shinobi-gold p-4 rounded-2xl text-center space-y-1 shadow-xl hover:scale-105 transition-all cursor-pointer group"
+              title="Clique para ver o mapa completo dos 66 dias"
+            >
+              <span className="text-[10px] font-mono font-bold uppercase text-slate-300 group-hover:text-shinobi-gold tracking-wider flex items-center justify-center gap-1">
+                <Map className="w-3 h-3 text-shinobi-gold" /> PROTOCOLO UCL
               </span>
               <div className="text-2xl font-cinzel font-bold text-shinobi-gold">
-                Dia {profile.currentProtocolDay}<span className="text-xs font-mono text-slate-400">/66</span>
+                Dia {profile.activeChallenge?.currentDay || profile.currentProtocolDay || 1}<span className="text-xs font-mono text-slate-400">/66</span>
               </div>
-              <p className="text-[10px] text-slate-300">
+              <p className="text-[10px] text-slate-300 group-hover:text-slate-200">
                 {profile.currentProtocolDay <= 22 ? 'Fase 1: Despertar' : profile.currentProtocolDay <= 44 ? 'Fase 2: Forja' : 'Fase 3: Mestria'}
               </p>
-            </div>
+            </button>
 
             {/* Sequência Atual */}
             <div className="bg-slate-900 border-2 border-slate-700 p-4 rounded-2xl text-center space-y-1 shadow-xl">
@@ -704,6 +718,39 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
             </div>
           )}
 
+          {/* Seção dos Desafios de 66 Dias e Ciclos */}
+          <div className="pergaminho-bg rounded-2xl border-2 border-shinobi-gold/60 p-4 shadow-lg space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h4 className="font-cinzel text-sm font-bold text-slate-100 flex items-center gap-2">
+                  <Award className="w-4 h-4 text-shinobi-gold" />
+                  Desafio dos 66 Dias — Ciclo Atual #{profile.activeChallenge?.cycleNumber || 1}
+                </h4>
+                <p className="text-[11px] text-slate-400">
+                  {profile.challengeHistory?.length || 0} ciclos arquivados no histórico • Regra de no máximo 1 falta/semana
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={openChallengeMapModal}
+                  className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-shinobi-gold border border-shinobi-gold/50 rounded-xl text-xs font-bold transition-all shadow flex items-center gap-1"
+                >
+                  <Map className="w-3.5 h-3.5" />
+                  <span>Mapa 66 Dias</span>
+                </button>
+
+                <button
+                  onClick={openChallengeHistoryModal}
+                  className="px-3.5 py-1.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 text-xs font-bold rounded-xl shadow-glow-gold transition-all flex items-center gap-1.5"
+                >
+                  <History className="w-3.5 h-3.5" />
+                  <span>Área de Histórico</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Resumo da Ficha Real */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3.5 rounded-2xl bg-slate-950 border-2 border-slate-800 text-center text-xs shadow-md">
             <div className="p-2 bg-slate-900/80 rounded-xl border border-slate-800">
@@ -789,6 +836,18 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
       <EditProfileModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
+      />
+
+      {/* Modal do Mapa dos 66 Dias */}
+      <ChallengeMapModal
+        isOpen={isChallengeMapModalOpen}
+        onClose={closeChallengeMapModal}
+      />
+
+      {/* Modal da Área de Histórico de Desafios */}
+      <ChallengeHistoryModal
+        isOpen={isChallengeHistoryModalOpen}
+        onClose={closeChallengeHistoryModal}
       />
     </div>
   );

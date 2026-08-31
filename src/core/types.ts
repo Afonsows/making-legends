@@ -45,6 +45,31 @@ export interface NotificationSettings {
   soundEnabled: boolean;
 }
 
+export interface DailyCheckInRecord {
+  dayNumber: number;          // 1 a 66
+  date: string;               // YYYY-MM-DD
+  checked: boolean;           // true = presença confirmada, false = faltou / não marcado
+  xpEarned: number;           // XP realizado no dia
+  targetXp: number;           // XP total previsto do dia
+  checkedAt?: string;         // ISO timestamp da marcação
+}
+
+export interface ProtocolChallengeCycle {
+  id: string;                 // ex: 'cycle_1_1725148800000'
+  cycleNumber: number;        // 1, 2, 3...
+  startDate: string;          // YYYY-MM-DD
+  endDate?: string;           // YYYY-MM-DD
+  status: 'active' | 'completed' | 'failed';
+  currentDay: number;         // 1 a 66
+  daysCompleted: number;      // total de dias marcados com presença
+  checkIns: Record<number, DailyCheckInRecord>; // dia (1..66) -> registro
+  failedWeek?: number;        // semana em que ocorreram as 2 faltas
+  failedReason?: string;      // descrição do encerramento
+  totalXpEarned: number;      // XP acumulado durante o ciclo
+  createdAt: string;
+  completedAt?: string;
+}
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -70,6 +95,8 @@ export interface UserProfile {
   unlockedCards: string[];
   equippedItems: string[];
   inventory: string[];
+  activeChallenge?: ProtocolChallengeCycle;
+  challengeHistory?: ProtocolChallengeCycle[];
   createdAt: string;
 }
 

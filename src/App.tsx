@@ -14,6 +14,7 @@ import { TeachingCardsView } from './components/cards/TeachingCardsView';
 import { OnboardingQuiz } from './components/onboarding/OnboardingQuiz';
 import { LevelUpModal } from './components/modals/LevelUpModal';
 import { BossVictoryModal } from './components/modals/BossVictoryModal';
+import { ChallengeResetModal } from './components/modals/ChallengeResetModal';
 import { IosInstallModal } from './components/pwa/IosInstallModal';
 import { NotificationSettingsModal } from './components/pwa/NotificationSettingsModal';
 import { AuthModal } from './components/auth/AuthModal';
@@ -116,6 +117,7 @@ export const AppContent: React.FC = () => {
       {/* Modais Globais do Sistema */}
       <LevelUpModal />
       <BossVictoryModal />
+      <ChallengeResetModal />
       <IosInstallModal
         isOpen={isIosModalOpen}
         onClose={() => setIsIosModalOpen(false)}

@@ -33,4 +33,4 @@ dist-ssr
 # Vercel
 .vercel
 
-.vercel
+*.tsbuildinfo
