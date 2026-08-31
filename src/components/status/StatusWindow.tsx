@@ -31,24 +31,8 @@ import {
   Sliders
 } from 'lucide-react';
 import { allGameItems } from '../../core/itemsData';
-
-const AVATAR_OPTIONS = [
-  { emoji: '🥷', label: 'Shinobi das Sombras' },
-  { emoji: '🥷‍♀️', label: 'Kunoichi Ágil' },
-  { emoji: '👺', label: 'Mestre Tengu' },
-  { emoji: '🥋', label: 'Lutador Taijutsu' },
-  { emoji: '📜', label: 'Sábio Ninjutsu' },
-  { emoji: '⚡', label: 'Raio do Trovão' },
-  { emoji: '🐉', label: 'Espírito do Dragão' },
-  { emoji: '🦊', label: 'Guardião Místico' },
-  { emoji: '🎭', label: 'Anbu Mascarado' },
-  { emoji: '👑', label: 'Kage Soberano' },
-  { emoji: '🗡️', label: 'Ronin Solitário' },
-  { emoji: '🌸', label: 'Lótus Noturna' },
-  { emoji: '🐺', label: 'Lobo das Sombras' },
-  { emoji: '🦅', label: 'Falcão Estrategista' },
-  { emoji: '🔥', label: 'Chama Eterna' },
-];
+import { EditProfileModal, AVATAR_OPTIONS } from '../modals/EditProfileModal';
+import { triggerLevelUpConfetti } from '../../utils/confetti';
 
 interface StatusWindowProps {
   onOpenAvatarCustomizer?: () => void;
@@ -68,6 +52,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
 
   // Sub-abas do Pergaminho de Status
   const [activeSubTab, setActiveSubTab] = useState<'stats' | 'profile' | 'history'>('stats');
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const rankInfo = getRankByLevel(profile.level);
   const { currentLevel, currentLevelXp, nextLevelXpThreshold, progressPercent } = getLevelProgress(profile.totalXp);
@@ -81,6 +66,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
   const [editWhatsapp, setEditWhatsapp] = useState(profile.whatsapp || '');
   const [editGender, setEditGender] = useState<'male' | 'female'>(profile.gender || 'male');
   const [editAvatarEmoji, setEditAvatarEmoji] = useState(avatarDisplay);
+  const [activeCategory, setActiveCategory] = useState<'all' | 'shinobi' | 'kunoichi' | 'mestres' | 'bestas' | 'elementos'>('all');
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [recalibrateNotice, setRecalibrateNotice] = useState<string | null>(null);
@@ -93,6 +79,20 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
     setEditGender(profile.gender || 'male');
     setEditAvatarEmoji(avatarDisplay);
   }, [profile, activeSubTab]);
+
+  const filteredAvatars = activeCategory === 'all' 
+    ? AVATAR_OPTIONS 
+    : AVATAR_OPTIONS.filter((a) => a.category === activeCategory);
+
+  const handleSelectAvatarInline = (emoji: string) => {
+    soundFx.playButtonClick();
+    setEditAvatarEmoji(emoji);
+    if (emoji === '🥷‍♀️' || emoji === '🌸' || emoji === '🌺' || emoji === '🧕') {
+      setEditGender('female');
+    } else if (emoji === '🥷' || emoji === '👺' || emoji === '🥋') {
+      setEditGender('male');
+    }
+  };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,12 +120,18 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
         await syncService.pushUserProfile({ ...profile, ...updatedData }, targetUserId);
       }
       soundFx.playLevelUp();
+      triggerLevelUpConfetti();
       setSaveSuccess(true);
       setTimeout(() => {
         setSaveSuccess(false);
-      }, 2000);
+      }, 2500);
     } catch (err) {
       console.error('Erro ao salvar perfil no Supabase:', err);
+      soundFx.playLevelUp();
+      setSaveSuccess(true);
+      setTimeout(() => {
+        setSaveSuccess(false);
+      }, 2500);
     } finally {
       setIsSaving(false);
     }
@@ -159,15 +165,19 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
         <div className="flex flex-col sm:flex-row items-center gap-5 relative z-10">
           {/* Avatar com Aura de Chakra */}
           <div className="relative flex-shrink-0">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-shinobi-card to-slate-900 border-2 border-shinobi-gold flex items-center justify-center text-4xl shadow-glow-gold/40 relative">
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="w-20 h-20 rounded-2xl bg-gradient-to-br from-shinobi-card to-slate-900 border-2 border-shinobi-gold flex items-center justify-center text-4xl shadow-glow-gold/40 relative hover:scale-105 transition-transform"
+              title="Clique para trocar Avatar e Foto"
+            >
               <span>{avatarDisplay}</span>
               <div className="absolute -bottom-2 -right-2 bg-shinobi-crimson text-white text-xs font-mono font-bold px-2 py-0.5 rounded-full border border-shinobi-bg">
                 Nv. {currentLevel}
               </div>
-            </div>
+            </button>
             <button
-              onClick={() => setActiveSubTab('profile')}
-              className="absolute -top-1 -right-1 p-1.5 bg-shinobi-card border border-shinobi-border text-slate-300 hover:text-shinobi-gold rounded-full transition-colors shadow-md"
+              onClick={() => setIsEditModalOpen(true)}
+              className="absolute -top-1.5 -right-1.5 p-1.5 bg-shinobi-card border border-shinobi-gold/70 text-shinobi-gold hover:text-white hover:bg-shinobi-gold/20 rounded-full transition-colors shadow-lg"
               title="Editar Ficha e Foto"
             >
               <Edit className="w-3.5 h-3.5" />
@@ -188,13 +198,13 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
               </span>
             </div>
 
-            <div className="flex items-center justify-center sm:justify-start gap-2">
+            <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
               <h2 className="font-cinzel text-xl sm:text-2xl font-bold text-slate-100">
                 {profile.name}
               </h2>
               <button
-                onClick={() => setActiveSubTab('profile')}
-                className="text-xs text-shinobi-gold hover:underline flex items-center gap-1 font-mono"
+                onClick={() => setIsEditModalOpen(true)}
+                className="text-xs text-shinobi-gold hover:text-amber-300 hover:underline flex items-center gap-1 font-mono font-bold"
               >
                 (Editar Ficha & Avatar)
               </button>
@@ -222,13 +232,13 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
       </div>
 
       {/* SELETOR DE SUB-ABAS (ESTATÍSTICAS / EDITAR FICHA / HISTÓRICO) */}
-      <div className="flex items-center justify-center gap-2 p-1 bg-shinobi-card/80 border border-shinobi-border rounded-2xl">
+      <div className="flex items-center justify-center gap-2 p-1.5 bg-slate-950/90 border border-shinobi-border rounded-2xl shadow-lg">
         <button
           onClick={() => setActiveSubTab('stats')}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
+          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
             activeSubTab === 'stats'
-              ? 'bg-shinobi-gold text-shinobi-bg shadow-glow-gold/40'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-shinobi-gold text-slate-950 shadow-glow-gold/40'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
           }`}
         >
           <BarChart3 className="w-4 h-4" />
@@ -237,10 +247,10 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
 
         <button
           onClick={() => setActiveSubTab('profile')}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
+          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
             activeSubTab === 'profile'
-              ? 'bg-shinobi-gold text-shinobi-bg shadow-glow-gold/40'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-shinobi-gold text-slate-950 shadow-glow-gold/40'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
           }`}
         >
           <Sliders className="w-4 h-4" />
@@ -249,10 +259,10 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
 
         <button
           onClick={() => setActiveSubTab('history')}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
+          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
             activeSubTab === 'history'
-              ? 'bg-shinobi-gold text-shinobi-bg shadow-glow-gold/40'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-shinobi-gold text-slate-950 shadow-glow-gold/40'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
           }`}
         >
           <History className="w-4 h-4" />
@@ -441,8 +451,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
 
       {/* SUB-ABA 2: EDITAR FICHA & FOTO/AVATAR */}
       {activeSubTab === 'profile' && (
-        <div className="bg-slate-950/95 border border-shinobi-gold/60 rounded-3xl p-6 shadow-2xl space-y-5 animate-in fade-in duration-300">
-          <div className="flex items-center justify-between border-b border-shinobi-border pb-3">
+        <div className="bg-slate-900/95 border border-shinobi-gold/60 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-5 animate-in fade-in duration-300">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <div>
               <h3 className="font-cinzel text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2">
                 <User className="w-5 h-5 text-shinobi-gold" />
@@ -452,60 +462,131 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
                 Altere seu nome de guerreiro, foto de perfil, gênero e informações de contato.
               </p>
             </div>
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="px-3 py-1.5 bg-shinobi-gold/20 border border-shinobi-gold/50 hover:bg-shinobi-gold/30 text-shinobi-gold text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>Abrir em Janela Modal</span>
+            </button>
+          </div>
+
+          {/* Pré-visualização da Ficha */}
+          <div className="pergaminho-bg rounded-2xl border border-shinobi-gold/40 p-4 shadow-lg flex items-center gap-4">
+            <div className="relative flex-shrink-0">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-shinobi-card to-slate-950 border-2 border-shinobi-gold flex items-center justify-center text-3xl shadow-glow-gold/50">
+                <span>{editAvatarEmoji}</span>
+              </div>
+              <div className="absolute -bottom-1.5 -right-1.5 bg-shinobi-crimson text-white text-[10px] font-mono font-bold px-2 py-0.2 rounded-full border border-slate-900 shadow">
+                Nv. {profile.level}
+              </div>
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-full bg-shinobi-gold/20 text-shinobi-gold border border-shinobi-gold/40">
+                  {rankInfo.name}
+                </span>
+                <span className="text-[10px] text-slate-400 font-mono">
+                  {editGender === 'female' ? 'Kunoichi 🥷‍♀️' : 'Shinobi 🥷'}
+                </span>
+                <span className="text-[10px] text-amber-300 font-mono">
+                  🪙 {profile.ryo || 0} Ryō
+                </span>
+              </div>
+              <div className="font-cinzel text-lg font-bold text-slate-100 truncate">
+                {editName || 'Aspirante Shinobi'}
+              </div>
+              <div className="text-[11px] text-slate-400">
+                Avatar ativo: <strong className="text-shinobi-gold">{AVATAR_OPTIONS.find((a) => a.emoji === editAvatarEmoji)?.label || 'Avatar Personalizado'}</strong>
+              </div>
+            </div>
           </div>
 
           <form onSubmit={handleSaveProfile} className="space-y-4">
             {/* SELETOR DE FOTO / AVATAR SHINOBI */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-shinobi-gold" /> Escolha sua Foto / Avatar Shinobi:
-                </span>
+                </label>
                 <span className="text-xs text-shinobi-gold font-mono">
-                  Avatar Selecionado: {editAvatarEmoji}
+                  {filteredAvatars.length} avatares disponíveis
                 </span>
-              </label>
-              <div className="grid grid-cols-5 sm:grid-cols-8 gap-2.5 p-2.5 border border-shinobi-border rounded-2xl bg-shinobi-bg/80">
-                {AVATAR_OPTIONS.map((opt) => (
+              </div>
+
+              {/* Filtros de Categoria */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                {[
+                  { id: 'all', label: 'Todos' },
+                  { id: 'shinobi', label: '🥷 Shinobis' },
+                  { id: 'kunoichi', label: '🌸 Kunoichis' },
+                  { id: 'mestres', label: '👑 Mestres' },
+                  { id: 'bestas', label: '🐉 Bestas' },
+                  { id: 'elementos', label: '🔥 Elementos' },
+                ].map((cat) => (
                   <button
-                    key={opt.emoji}
+                    key={cat.id}
                     type="button"
-                    title={opt.label}
-                    onClick={() => {
-                      setEditAvatarEmoji(opt.emoji);
-                      if (opt.emoji === '🥷‍♀️') setEditGender('female');
-                      if (opt.emoji === '🥷') setEditGender('male');
-                    }}
-                    className={`h-14 rounded-xl text-3xl flex items-center justify-center border transition-all ${
-                      editAvatarEmoji === opt.emoji
-                        ? 'border-shinobi-gold bg-shinobi-gold/25 shadow-glow-gold scale-110'
-                        : 'border-shinobi-border bg-shinobi-card/60 hover:bg-shinobi-card hover:border-slate-500'
+                    onClick={() => setActiveCategory(cat.id as any)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                      activeCategory === cat.id
+                        ? 'bg-shinobi-gold text-slate-950 shadow-glow-gold/30 font-bold'
+                        : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
                     }`}
                   >
-                    {opt.emoji}
+                    {cat.label}
                   </button>
                 ))}
+              </div>
+
+              {/* Grid de Avatares */}
+              <div className="grid grid-cols-4 sm:grid-cols-7 gap-2.5 p-3 border border-slate-800 rounded-2xl bg-slate-950/90 max-h-60 overflow-y-auto">
+                {filteredAvatars.map((opt) => {
+                  const isSelected = editAvatarEmoji === opt.emoji;
+                  return (
+                    <button
+                      key={opt.emoji + opt.label}
+                      type="button"
+                      title={opt.label}
+                      onClick={() => handleSelectAvatarInline(opt.emoji)}
+                      className={`h-14 rounded-xl text-3xl flex flex-col items-center justify-center border transition-all relative ${
+                        isSelected
+                          ? 'border-shinobi-gold bg-shinobi-gold/25 shadow-glow-gold scale-105 z-10'
+                          : 'border-slate-800 bg-slate-900 hover:bg-slate-800 hover:border-slate-600'
+                      }`}
+                    >
+                      <span>{opt.emoji}</span>
+                      {isSelected && (
+                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-shinobi-gold text-slate-950 rounded-full flex items-center justify-center text-[10px] font-bold shadow">
+                          ✓
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Nome */}
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5 text-shinobi-gold" /> Nome ou Codinome
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-shinobi-gold" /> Nome ou Codinome Shinobi
                 </label>
                 <input
                   type="text"
                   required
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="w-full bg-shinobi-bg border border-shinobi-border rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-shinobi-gold"
+                  placeholder="Ex: Afonso"
+                  className="w-full bg-slate-950 border border-slate-700 focus:border-shinobi-gold rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none transition-colors"
                 />
               </div>
 
               {/* Gênero */}
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-300">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300">
                   Gênero do Guerreiro
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -518,7 +599,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
                     className={`py-2.5 px-3 rounded-xl border text-xs font-medium flex items-center justify-center gap-1.5 transition-all ${
                       editGender === 'male'
                         ? 'border-shinobi-gold bg-shinobi-gold/15 text-shinobi-gold font-bold shadow-glow-gold/20'
-                        : 'border-shinobi-border bg-shinobi-bg/60 text-slate-400'
+                        : 'border-slate-800 bg-slate-950 text-slate-400'
                     }`}
                   >
                     <span>🥷</span> Masculino
@@ -532,7 +613,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
                     className={`py-2.5 px-3 rounded-xl border text-xs font-medium flex items-center justify-center gap-1.5 transition-all ${
                       editGender === 'female'
                         ? 'border-shinobi-gold bg-shinobi-gold/15 text-shinobi-gold font-bold shadow-glow-gold/20'
-                        : 'border-shinobi-border bg-shinobi-bg/60 text-slate-400'
+                        : 'border-slate-800 bg-slate-950 text-slate-400'
                     }`}
                   >
                     <span>🥷‍♀️</span> Feminino
@@ -541,8 +622,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
               </div>
 
               {/* E-mail */}
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
                   <Mail className="w-3.5 h-3.5 text-shinobi-chakra" /> E-mail
                 </label>
                 <input
@@ -550,13 +631,13 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
                   value={editEmail}
                   onChange={(e) => setEditEmail(e.target.value)}
                   placeholder="seuemail@exemplo.com"
-                  className="w-full bg-shinobi-bg border border-shinobi-border rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-shinobi-gold"
+                  className="w-full bg-slate-950 border border-slate-700 focus:border-shinobi-gold rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none transition-colors"
                 />
               </div>
 
               {/* WhatsApp */}
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
                   <Phone className="w-3.5 h-3.5 text-emerald-400" /> WhatsApp com DDD
                 </label>
                 <input
@@ -564,21 +645,21 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
                   value={editWhatsapp}
                   onChange={(e) => setEditWhatsapp(e.target.value)}
                   placeholder="(11) 99999-9999"
-                  className="w-full bg-shinobi-bg border border-shinobi-border rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-shinobi-gold"
+                  className="w-full bg-slate-950 border border-slate-700 focus:border-shinobi-gold rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none transition-colors"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-shinobi-border">
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
               <button
                 type="submit"
                 disabled={isSaving}
-                className="px-6 py-3 bg-gradient-to-r from-shinobi-gold to-amber-500 text-shinobi-bg font-bold text-xs rounded-xl shadow-glow-gold hover:opacity-95 transition-all flex items-center gap-2"
+                className="px-6 py-3 bg-gradient-to-r from-shinobi-gold to-amber-500 text-slate-950 font-bold text-xs rounded-xl shadow-glow-gold hover:opacity-95 transition-all flex items-center gap-2"
               >
                 {saveSuccess ? (
                   <>
                     <CheckCircle2 className="w-4 h-4 text-emerald-950" />
-                    <span>Dados e Foto Salvos no Supabase!</span>
+                    <span>Dados e Avatar Salvos com Sucesso!</span>
                   </>
                 ) : (
                   <>
@@ -703,6 +784,12 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
           </div>
         </div>
       )}
+
+      {/* Modal Dedicado de Edição de Perfil e Avatar */}
+      <EditProfileModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+      />
     </div>
   );
 };
