@@ -76,7 +76,7 @@ export const OnboardingQuiz: React.FC<OnboardingQuizProps> = ({ onFinishOnboardi
 
         {/* FLUXO DO QUIZ (Passos 1 a 6) */}
         {!showPaywall ? (
-          <div className="bg-shinobi-card/90 backdrop-blur-xl border border-shinobi-border/80 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden shinobi-gradient-border">
+          <div className="bg-slate-950/80 backdrop-blur-xl border border-slate-700/60 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden shinobi-gradient-border">
             {/* Barra de Progresso do Quiz */}
             <div className="space-y-1">
               <div className="flex justify-between text-[11px] font-mono text-slate-400">
