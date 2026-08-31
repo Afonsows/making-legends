@@ -36,7 +36,9 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
     toggleCompleteMission,
     addMission,
     updateMission,
-    deleteMission 
+    deleteMission,
+    reorderMissions,
+    moveMission 
   } = useHabitStore();
 
   const { profile } = useUserStore();
@@ -53,13 +55,43 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
   const totalCount = missions.length;
   const completionPercentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
-  // Filtragem
+  // Filtragem e Divisão Automática entre Pendentes e Concluídas
   const filteredMissions = missions.filter((m) => {
     if (filterPillar !== 'all' && m.pillarId !== filterPillar) return false;
     if (filterTimeOfDay !== 'all' && m.timeOfDay !== filterTimeOfDay) return false;
     if (searchQuery.trim() && !m.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
+
+  const pendingMissions = filteredMissions.filter((m) => !m.isCompletedToday);
+  const completedMissions = filteredMissions.filter((m) => m.isCompletedToday);
+  const [draggedMissionId, setDraggedMissionId] = useState<string | null>(null);
+
+  const handleDragStart = (id: string) => {
+    setDraggedMissionId(id);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (targetId: string) => {
+    if (!draggedMissionId || draggedMissionId === targetId) {
+      setDraggedMissionId(null);
+      return;
+    }
+
+    const currentIndex = missions.findIndex((m) => m.id === draggedMissionId);
+    const targetIndex = missions.findIndex((m) => m.id === targetId);
+
+    if (currentIndex !== -1 && targetIndex !== -1) {
+      const newMissions = [...missions];
+      const [movedItem] = newMissions.splice(currentIndex, 1);
+      newMissions.splice(targetIndex, 0, movedItem);
+      reorderMissions(newMissions);
+    }
+    setDraggedMissionId(null);
+  };
 
   const handleEdit = (mission: Mission) => {
     setEditingMission(mission);
@@ -261,20 +293,54 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
         </div>
       </div>
 
-      {/* Lista de Missões em Formato de Cards (1 coluna em mobile compacto, 2 colunas a partir de sm: 640px) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-        {filteredMissions.length > 0 ? (
-          filteredMissions.map((mission) => (
-            <MissionCard
-              key={mission.id}
-              mission={mission}
-              onToggle={() => toggleCompleteMission(mission.id)}
-              onEdit={() => handleEdit(mission)}
-              onDelete={() => deleteMission(mission.id)}
-            />
-          ))
+      {/* Seção 1: Missões Pendentes / Em Andamento */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between pt-1">
+          <h3 className="text-xs sm:text-sm font-bold text-slate-200 flex items-center gap-2 font-cinzel">
+            <span className="w-2.5 h-2.5 rounded-full bg-shinobi-crimson animate-pulse shadow-glow-crimson" />
+            <span>Missões em Andamento ({pendingMissions.length})</span>
+          </h3>
+          {pendingMissions.length > 1 && (
+            <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">
+              Arraste ou use as setas para definir suas prioridades
+            </span>
+          )}
+        </div>
+
+        {pendingMissions.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            {pendingMissions.map((mission, idx) => (
+              <MissionCard
+                key={mission.id}
+                mission={mission}
+                onToggle={() => toggleCompleteMission(mission.id)}
+                onEdit={() => handleEdit(mission)}
+                onDelete={() => deleteMission(mission.id)}
+                onMoveUp={() => moveMission(mission.id, 'up')}
+                onMoveDown={() => moveMission(mission.id, 'down')}
+                canMoveUp={idx > 0}
+                canMoveDown={idx < pendingMissions.length - 1}
+                draggable={true}
+                onDragStart={() => handleDragStart(mission.id)}
+                onDragOver={handleDragOver}
+                onDragEnd={() => setDraggedMissionId(null)}
+                onDrop={() => handleDrop(mission.id)}
+                isDragging={draggedMissionId === mission.id}
+              />
+            ))}
+          </div>
+        ) : filteredMissions.length > 0 ? (
+          <div className="p-6 rounded-3xl bg-emerald-950/20 border border-emerald-500/30 text-center space-y-1.5 backdrop-blur-md">
+            <div className="text-2xl animate-bounce">🏆</div>
+            <h4 className="font-cinzel text-sm font-bold text-emerald-300">
+              Todas as Missões Foram Concluídas!
+            </h4>
+            <p className="text-xs text-slate-300 max-w-md mx-auto">
+              Parabéns, guerreiro! Seu protocolo diário foi cumprido e as missões concluídas estão organizadas na seção abaixo.
+            </p>
+          </div>
         ) : (
-          <div className="col-span-1 md:col-span-2 text-center py-12 bg-slate-900/70 backdrop-blur-md rounded-3xl border border-slate-800 p-6">
+          <div className="text-center py-10 bg-slate-900/70 backdrop-blur-md rounded-3xl border border-slate-800 p-6">
             <p className="text-sm text-slate-400 mb-3">
               Nenhuma missão encontrada para os filtros selecionados.
             </p>
@@ -291,6 +357,39 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
           </div>
         )}
       </div>
+
+      {/* Seção 2: Missões Concluídas Hoje (Movimentadas Automaticamente para Baixo) */}
+      {completedMissions.length > 0 && (
+        <div className="space-y-3 pt-3">
+          <div className="flex items-center justify-between border-t-2 border-slate-800/80 pt-4">
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+              </div>
+              <div>
+                <h3 className="text-xs sm:text-sm font-bold text-emerald-300 font-cinzel">
+                  Missões Concluídas Hoje ({completedMissions.length}/{totalCount})
+                </h3>
+                <p className="text-[10px] text-slate-400">
+                  Desmarque o card a qualquer momento para reabrir e retornar à lista de pendentes
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            {completedMissions.map((mission) => (
+              <MissionCard
+                key={mission.id}
+                mission={mission}
+                onToggle={() => toggleCompleteMission(mission.id)}
+                onEdit={() => handleEdit(mission)}
+                onDelete={() => deleteMission(mission.id)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Modal de Criação / Edição */}
       <AddMissionModal

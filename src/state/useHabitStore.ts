@@ -134,6 +134,8 @@ interface HabitStoreState {
   deleteMission: (id: string) => void;
   resetDailyMissionsIfNewDay: () => void;
   setCustomMissionList: (missions: Mission[]) => void;
+  reorderMissions: (newMissions: Mission[]) => void;
+  moveMission: (missionId: string, direction: 'up' | 'down') => void;
   
   // Logs & Reconcile
   addMissionLog: (log: MissionLogEntry) => void;
@@ -259,6 +261,26 @@ export const useHabitStore = create<HabitStoreState>()(
 
       setCustomMissionList: (newMissions) => {
         set({ missions: newMissions });
+      },
+
+      reorderMissions: (newMissions) => {
+        const withOrder = newMissions.map((m, idx) => ({ ...m, order: idx + 1 }));
+        set({ missions: withOrder });
+      },
+
+      moveMission: (missionId, direction) => {
+        const { missions } = get();
+        const index = missions.findIndex((m) => m.id === missionId);
+        if (index === -1) return;
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
+        if (targetIndex < 0 || targetIndex >= missions.length) return;
+
+        const newMissions = [...missions];
+        const [removed] = newMissions.splice(index, 1);
+        newMissions.splice(targetIndex, 0, removed);
+
+        const withOrder = newMissions.map((m, idx) => ({ ...m, order: idx + 1 }));
+        set({ missions: withOrder });
       },
 
       addMissionLog: (log) => {

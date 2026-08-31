@@ -9,7 +9,10 @@ import {
   Clock, 
   Trash2, 
   Edit3,
-  Sparkles
+  Sparkles,
+  GripVertical,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 
 interface MissionCardProps {
@@ -17,6 +20,16 @@ interface MissionCardProps {
   onToggle: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
+  draggable?: boolean;
+  onDragStart?: (e: React.DragEvent) => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDragEnd?: (e: React.DragEvent) => void;
+  onDrop?: (e: React.DragEvent) => void;
+  isDragging?: boolean;
 }
 
 export const MissionCard: React.FC<MissionCardProps> = ({
@@ -24,6 +37,16 @@ export const MissionCard: React.FC<MissionCardProps> = ({
   onToggle,
   onEdit,
   onDelete,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp = false,
+  canMoveDown = false,
+  draggable = false,
+  onDragStart,
+  onDragOver,
+  onDragEnd,
+  onDrop,
+  isDragging = false,
 }) => {
   const { getPillar, getMissionRankInfo } = useTheme();
 
@@ -58,7 +81,14 @@ export const MissionCard: React.FC<MissionCardProps> = ({
 
   return (
     <div
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragEnd={onDragEnd}
+      onDrop={onDrop}
       className={`group relative overflow-hidden rounded-2xl transition-all duration-300 flex flex-col justify-between p-4 pl-4.5 min-h-[148px] select-none touch-manipulation active:scale-[0.99] ${
+        isDragging ? 'opacity-40 scale-95 border-2 border-dashed border-shinobi-gold shadow-2xl' : ''
+      } ${
         mission.isCompletedToday
           ? 'liquid-glass-completed opacity-85 hover:opacity-100'
           : 'liquid-glass-card'
@@ -79,6 +109,16 @@ export const MissionCard: React.FC<MissionCardProps> = ({
       {/* Linha Superior: Checkbox, Badges e Botões de Ação */}
       <div className="flex items-start justify-between gap-2 relative z-10">
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Alça de Arraste para Reordenar (Missões Pendentes) */}
+          {!mission.isCompletedToday && draggable && (
+            <span
+              className="text-slate-500 hover:text-slate-300 cursor-grab active:cursor-grabbing p-0.5"
+              title="Arraste para reordenar a prioridade da missão"
+            >
+              <GripVertical className="w-4 h-4" />
+            </span>
+          )}
+
           {/* Checkbox Shinobi */}
           <button
             onClick={onToggle}
@@ -120,8 +160,39 @@ export const MissionCard: React.FC<MissionCardProps> = ({
           </span>
         </div>
 
-        {/* Botões de Ação (Editar e Excluir) */}
-        <div className="flex items-center gap-1.5 flex-shrink-0">
+        {/* Botões de Ação (Mover, Editar e Excluir) */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {/* Botões rápidos de Mover para Cima / Baixo */}
+          {!mission.isCompletedToday && onMoveUp && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onMoveUp();
+              }}
+              disabled={!canMoveUp}
+              title="Mover para cima na lista"
+              aria-label="Mover para cima"
+              className="p-1 text-slate-400 hover:text-shinobi-gold disabled:opacity-30 disabled:hover:text-slate-400 rounded bg-slate-800/80 hover:bg-slate-700 border border-slate-700 transition-colors"
+            >
+              <ChevronUp className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          {!mission.isCompletedToday && onMoveDown && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onMoveDown();
+              }}
+              disabled={!canMoveDown}
+              title="Mover para baixo na lista"
+              aria-label="Mover para baixo"
+              className="p-1 text-slate-400 hover:text-shinobi-gold disabled:opacity-30 disabled:hover:text-slate-400 rounded bg-slate-800/80 hover:bg-slate-700 border border-slate-700 transition-colors"
+            >
+              <ChevronDown className="w-3.5 h-3.5" />
+            </button>
+          )}
+
           {onEdit && (
             <button
               onClick={(e) => {
@@ -130,11 +201,12 @@ export const MissionCard: React.FC<MissionCardProps> = ({
               }}
               title="Editar missão"
               aria-label="Editar missão"
-              className="p-1.5 text-slate-300 hover:text-shinobi-gold rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700 transition-colors shadow-sm"
+              className="p-1.5 text-slate-300 hover:text-shinobi-gold rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700 transition-colors shadow-sm ml-0.5"
             >
               <Edit3 className="w-3.5 h-3.5" />
             </button>
           )}
+
           {onDelete && (
             <button
               onClick={(e) => {
