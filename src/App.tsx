@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { ThemeProvider } from './theme/ThemeContext';
 import { useUserStore } from './state/useUserStore';
 import { useHabitStore } from './state/useHabitStore';
+import { supabase } from './services/supabase';
+import { syncService } from './services/syncService';
 import { Navbar } from './components/layout/Navbar';
 import { BottomNav, TabType } from './components/layout/BottomNav';
 import { MissionsView } from './components/missions/MissionsView';
@@ -14,6 +16,7 @@ import { LevelUpModal } from './components/modals/LevelUpModal';
 import { BossVictoryModal } from './components/modals/BossVictoryModal';
 import { IosInstallModal } from './components/pwa/IosInstallModal';
 import { NotificationSettingsModal } from './components/pwa/NotificationSettingsModal';
+import { AuthModal } from './components/auth/AuthModal';
 
 export const AppContent: React.FC = () => {
   const { profile, checkDayTransition } = useUserStore();
@@ -22,12 +25,54 @@ export const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('missions');
   const [isIosModalOpen, setIsIosModalOpen] = useState(false);
   const [isNotifModalOpen, setIsNotifModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{ email?: string; id?: string } | null>(null);
+
+  // Inicialização de Auth do Supabase e sincronização automática
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setCurrentUser({ email: session.user.email, id: session.user.id });
+        syncService.pullUserData(session.user.id);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setCurrentUser({ email: session.user.email, id: session.user.id });
+        syncService.pullUserData(session.user.id);
+      } else {
+        setCurrentUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Sincronização em background quando missões ou perfil mudam (se autenticado)
+  useEffect(() => {
+    if (currentUser?.id) {
+      syncService.pushUserProfile(profile, currentUser.id);
+    }
+  }, [profile, currentUser]);
+
+  useEffect(() => {
+    if (currentUser?.id) {
+      syncService.pushMissions(missions, currentUser.id);
+    }
+  }, [missions, currentUser]);
 
   // Checagem de transição diária e reset de missões ao carregar
   useEffect(() => {
     checkDayTransition();
     resetDailyMissionsIfNewDay();
   }, [checkDayTransition, resetDailyMissionsIfNewDay]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setCurrentUser(null);
+    setIsAuthModalOpen(false);
+  };
 
   // Se o usuário ainda não passou pelo quiz inicial de aptidão
   if (!profile.hasCompletedOnboarding) {
@@ -38,10 +83,12 @@ export const AppContent: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-shinobi-bg text-slate-100 flex flex-col selection:bg-shinobi-crimson selection:text-white">
-      {/* Navbar Superior com Nível, Rank, Streak e Escudo */}
+      {/* Navbar Superior com Nível, Rank, Streak, Escudo e Status Nuvem */}
       <Navbar
         onOpenNotifications={() => setIsNotifModalOpen(true)}
         onOpenStatus={() => setActiveTab('status')}
+        onOpenAuth={() => setIsAuthModalOpen(true)}
+        isCloudSynced={!!currentUser}
       />
 
       {/* Conteúdo Principal da Aba Selecionada */}
@@ -73,6 +120,12 @@ export const AppContent: React.FC = () => {
         isOpen={isNotifModalOpen}
         onClose={() => setIsNotifModalOpen(false)}
         onOpenIosGuide={() => setIsIosModalOpen(true)}
+      />
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        currentUser={currentUser}
+        onLogout={handleLogout}
       />
     </div>
   );

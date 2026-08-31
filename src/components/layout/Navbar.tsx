@@ -8,16 +8,24 @@ import {
   Volume2, 
   VolumeX, 
   Bell, 
-  Award,
-  Sparkles
+  Cloud,
+  CloudCheck,
+  UserCheck
 } from 'lucide-react';
 
 interface NavbarProps {
   onOpenNotifications: () => void;
   onOpenStatus: () => void;
+  onOpenAuth: () => void;
+  isCloudSynced: boolean;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenStatus }) => {
+export const Navbar: React.FC<NavbarProps> = ({ 
+  onOpenNotifications, 
+  onOpenStatus, 
+  onOpenAuth,
+  isCloudSynced,
+}) => {
   const { profile, updateNotifications } = useUserStore();
   const { getRankByLevel, theme } = useTheme();
 
@@ -83,9 +91,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenStatu
             </span>
           </div>
 
-          {/* Escudo de Chakra Semanal (Phillippa Lally Tolerance) */}
+          {/* Escudo de Chakra Semanal */}
           <div
-            title={`Escudos de Chakra restantes nesta semana: ${profile.weeklyShieldsRemaining}/${profile.weeklyShieldsMax} (Tolerância científica de 1 falha)`}
+            title={`Escudos de Chakra restantes: ${profile.weeklyShieldsRemaining}/${profile.weeklyShieldsMax}`}
             className={`flex items-center gap-1 px-2 py-1 rounded-full border text-xs font-mono transition-colors ${
               profile.weeklyShieldsRemaining > 0
                 ? 'bg-shinobi-jade/10 border-shinobi-jade/50 text-shinobi-jade'
@@ -95,6 +103,23 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNotifications, onOpenStatu
             <Shield className="w-3.5 h-3.5" />
             <span className="text-[11px] font-bold">{profile.weeklyShieldsRemaining}</span>
           </div>
+
+          {/* Nuvem Supabase / Auth */}
+          <button
+            onClick={onOpenAuth}
+            title={isCloudSynced ? 'Sincronizado na nuvem (Supabase)' : 'Salvar progresso na nuvem'}
+            className={`p-1.5 rounded-lg border transition-colors ${
+              isCloudSynced
+                ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-400 hover:bg-emerald-900/50'
+                : 'bg-shinobi-card border-shinobi-border text-slate-400 hover:text-shinobi-gold hover:border-shinobi-gold/60'
+            }`}
+          >
+            {isCloudSynced ? (
+              <CloudCheck className="w-4 h-4" />
+            ) : (
+              <Cloud className="w-4 h-4" />
+            )}
+          </button>
 
           {/* Botão de Som */}
           <button
