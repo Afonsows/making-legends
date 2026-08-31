@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useHabitStore } from '../../state/useHabitStore';
 import { useUserStore } from '../../state/useUserStore';
 import { getLevelProgress } from '../../core/xpEngine';
@@ -61,8 +61,8 @@ export const MissionHistoryModal: React.FC<MissionHistoryModalProps> = ({ isOpen
     : missionLogs.filter((l) => l.action === filterAction);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-slate-900 border border-shinobi-gold/60 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 pb-24 sm:pb-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-slate-900 border-2 border-shinobi-gold/60 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[82vh] my-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/80">
           <div className="flex items-center gap-2.5">
@@ -240,13 +240,14 @@ export const MissionHistoryModal: React.FC<MissionHistoryModalProps> = ({ isOpen
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-slate-800 bg-slate-950 flex items-center justify-end">
+        {/* Footer com Botão de Ação Destacado */}
+        <div className="p-4 sm:p-5 border-t-2 border-slate-800 bg-slate-950 flex items-center justify-end gap-3 flex-shrink-0">
           <button
             onClick={onClose}
-            className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl transition-colors"
+            className="px-6 py-2.5 bg-gradient-to-r from-shinobi-gold to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 text-xs font-bold rounded-xl shadow-glow-gold transition-all flex items-center gap-2"
           >
-            Fechar
+            <CheckCircle2 className="w-4 h-4 text-slate-950 stroke-[2.5]" />
+            <span>Concluído / Fechar</span>
           </button>
         </div>
       </div>

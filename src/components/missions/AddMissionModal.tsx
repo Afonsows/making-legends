@@ -17,7 +17,7 @@ export const AddMissionModal: React.FC<AddMissionModalProps> = ({
   onSave,
   initialData,
 }) => {
-  const { theme } = useTheme();
+  const { theme, getPillar, getMissionRankInfo } = useTheme();
 
   const [title, setTitle] = useState(initialData?.title || '');
   const [description, setDescription] = useState(initialData?.description || '');
@@ -52,8 +52,8 @@ export const AddMissionModal: React.FC<AddMissionModalProps> = ({
   const pillarsList: PillarId[] = ['taijutsu', 'ninjutsu', 'chakra', 'espirito', 'genjutsu'];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-shinobi-card border border-shinobi-border w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 pb-24 sm:pb-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-slate-900 border-2 border-slate-700/90 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh] my-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-shinobi-border bg-shinobi-bg/60">
           <div className="flex items-center gap-2">
@@ -70,13 +70,11 @@ export const AddMissionModal: React.FC<AddMissionModalProps> = ({
           >
             <X className="w-5 h-5" />
           </button>
-        </div>
-
-        {/* Formulário */}
-        <form onSubmit={handleSubmit} className="p-4 space-y-4 max-h-[80vh] overflow-y-auto">
+        </div>        {/* Formulário com Scroll Interno */}
+        <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
           {/* Título da Missão */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <label className="block text-xs font-bold text-slate-200 mb-1">
               Nome da Missão / Hábito *
             </label>
             <input
@@ -85,13 +83,13 @@ export const AddMissionModal: React.FC<AddMissionModalProps> = ({
               placeholder="Ex: Treino de Força, 20 páginas de leitura, 45min Deep Work..."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-shinobi-bg border border-shinobi-border rounded-xl px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-shinobi-crimson transition-colors"
+              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-shinobi-crimson transition-colors"
             />
           </div>
 
           {/* Descrição Opcional */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <label className="block text-xs font-bold text-slate-200 mb-1">
               Instruções de Execução (Opcional)
             </label>
             <textarea
@@ -99,137 +97,127 @@ export const AddMissionModal: React.FC<AddMissionModalProps> = ({
               placeholder="Detalhes específicos para não abrir margem para desculpas..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full bg-shinobi-bg border border-shinobi-border rounded-xl px-3.5 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-shinobi-crimson transition-colors resize-none"
+              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-shinobi-crimson transition-colors resize-none"
             />
           </div>
 
           {/* Seleção de Pilar */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+            <label className="block text-xs font-bold text-slate-200 mb-1.5">
               Pilar de Atributo Desenvolvido
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {pillarsList.map((pId) => {
-                const pillar = theme.pillars[pId];
+                const pillar = getPillar(pId);
                 const isSelected = pillarId === pId;
                 return (
                   <button
                     key={pId}
                     type="button"
                     onClick={() => setPillarId(pId)}
-                    className={`flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all ${
+                    className={`p-2 rounded-xl border text-xs flex items-center gap-1.5 transition-all text-left ${
                       isSelected
-                        ? 'border-opacity-100 bg-shinobi-bg shadow-md'
-                        : 'border-shinobi-border/60 bg-shinobi-bg/40 opacity-70 hover:opacity-100'
+                        ? 'border-opacity-100 bg-slate-950 shadow-md font-bold'
+                        : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:text-slate-200'
                     }`}
                     style={{
                       borderColor: isSelected ? pillar.color : undefined,
+                      color: isSelected ? pillar.color : undefined,
                     }}
                   >
-                    <span className="text-lg">{pillar.badgeIcon}</span>
-                    <div className="min-w-0">
-                      <div className="text-xs font-bold" style={{ color: pillar.color }}>
-                        {pillar.name}
-                      </div>
-                      <div className="text-[10px] text-slate-400 truncate">
-                        {pillar.categoryLabel}
-                      </div>
-                    </div>
+                    <span>{pillar.badgeIcon}</span>
+                    <span className="truncate">{pillar.name}</span>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Seleção de Dificuldade / Rank da Missão (E a S) */}
+          {/* Seleção de Rank / Dificuldade */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold text-slate-300">
-                Grau de Dificuldade (Rank da Missão)
+              <label className="block text-xs font-bold text-slate-200">
+                Rank de Esforço & Dificuldade
               </label>
-              <span className="text-xs font-mono font-bold text-shinobi-gold flex items-center gap-1">
-                <Sparkles className="w-3 h-3" />
-                +{currentRankInfo.xpReward} XP Base
+              <span className="text-xs font-mono font-bold" style={{ color: currentRankInfo.color }}>
+                +{currentRankInfo.xpReward} XP ({currentRankInfo.recommendedTime})
               </span>
             </div>
+
             <div className="grid grid-cols-6 gap-1.5">
               {ranksList.map((r) => {
-                const rInfo = theme.missionRanks[r];
+                const rInfo = getMissionRankInfo(r);
                 const isSelected = rank === r;
                 return (
                   <button
                     key={r}
                     type="button"
                     onClick={() => setRank(r)}
-                    className={`flex flex-col items-center justify-center py-2 rounded-xl border text-center transition-all ${
+                    className={`py-2 rounded-xl text-xs font-mono font-bold border transition-all ${
                       isSelected
-                        ? 'bg-shinobi-bg shadow-md scale-105'
-                        : 'border-shinobi-border/60 bg-shinobi-bg/40 opacity-70 hover:opacity-100'
+                        ? 'border-opacity-100 bg-slate-950 shadow-md scale-105'
+                        : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:text-slate-200'
                     }`}
                     style={{
                       borderColor: isSelected ? rInfo.color : undefined,
-                      color: rInfo.color,
+                      color: isSelected ? rInfo.color : undefined,
                     }}
                   >
-                    <span className="font-mono font-bold text-sm">Rank {r}</span>
-                    <span className="text-[9px] text-slate-400 font-mono mt-0.5">
-                      +{rInfo.xpReward}
-                    </span>
+                    {r}
                   </button>
                 );
               })}
             </div>
-            <p className="text-[11px] text-slate-400 mt-1.5 italic">
-              {currentRankInfo.label} — Tempo estimado: {currentRankInfo.recommendedTime}
-            </p>
           </div>
 
           {/* Horário do Dia */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Momento do Dia Recomendado
+            <label className="block text-xs font-bold text-slate-200 mb-1.5">
+              Janela de Horário Recomendada
             </label>
             <div className="grid grid-cols-4 gap-2">
               {[
-                { id: 'morning', label: 'Manhã' },
-                { id: 'afternoon', label: 'Tarde' },
-                { id: 'evening', label: 'Noite' },
-                { id: 'anytime', label: 'Livre' },
+                { id: 'morning', label: 'Manhã', icon: '🌅' },
+                { id: 'afternoon', label: 'Tarde', icon: '☀️' },
+                { id: 'evening', label: 'Noite', icon: '🌙' },
+                { id: 'anytime', label: 'Livre', icon: '⚡' },
               ].map((t) => (
                 <button
                   key={t.id}
                   type="button"
                   onClick={() => setTimeOfDay(t.id as TimeOfDay)}
-                  className={`py-2 px-2 text-xs rounded-xl border text-center transition-all font-medium ${
+                  className={`py-2 px-1 rounded-xl text-xs flex flex-col sm:flex-row items-center justify-center gap-1 border transition-all ${
                     timeOfDay === t.id
-                      ? 'border-shinobi-crimson bg-shinobi-crimson/10 text-shinobi-crimson font-bold'
-                      : 'border-shinobi-border/60 bg-shinobi-bg/40 text-slate-400 hover:text-slate-200'
+                      ? 'border-shinobi-gold bg-slate-950 text-shinobi-gold font-bold shadow-md'
+                      : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  {t.label}
+                  <span>{t.icon}</span>
+                  <span className="text-[11px]">{t.label}</span>
                 </button>
               ))}
             </div>
           </div>
+        </div>
 
-          {/* Botões de Ação */}
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-shinobi-border">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 rounded-xl hover:bg-slate-800 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2.5 bg-gradient-to-r from-shinobi-crimson to-shinobi-crimsonGlow text-white text-xs font-bold rounded-xl shadow-glow-crimson hover:opacity-95 transition-all flex items-center gap-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              {initialData ? 'Salvar Alterações' : 'Gravar no Pergaminho'}
-            </button>
-          </div>
-        </form>
+        {/* Footer com Botões de Ação Fixos */}
+        <div className="p-4 sm:p-5 border-t border-slate-800 bg-slate-950 flex items-center justify-end gap-3 flex-shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2.5 text-xs font-semibold text-slate-400 hover:text-slate-200 rounded-xl transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            className="px-5 py-2.5 bg-gradient-to-r from-shinobi-crimson to-rose-600 text-white text-xs font-bold rounded-xl shadow-glow-crimson hover:opacity-95 transition-all flex items-center gap-1.5"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{initialData ? 'Salvar Alterações' : 'Gravar no Pergaminho'}</span>
+          </button>
+        </div>
       </div>
     </div>
   );

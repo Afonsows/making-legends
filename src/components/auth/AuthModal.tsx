@@ -96,8 +96,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-shinobi-card border border-shinobi-border w-full max-w-md rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 pb-24 sm:pb-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-slate-900 border-2 border-slate-700 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl p-6 space-y-4 my-auto">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-shinobi-border pb-3">
           <div className="flex items-center gap-2">
