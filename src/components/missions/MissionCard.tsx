@@ -58,97 +58,70 @@ export const MissionCard: React.FC<MissionCardProps> = ({
 
   return (
     <div
-      className={`group relative overflow-hidden rounded-xl border transition-all duration-300 ${
+      className={`group relative overflow-hidden rounded-2xl border transition-all duration-300 flex flex-col justify-between p-4 pl-4.5 min-h-[148px] shadow-lg ${
         mission.isCompletedToday
-          ? 'bg-shinobi-card/40 border-shinobi-border/40 opacity-75'
-          : 'bg-shinobi-card border-shinobi-border hover:border-shinobi-border/80 hover:shadow-lg'
+          ? 'bg-emerald-950/30 backdrop-blur-md border-emerald-500/40 opacity-85 hover:opacity-100 hover:bg-emerald-950/45 hover:backdrop-blur-xl hover:border-emerald-400/60'
+          : 'bg-slate-900/75 backdrop-blur-md border-slate-700/80 hover:bg-slate-800/40 hover:backdrop-blur-2xl hover:border-slate-400/70 hover:shadow-[0_12px_36px_rgba(0,0,0,0.5)] hover:scale-[1.015]'
       }`}
     >
-      {/* Barra lateral colorida do pilar */}
+      {/* Camada de Brilho Liquid Glass / Efeito Translúcido e Fosco */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] via-white/[0.02] to-transparent pointer-events-none transition-opacity duration-300 group-hover:from-white/[0.18] group-hover:via-white/[0.04]" />
+
+      {/* Barra lateral colorida e aura luminosa do pilar */}
       <div
-        className="absolute left-0 top-0 bottom-0 w-1.5 transition-all"
-        style={{ backgroundColor: pillar.color }}
+        className="absolute left-0 top-0 bottom-0 w-1.5 transition-all duration-300 group-hover:w-2"
+        style={{
+          backgroundColor: pillar.color,
+          boxShadow: `0 0 12px ${pillar.color}80`,
+        }}
       />
 
-      <div className="p-3.5 pl-4.5 flex items-start gap-3">
-        {/* Checkbox de Conclusão Shinobi */}
-        <button
-          onClick={onToggle}
-          className={`mt-0.5 w-6 h-6 rounded-lg border flex items-center justify-center transition-all duration-200 flex-shrink-0 ${
-            mission.isCompletedToday
-              ? 'bg-shinobi-jade border-shinobi-jade text-shinobi-bg shadow-glow-jade/40 scale-105'
-              : 'border-slate-600 hover:border-shinobi-gold/80 bg-shinobi-bg/60'
-          }`}
-          aria-label={mission.isCompletedToday ? 'Desmarcar missão' : 'Concluir missão'}
-        >
-          {mission.isCompletedToday && <Check className="w-4 h-4 stroke-[3]" />}
-        </button>
-
-        {/* Informações da Missão */}
-        <div className="flex-1 min-w-0" onClick={onToggle}>
-          <div className="flex items-center gap-2 flex-wrap mb-1">
-            {/* Rank da Missão (E, D, C, B, A, S) */}
-            <span
-              className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded border"
-              style={{
-                color: rankInfo.color,
-                borderColor: `${rankInfo.color}40`,
-                backgroundColor: `${rankInfo.color}15`,
-              }}
-            >
-              Rank {mission.rank}
-            </span>
-
-            {/* Pilar Temático */}
-            <span
-              className="text-[10px] font-semibold flex items-center gap-1"
-              style={{ color: pillar.color }}
-            >
-              <span>{pillar.badgeIcon}</span>
-              {pillar.name}
-            </span>
-
-            {/* Horário Recomendado */}
-            <span className="text-[10px] text-slate-400 flex items-center gap-1 ml-auto">
-              {getTimeIcon(mission.timeOfDay)}
-              {getTimeLabel(mission.timeOfDay)}
-            </span>
-          </div>
-
-          <h4
-            className={`text-sm font-semibold transition-all ${
+      {/* Linha Superior: Checkbox, Badges e Botões de Ação */}
+      <div className="flex items-start justify-between gap-2 relative z-10">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Checkbox Shinobi */}
+          <button
+            onClick={onToggle}
+            className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-all duration-200 flex-shrink-0 ${
               mission.isCompletedToday
-                ? 'line-through text-slate-400'
-                : 'text-slate-100 group-hover:text-shinobi-gold'
+                ? 'bg-shinobi-jade border-shinobi-jade text-slate-950 shadow-glow-jade/40 scale-105'
+                : 'border-slate-600 hover:border-shinobi-gold/80 bg-slate-950/70'
             }`}
+            aria-label={mission.isCompletedToday ? 'Desmarcar missão' : 'Concluir missão'}
           >
-            {mission.title}
-          </h4>
+            {mission.isCompletedToday && <Check className="w-4 h-4 stroke-[3]" />}
+          </button>
 
-          {mission.description && (
-            <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">
-              {mission.description}
-            </p>
-          )}
+          {/* Rank da Missão */}
+          <span
+            className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg border"
+            style={{
+              color: rankInfo.color,
+              borderColor: `${rankInfo.color}40`,
+              backgroundColor: `${rankInfo.color}15`,
+            }}
+          >
+            Rank {mission.rank}
+          </span>
 
-          {/* Recompensa de XP e Ryō */}
-          <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <span className="text-[11px] font-mono font-bold text-shinobi-gold flex items-center gap-1 bg-shinobi-gold/10 px-2 py-0.5 rounded border border-shinobi-gold/20">
-              <Sparkles className="w-3 h-3" />
-              +{mission.xpReward} XP
-            </span>
-            <span className="text-[11px] font-mono font-bold text-amber-300 flex items-center gap-1 bg-amber-950/40 px-2 py-0.5 rounded border border-amber-500/30">
-              <span>🪙</span>
-              +{mission.ryoReward || (mission.rank === 'S' ? 300 : mission.rank === 'A' ? 160 : mission.rank === 'B' ? 90 : mission.rank === 'C' ? 50 : mission.rank === 'D' ? 25 : 10)} Ryō
-            </span>
-            <span className="text-[10px] text-slate-500 font-mono">
-              {rankInfo.recommendedTime}
-            </span>
-          </div>
+          {/* Pilar Temático */}
+          <span
+            className="text-[10px] font-semibold flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-950/70 border border-slate-800"
+            style={{ color: pillar.color }}
+          >
+            <span>{pillar.badgeIcon}</span>
+            <span className="truncate max-w-[110px] sm:max-w-none">{pillar.name}</span>
+          </span>
+
+          {/* Horário */}
+          <span className="text-[10px] text-slate-400 flex items-center gap-1 font-mono">
+            {getTimeIcon(mission.timeOfDay)}
+            {getTimeLabel(mission.timeOfDay)}
+          </span>
         </div>
 
-        {/* Ações de Edição e Exclusão Permanentemente Visíveis */}
-        <div className="flex flex-col gap-1.5 flex-shrink-0">
+        {/* Botões de Ação (Editar e Excluir) */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           {onEdit && (
             <button
               onClick={(e) => {
@@ -157,7 +130,7 @@ export const MissionCard: React.FC<MissionCardProps> = ({
               }}
               title="Editar missão"
               aria-label="Editar missão"
-              className="p-1.5 text-slate-300 hover:text-shinobi-gold rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700 transition-colors shadow-sm"
+              className="p-1.5 text-slate-300 hover:text-shinobi-gold rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700 transition-colors shadow-sm"
             >
               <Edit3 className="w-3.5 h-3.5" />
             </button>
@@ -170,12 +143,49 @@ export const MissionCard: React.FC<MissionCardProps> = ({
               }}
               title="Excluir missão"
               aria-label="Excluir missão"
-              className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700 transition-colors shadow-sm"
+              className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700 transition-colors shadow-sm"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
+      </div>
+
+      {/* Conteúdo Central: Título e Descrição */}
+      <div className="my-2.5 relative z-10 cursor-pointer" onClick={onToggle}>
+        <h4
+          className={`text-sm font-bold leading-snug transition-all ${
+            mission.isCompletedToday
+              ? 'line-through text-slate-400'
+              : 'text-slate-100 group-hover:text-shinobi-gold'
+          }`}
+        >
+          {mission.title}
+        </h4>
+
+        {mission.description && (
+          <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+            {mission.description}
+          </p>
+        )}
+      </div>
+
+      {/* Rodapé do Card: Recompensas e Tempo */}
+      <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-800/80 relative z-10 flex-wrap">
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-mono font-bold text-shinobi-gold flex items-center gap-1 bg-shinobi-gold/15 px-2 py-0.5 rounded-lg border border-shinobi-gold/30">
+            <Sparkles className="w-3 h-3" />
+            +{mission.xpReward} XP
+          </span>
+          <span className="text-[11px] font-mono font-bold text-amber-300 flex items-center gap-1 bg-amber-950/50 px-2 py-0.5 rounded-lg border border-amber-500/40">
+            <span>🪙</span>
+            +{mission.ryoReward || (mission.rank === 'S' ? 300 : mission.rank === 'A' ? 160 : mission.rank === 'B' ? 90 : mission.rank === 'C' ? 50 : mission.rank === 'D' ? 25 : 10)} Ryō
+          </span>
+        </div>
+
+        <span className="text-[10px] text-slate-400 font-mono">
+          {rankInfo.recommendedTime}
+        </span>
       </div>
     </div>
   );

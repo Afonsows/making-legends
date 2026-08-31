@@ -238,30 +238,30 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
           </div>
         </div>
 
-        {/* Filtro de Pilares */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+        {/* Filtro de Pilares: 3 em cima, 3 embaixo sem barra de rolagem */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {pillars.map((p) => {
             const isSelected = filterPillar === p.id;
             return (
               <button
                 key={p.id}
                 onClick={() => setFilterPillar(p.id)}
-                className={`px-3.5 py-2 rounded-xl text-xs whitespace-nowrap transition-all flex items-center gap-1.5 border font-semibold ${
+                className={`py-2 px-2.5 rounded-xl text-xs transition-all flex items-center justify-center sm:justify-start gap-1.5 border font-semibold truncate ${
                   isSelected
-                    ? 'bg-slate-900 border-2 border-shinobi-gold text-shinobi-gold font-bold shadow-glow-gold/30'
-                    : 'bg-slate-900/90 border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500'
+                    ? 'bg-slate-900 border-2 border-shinobi-gold text-shinobi-gold font-bold shadow-glow-gold/30 scale-[1.02]'
+                    : 'bg-slate-900/80 backdrop-blur-md border border-slate-700/80 text-slate-300 hover:text-white hover:border-slate-500 hover:bg-slate-800/80'
                 }`}
               >
-                {p.icon && <span>{p.icon}</span>}
-                <span>{p.label}</span>
+                {p.icon && <span className="flex-shrink-0">{p.icon}</span>}
+                <span className="truncate">{p.label}</span>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Lista de Missões */}
-      <div className="space-y-2.5">
+      {/* Lista de Missões em Formato de Cards (2 colunas em telas médias/largas) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
         {filteredMissions.length > 0 ? (
           filteredMissions.map((mission) => (
             <MissionCard
@@ -273,7 +273,7 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
             />
           ))
         ) : (
-          <div className="text-center py-12 bg-shinobi-card/40 rounded-2xl border border-shinobi-border/60 p-6">
+          <div className="col-span-1 md:col-span-2 text-center py-12 bg-slate-900/70 backdrop-blur-md rounded-3xl border border-slate-800 p-6">
             <p className="text-sm text-slate-400 mb-3">
               Nenhuma missão encontrada para os filtros selecionados.
             </p>
@@ -283,7 +283,7 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
                 setFilterTimeOfDay('all');
                 setSearchQuery('');
               }}
-              className="px-4 py-2 bg-shinobi-card border border-shinobi-border text-xs text-shinobi-gold rounded-xl hover:bg-shinobi-cardHover transition-colors"
+              className="px-4 py-2 bg-slate-800 border border-slate-700 text-xs text-shinobi-gold font-bold rounded-xl hover:bg-slate-700 transition-colors"
             >
               Limpar Filtros
             </button>
