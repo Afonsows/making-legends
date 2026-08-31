@@ -147,16 +147,17 @@ export const MissionCard: React.FC<MissionCardProps> = ({
           </div>
         </div>
 
-        {/* Ações de Edição e Exclusão */}
-        <div className="flex flex-col gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+        {/* Ações de Edição e Exclusão Permanentemente Visíveis */}
+        <div className="flex flex-col gap-1.5 flex-shrink-0">
           {onEdit && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onEdit();
               }}
+              title="Editar missão"
               aria-label="Editar missão"
-              className="p-1 text-slate-400 hover:text-slate-200 rounded hover:bg-slate-800 transition-colors"
+              className="p-1.5 text-slate-300 hover:text-shinobi-gold rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700 transition-colors shadow-sm"
             >
               <Edit3 className="w-3.5 h-3.5" />
             </button>
@@ -167,8 +168,9 @@ export const MissionCard: React.FC<MissionCardProps> = ({
                 e.stopPropagation();
                 onDelete();
               }}
+              title="Excluir missão"
               aria-label="Excluir missão"
-              className="p-1 text-slate-400 hover:text-rose-400 rounded hover:bg-slate-800 transition-colors"
+              className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700 transition-colors shadow-sm"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>

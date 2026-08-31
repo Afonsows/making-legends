@@ -97,10 +97,10 @@ export const TeachingCardsView: React.FC = () => {
               <button
                 key={p.id}
                 onClick={() => setSelectedPillar(p.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs whitespace-nowrap transition-all border ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs whitespace-nowrap transition-all border font-semibold ${
                   selectedPillar === p.id
-                    ? 'bg-shinobi-card border-shinobi-gold text-shinobi-gold font-bold'
-                    : 'bg-shinobi-card/60 border-shinobi-border/60 text-slate-400 hover:text-slate-200'
+                    ? 'bg-slate-900 border-2 border-shinobi-gold text-shinobi-gold font-bold shadow-glow-gold/20'
+                    : 'bg-slate-900/90 border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500'
                 }`}
               >
                 {p.label}
@@ -118,10 +118,10 @@ export const TeachingCardsView: React.FC = () => {
                 <div
                   key={card.id}
                   onClick={() => isUnlocked && setActiveCardModal(card)}
-                  className={`p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
+                  className={`p-4 rounded-2xl border-2 transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between shadow-lg ${
                     isUnlocked
-                      ? 'bg-shinobi-card border-shinobi-border hover:border-shinobi-gold/60 hover:shadow-lg'
-                      : 'bg-slate-900/40 border-slate-800 opacity-60'
+                      ? 'bg-slate-900 border-slate-700 hover:border-shinobi-gold/80 hover:shadow-2xl hover:scale-[1.01]'
+                      : 'bg-slate-950/90 border-slate-800 hover:border-slate-700'
                   }`}
                 >
                   <div>

@@ -208,10 +208,10 @@ export const ToolsHub: React.FC = () => {
               <button
                 key={tool.id}
                 onClick={() => setActiveTool(tool.id)}
-                className={`p-2.5 rounded-xl border flex flex-col items-center gap-1.5 transition-all ${
+                className={`p-3 rounded-2xl border-2 flex flex-col items-center gap-1.5 transition-all shadow-md ${
                   isSelected
-                    ? 'border-opacity-100 bg-shinobi-bg shadow-md scale-105 font-bold'
-                    : 'border-shinobi-border/60 bg-shinobi-card/40 opacity-70 hover:opacity-100'
+                    ? 'bg-slate-900 shadow-xl scale-105 font-bold'
+                    : 'border-slate-800 bg-slate-950 text-slate-300 hover:border-slate-600 hover:text-white'
                 }`}
                 style={{
                   borderColor: isSelected ? tool.color : undefined,
@@ -219,7 +219,7 @@ export const ToolsHub: React.FC = () => {
                 }}
               >
                 <Icon className="w-5 h-5" />
-                <span className="text-[10px] text-center line-clamp-1">
+                <span className="text-[11px] text-center font-semibold line-clamp-1">
                   {tool.name.split(' ')[0]} {tool.name.split(' ')[1]}
                 </span>
               </button>
@@ -232,8 +232,8 @@ export const ToolsHub: React.FC = () => {
 
       {/* 1. DIÁRIO DE NUTRIÇÃO */}
       {activeTool === 'nutrition' && (
-        <div className="bg-shinobi-card rounded-2xl border border-shinobi-border p-4 space-y-4">
-          <div className="flex items-center justify-between border-b border-shinobi-border pb-3">
+        <div className="bg-slate-900 border-2 border-slate-700/80 rounded-3xl p-5 shadow-2xl space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <div className="flex items-center gap-2">
               <Utensils className="w-5 h-5 text-rose-500" />
               <h3 className="font-cinzel text-base font-bold text-slate-100">

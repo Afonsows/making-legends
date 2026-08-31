@@ -69,18 +69,18 @@ export const DuelView: React.FC = () => {
       <BossCard adversary={activeBoss} lastDamage={lastDamageDealt} />
 
       {/* Seletor dos 30 Adversários */}
-      <div className="bg-shinobi-card rounded-2xl border border-shinobi-border p-4 shadow-lg">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-cinzel text-sm font-bold text-slate-200 flex items-center gap-1.5">
+      <div className="bg-slate-900 border-2 border-slate-700/80 rounded-3xl p-5 shadow-2xl">
+        <div className="flex items-center justify-between mb-3 border-b border-slate-800 pb-2.5">
+          <h3 className="font-cinzel text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
             <Swords className="w-4 h-4 text-rose-400" />
             Trilha dos 30 Adversários Shinobi
           </h3>
-          <span className="text-xs font-mono text-slate-400">
+          <span className="text-xs font-mono text-slate-300">
             Nível 1 ao 66
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 max-h-60 overflow-y-auto p-1">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 max-h-72 overflow-y-auto p-1">
           {adversaries.map((adv, idx) => {
             const isSelected = idx === currentAdversaryIndex;
             const weakness = getPillar(adv.pillarWeakness);
@@ -89,12 +89,12 @@ export const DuelView: React.FC = () => {
               <button
                 key={adv.id}
                 onClick={() => selectAdversary(idx)}
-                className={`p-2.5 rounded-xl border text-left transition-all relative ${
+                className={`p-3 rounded-2xl border text-left transition-all relative ${
                   isSelected
-                    ? 'border-rose-500 bg-rose-950/20 shadow-glow-crimson'
+                    ? 'border-2 border-rose-500 bg-rose-950/40 shadow-glow-crimson scale-[1.02]'
                     : adv.isDefeated
-                    ? 'border-shinobi-jade/40 bg-shinobi-bg/60 opacity-80'
-                    : 'border-shinobi-border bg-shinobi-bg/40 opacity-70 hover:opacity-100'
+                    ? 'border-emerald-500/50 bg-emerald-950/20'
+                    : 'border-slate-800 bg-slate-950 hover:border-slate-600'
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -102,17 +102,17 @@ export const DuelView: React.FC = () => {
                     #{adv.number}
                   </span>
                   {adv.isDefeated ? (
-                    <CheckCircle2 className="w-3.5 h-3.5 text-shinobi-jade" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                   ) : (
-                    <span className="text-[10px] font-mono text-rose-400">Nv.{adv.level}</span>
+                    <span className="text-[10px] font-mono text-rose-400 font-bold">Nv.{adv.level}</span>
                   )}
                 </div>
 
-                <div className="text-xs font-bold text-slate-200 mt-1 truncate">
+                <div className="text-xs font-bold text-slate-100 mt-1 truncate">
                   {adv.name}
                 </div>
 
-                <div className="flex items-center gap-1 mt-1 text-[9px]" style={{ color: weakness.color }}>
+                <div className="flex items-center gap-1 mt-1 text-[10px] font-semibold" style={{ color: weakness.color }}>
                   <span>{weakness.badgeIcon}</span>
                   <span className="truncate">{weakness.name}</span>
                 </div>
@@ -123,18 +123,18 @@ export const DuelView: React.FC = () => {
       </div>
 
       {/* Registro de Golpes Recentes (Combat Log) */}
-      <div className="bg-shinobi-card rounded-2xl border border-shinobi-border p-4 shadow-lg">
-        <h3 className="font-cinzel text-sm font-bold text-slate-200 mb-2 flex items-center gap-1.5">
+      <div className="bg-slate-900 border-2 border-slate-700/80 rounded-3xl p-5 shadow-2xl">
+        <h3 className="font-cinzel text-sm sm:text-base font-bold text-slate-100 mb-3 flex items-center gap-2 border-b border-slate-800 pb-2.5">
           <History className="w-4 h-4 text-shinobi-chakra" />
           Registro de Combate da Sessão
         </h3>
 
         {combatLogs.length > 0 ? (
-          <div className="space-y-1.5 max-h-48 overflow-y-auto">
+          <div className="space-y-2 max-h-48 overflow-y-auto">
             {combatLogs.map((log) => (
               <div
                 key={log.id}
-                className="flex items-center justify-between p-2 rounded-lg bg-shinobi-bg/70 border border-shinobi-border text-xs"
+                className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs"
               >
                 <div className="flex items-center gap-2">
                   <span className={`font-mono font-bold ${
@@ -142,16 +142,16 @@ export const DuelView: React.FC = () => {
                   }`}>
                     -{log.damage} Dano
                   </span>
-                  <span className="text-slate-300">{log.message}</span>
+                  <span className="text-slate-200">{log.message}</span>
                 </div>
-                <span className="text-[10px] font-mono text-slate-500">
+                <span className="text-[10px] font-mono text-slate-400">
                   {log.timestamp}
                 </span>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-xs text-slate-500 italic py-4 text-center">
+          <p className="text-xs text-slate-400 italic py-4 text-center">
             Marque missões na aba "Missões" para deferir golpes contra o oponente!
           </p>
         )}

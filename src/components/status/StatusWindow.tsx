@@ -232,13 +232,13 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
       </div>
 
       {/* SELETOR DE SUB-ABAS (ESTATÍSTICAS / EDITAR FICHA / HISTÓRICO) */}
-      <div className="flex items-center justify-center gap-2 p-1.5 bg-slate-950/90 border border-shinobi-border rounded-2xl shadow-lg">
+      <div className="flex items-center justify-center gap-2 p-2 bg-slate-900 border-2 border-slate-700 rounded-2xl shadow-2xl">
         <button
           onClick={() => setActiveSubTab('stats')}
-          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+          className={`flex-1 py-3 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
             activeSubTab === 'stats'
-              ? 'bg-shinobi-gold text-slate-950 shadow-glow-gold/40'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+              ? 'bg-gradient-to-r from-shinobi-gold to-amber-500 text-slate-950 shadow-glow-gold font-bold scale-[1.02]'
+              : 'bg-slate-800 border border-slate-700 text-slate-200 hover:text-white hover:bg-slate-700'
           }`}
         >
           <BarChart3 className="w-4 h-4" />
@@ -247,10 +247,10 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
 
         <button
           onClick={() => setActiveSubTab('profile')}
-          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+          className={`flex-1 py-3 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
             activeSubTab === 'profile'
-              ? 'bg-shinobi-gold text-slate-950 shadow-glow-gold/40'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+              ? 'bg-gradient-to-r from-shinobi-gold to-amber-500 text-slate-950 shadow-glow-gold font-bold scale-[1.02]'
+              : 'bg-slate-800 border border-slate-700 text-slate-200 hover:text-white hover:bg-slate-700'
           }`}
         >
           <Sliders className="w-4 h-4" />
@@ -259,14 +259,14 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
 
         <button
           onClick={() => setActiveSubTab('history')}
-          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+          className={`flex-1 py-3 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
             activeSubTab === 'history'
-              ? 'bg-shinobi-gold text-slate-950 shadow-glow-gold/40'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+              ? 'bg-gradient-to-r from-shinobi-gold to-amber-500 text-slate-950 shadow-glow-gold font-bold scale-[1.02]'
+              : 'bg-slate-800 border border-slate-700 text-slate-200 hover:text-white hover:bg-slate-700'
           }`}
         >
           <History className="w-4 h-4" />
-          <span>Histórico de Missões</span>
+          <span>Histórico & Auditoria</span>
         </button>
       </div>
 
@@ -276,74 +276,74 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
           {/* Grid de Estatísticas Principais */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {/* Saldo de Ryō */}
-            <div className="bg-shinobi-card p-4 rounded-xl border border-amber-500/30 text-center space-y-1 shadow-lg bg-amber-950/20">
+            <div className="bg-slate-900 border-2 border-amber-500/50 p-4 rounded-2xl text-center space-y-1 shadow-xl bg-amber-950/20">
               <span className="text-[10px] font-mono font-bold uppercase text-amber-400 tracking-wider flex items-center justify-center gap-1">
                 <span>🪙</span> MOEDAS RYŌ
               </span>
               <div className="text-2xl font-cinzel font-bold text-amber-300">
                 {profile.ryo || 0}
               </div>
-              <p className="text-[10px] text-slate-400">
+              <p className="text-[10px] text-slate-300">
                 Ganhos em missões
               </p>
             </div>
 
             {/* Dia do Protocolo */}
-            <div className="bg-shinobi-card p-4 rounded-xl border border-shinobi-border text-center space-y-1 shadow-lg">
-              <span className="text-[10px] font-mono font-bold uppercase text-slate-400 tracking-wider">
+            <div className="bg-slate-900 border-2 border-slate-700 p-4 rounded-2xl text-center space-y-1 shadow-xl">
+              <span className="text-[10px] font-mono font-bold uppercase text-slate-300 tracking-wider">
                 PROTOCOLO UCL
               </span>
               <div className="text-2xl font-cinzel font-bold text-shinobi-gold">
                 Dia {profile.currentProtocolDay}<span className="text-xs font-mono text-slate-400">/66</span>
               </div>
-              <p className="text-[10px] text-slate-400">
+              <p className="text-[10px] text-slate-300">
                 {profile.currentProtocolDay <= 22 ? 'Fase 1: Despertar' : profile.currentProtocolDay <= 44 ? 'Fase 2: Forja' : 'Fase 3: Mestria'}
               </p>
             </div>
 
             {/* Sequência Atual */}
-            <div className="bg-shinobi-card p-4 rounded-xl border border-shinobi-border text-center space-y-1 shadow-lg">
-              <span className="text-[10px] font-mono font-bold uppercase text-slate-400 tracking-wider flex items-center justify-center gap-1">
+            <div className="bg-slate-900 border-2 border-slate-700 p-4 rounded-2xl text-center space-y-1 shadow-xl">
+              <span className="text-[10px] font-mono font-bold uppercase text-slate-300 tracking-wider flex items-center justify-center gap-1">
                 <Flame className="w-3 h-3 text-shinobi-crimson" /> SEQUÊNCIA
               </span>
               <div className="text-2xl font-cinzel font-bold text-shinobi-crimson">
                 {profile.currentStreak} <span className="text-xs font-mono text-slate-400">dias</span>
               </div>
-              <p className="text-[10px] text-slate-400">
+              <p className="text-[10px] text-slate-300">
                 Recorde: {profile.bestStreak} dias
               </p>
             </div>
 
             {/* Escudos de Chakra */}
-            <div className="bg-shinobi-card p-4 rounded-xl border border-shinobi-border text-center space-y-1 shadow-lg">
-              <span className="text-[10px] font-mono font-bold uppercase text-slate-400 tracking-wider flex items-center justify-center gap-1">
+            <div className="bg-slate-900 border-2 border-slate-700 p-4 rounded-2xl text-center space-y-1 shadow-xl">
+              <span className="text-[10px] font-mono font-bold uppercase text-slate-300 tracking-wider flex items-center justify-center gap-1">
                 <Shield className="w-3 h-3 text-shinobi-jade" /> ESCUDO CHAKRA
               </span>
               <div className="text-2xl font-cinzel font-bold text-shinobi-jade">
                 {profile.weeklyShieldsRemaining}<span className="text-xs font-mono text-slate-400">/{profile.weeklyShieldsMax}</span>
               </div>
-              <p className="text-[10px] text-slate-400">
+              <p className="text-[10px] text-slate-300">
                 1 perdão semanal ativo
               </p>
             </div>
 
             {/* Pergaminhos Desbloqueados */}
-            <div className="bg-shinobi-card p-4 rounded-xl border border-shinobi-border text-center space-y-1 shadow-lg col-span-2 sm:col-span-1">
-              <span className="text-[10px] font-mono font-bold uppercase text-slate-400 tracking-wider flex items-center justify-center gap-1">
+            <div className="bg-slate-900 border-2 border-slate-700 p-4 rounded-2xl text-center space-y-1 shadow-xl col-span-2 sm:col-span-1">
+              <span className="text-[10px] font-mono font-bold uppercase text-slate-300 tracking-wider flex items-center justify-center gap-1">
                 <Award className="w-3 h-3 text-purple-400" /> PERGAMINHOS
               </span>
               <div className="text-2xl font-cinzel font-bold text-purple-400">
                 {profile.unlockedCards.length}
               </div>
-              <p className="text-[10px] text-slate-400">
+              <p className="text-[10px] text-slate-300">
                 Cartas de sabedoria
               </p>
             </div>
           </div>
 
           {/* Radar Chart dos 5 Pilares */}
-          <div className="bg-shinobi-card rounded-2xl border border-shinobi-border p-5 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-shinobi-border pb-3 mb-4">
+          <div className="bg-slate-900 border-2 border-slate-700/80 rounded-3xl p-5 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
               <div>
                 <h3 className="font-cinzel text-base font-bold text-slate-100 flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-shinobi-gold" />
@@ -366,12 +366,12 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
                   return (
                     <div 
                       key={pillarKey}
-                      className="p-2.5 rounded-xl bg-shinobi-bg/60 border border-shinobi-border flex items-center justify-between"
+                      className="p-3 rounded-2xl bg-slate-950 border-2 border-slate-800 flex items-center justify-between shadow-md"
                     >
                       <div className="flex items-center gap-2.5">
                         <span className="text-base">{pillar.badgeIcon}</span>
                         <div>
-                          <div className="text-xs font-bold text-slate-200">{pillar.name}</div>
+                          <div className="text-xs font-bold text-slate-100">{pillar.name}</div>
                           <div className="text-[10px] text-slate-400">{pillar.categoryLabel}</div>
                         </div>
                       </div>
@@ -386,8 +386,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
           </div>
 
           {/* Equipamentos e Relíquias Ativas */}
-          <div className="bg-shinobi-card rounded-2xl border border-shinobi-border p-5 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-shinobi-border pb-3">
+          <div className="bg-slate-900 border-2 border-slate-700/80 rounded-3xl p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="font-cinzel text-base font-bold text-slate-100 flex items-center gap-2">
                 <Zap className="w-4 h-4 text-shinobi-crimson" />
                 Relíquias & Buffs Equipados ({equippedList.length}/3)
@@ -401,7 +401,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {equippedList.map((item) => (
-                  <div key={item.id} className="p-3 rounded-xl bg-shinobi-bg/60 border border-shinobi-border flex items-center justify-between">
+                  <div key={item.id} className="p-3.5 rounded-2xl bg-slate-950 border-2 border-slate-800 flex items-center justify-between shadow-md">
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{item.icon}</span>
                       <div>
@@ -411,7 +411,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
                     </div>
                     <button
                       onClick={() => unequipItem(item.id)}
-                      className="text-[10px] font-mono text-slate-400 hover:text-rose-400 border border-slate-700 px-2 py-1 rounded"
+                      className="text-[10px] font-mono text-slate-300 hover:text-rose-400 border border-slate-700 hover:border-rose-500/60 bg-slate-900 px-2.5 py-1 rounded-lg transition-colors"
                     >
                       Desequipar
                     </button>
@@ -422,7 +422,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
           </div>
 
           {/* Alternar Modo Elite (Hard Mode) */}
-          <div className="bg-shinobi-card rounded-2xl border border-shinobi-border p-5 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="bg-slate-900 border-2 border-slate-700/80 rounded-3xl p-5 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="space-y-1 text-center sm:text-left">
               <div className="flex items-center justify-center sm:justify-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-rose-500" />
@@ -675,56 +675,56 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
 
       {/* SUB-ABA 3: HISTÓRICO DE MISSÕES & LOGS DE XP/RYŌ */}
       {activeSubTab === 'history' && (
-        <div className="bg-shinobi-card/95 rounded-2xl border border-shinobi-border p-5 shadow-2xl space-y-4 animate-in fade-in duration-200">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-shinobi-border pb-3">
+        <div className="bg-slate-900 border-2 border-slate-700/80 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-5 animate-in fade-in duration-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
             <div>
-              <h3 className="font-cinzel text-base font-bold text-slate-100 flex items-center gap-2">
-                <History className="w-4 h-4 text-shinobi-gold" />
+              <h3 className="font-cinzel text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2">
+                <History className="w-5 h-5 text-shinobi-gold" />
                 Histórico & Logs de Missões
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-400 mt-0.5">
                 Auditoria de todas as ações de conclusão, estornos e ganhos de XP e Ryō.
               </p>
             </div>
 
             <button
               onClick={handleRecalibrate}
-              className="px-3.5 py-2 bg-gradient-to-r from-amber-600 to-amber-500 text-white text-xs font-bold rounded-xl shadow-md hover:opacity-90 transition-all flex items-center gap-1.5 self-start sm:self-auto"
+              className="px-4 py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 text-xs font-bold rounded-xl shadow-glow-gold transition-all flex items-center gap-1.5 self-start sm:self-auto"
               title="Recalcula e zera divergências de XP com as missões reais"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
+              <RotateCcw className="w-4 h-4 stroke-[2.5]" />
               <span>Sincronizar / Recalibrar Ficha</span>
             </button>
           </div>
 
           {recalibrateNotice && (
-            <div className="p-3 bg-emerald-950/60 border border-emerald-500/50 rounded-xl text-xs text-emerald-300 flex items-center gap-2 animate-in fade-in">
+            <div className="p-3.5 bg-emerald-950/80 border-2 border-emerald-500/60 rounded-2xl text-xs text-emerald-300 flex items-center gap-2 animate-in fade-in shadow-lg">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
               <span>{recalibrateNotice}</span>
             </div>
           )}
 
           {/* Resumo da Ficha Real */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-xl bg-shinobi-bg/60 border border-shinobi-border text-center text-xs">
-            <div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3.5 rounded-2xl bg-slate-950 border-2 border-slate-800 text-center text-xs shadow-md">
+            <div className="p-2 bg-slate-900/80 rounded-xl border border-slate-800">
               <span className="text-slate-400 block text-[10px]">Missões Concluídas Hoje</span>
               <span className="font-bold text-slate-100 font-mono text-sm">
                 {missions.filter((m) => m.isCompletedToday).length} / {missions.length}
               </span>
             </div>
-            <div>
+            <div className="p-2 bg-slate-900/80 rounded-xl border border-slate-800">
               <span className="text-slate-400 block text-[10px]">XP Calculado</span>
               <span className="font-bold text-shinobi-gold font-mono text-sm">
                 {missions.filter((m) => m.isCompletedToday).reduce((acc, m) => acc + m.xpReward, 0)} XP
               </span>
             </div>
-            <div>
+            <div className="p-2 bg-slate-900/80 rounded-xl border border-slate-800">
               <span className="text-slate-400 block text-[10px]">Ryō Calculado</span>
               <span className="font-bold text-amber-300 font-mono text-sm">
                 {missions.filter((m) => m.isCompletedToday).reduce((acc, m) => acc + (m.ryoReward || 25), 0)} Ryō
               </span>
             </div>
-            <div>
+            <div className="p-2 bg-slate-900/80 rounded-xl border border-slate-800">
               <span className="text-slate-400 block text-[10px]">Nível Real Correspondente</span>
               <span className="font-bold text-cyan-400 font-mono text-sm">
                 Nv. {getLevelProgress(missions.filter((m) => m.isCompletedToday).reduce((acc, m) => acc + m.xpReward, 0)).currentLevel}

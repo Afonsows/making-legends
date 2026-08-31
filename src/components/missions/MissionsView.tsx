@@ -152,23 +152,23 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
       </div>
 
       {/* Cartão de Progresso Diário e Chamada para Ação */}
-      <div className="bg-shinobi-card/90 rounded-2xl border border-shinobi-border p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-slate-900 border-2 border-slate-700/80 rounded-2xl p-4 shadow-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-shinobi-jade" />
-            <h3 className="font-cinzel text-sm font-bold text-slate-100">
+            <h3 className="font-cinzel text-sm sm:text-base font-bold text-slate-100">
               Missões de Hoje ({completedCount}/{totalCount})
             </h3>
           </div>
           <div className="flex items-center gap-3 mt-2">
-            <div className="w-36 sm:w-48 h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+            <div className="w-36 sm:w-48 h-2.5 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
               <div
-                className="h-full bg-shinobi-jade transition-all duration-300 rounded-full"
+                className="h-full bg-gradient-to-r from-shinobi-chakra to-shinobi-jade transition-all duration-300 rounded-full"
                 style={{ width: `${completionPercentage}%` }}
               />
             </div>
-            <span className="text-xs font-mono font-bold text-slate-300">
-              {completionPercentage}%
+            <span className="text-xs font-mono font-bold text-shinobi-gold">
+              {completionPercentage}% Concluído
             </span>
           </div>
         </div>
@@ -176,19 +176,19 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           <button
             onClick={() => setIsHistoryModalOpen(true)}
-            className="px-3 py-2 bg-shinobi-bg border border-shinobi-border hover:border-shinobi-gold/60 text-slate-200 text-xs font-medium rounded-xl transition-colors flex items-center gap-1.5"
+            className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-amber-300 border-2 border-amber-500/60 text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-1.5"
             title="Ver histórico de missões e sincronizar XP/Ryō"
           >
-            <History className="w-3.5 h-3.5 text-shinobi-gold" />
+            <History className="w-4 h-4 text-amber-400" />
             <span>Histórico & Sincronizar</span>
           </button>
 
           {onOpenCard && (
             <button
               onClick={onOpenCard}
-              className="px-3 py-2 bg-shinobi-bg border border-shinobi-border hover:border-shinobi-gold/60 text-slate-200 text-xs font-medium rounded-xl transition-colors flex items-center gap-1.5"
+              className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 border-2 border-cyan-500/50 text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-1.5"
             >
-              <Compass className="w-3.5 h-3.5 text-shinobi-gold" />
+              <Compass className="w-4 h-4 text-cyan-400" />
               <span>Ensinamento</span>
             </button>
           )}
@@ -198,7 +198,7 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
               setEditingMission(null);
               setIsModalOpen(true);
             }}
-            className="px-4 py-2 bg-gradient-to-r from-shinobi-crimson to-shinobi-crimsonGlow text-white text-xs font-bold rounded-xl shadow-glow-crimson hover:opacity-95 transition-all flex items-center gap-1.5 ml-auto sm:ml-0"
+            className="px-4 py-2.5 bg-gradient-to-r from-shinobi-crimson to-rose-600 text-white text-xs font-bold rounded-xl shadow-glow-crimson hover:opacity-95 transition-all flex items-center gap-1.5 ml-auto sm:ml-0"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
             <span>Nova Missão</span>
@@ -207,17 +207,17 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
       </div>
 
       {/* Filtros e Busca */}
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {/* Barra de Busca e Filtro de Horário */}
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Buscar missões e jutsus..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-shinobi-card border border-shinobi-border rounded-xl pl-9 pr-3.5 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-shinobi-crimson transition-colors"
+              className="w-full bg-slate-900 border-2 border-slate-700 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-shinobi-crimson transition-colors shadow-md"
             />
           </div>
 
@@ -226,10 +226,10 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
               <button
                 key={t.id}
                 onClick={() => setFilterTimeOfDay(t.id)}
-                className={`px-3 py-2 rounded-xl text-xs whitespace-nowrap transition-all font-medium border ${
+                className={`px-3 py-2 rounded-xl text-xs whitespace-nowrap transition-all font-bold border ${
                   filterTimeOfDay === t.id
-                    ? 'bg-shinobi-crimson/20 border-shinobi-crimson text-shinobi-crimson font-bold'
-                    : 'bg-shinobi-card border-shinobi-border text-slate-400 hover:text-slate-200'
+                    ? 'bg-rose-950/90 border-2 border-rose-500 text-rose-300 shadow-glow-crimson/30'
+                    : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500'
                 }`}
               >
                 {t.label}
@@ -246,10 +246,10 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
               <button
                 key={p.id}
                 onClick={() => setFilterPillar(p.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs whitespace-nowrap transition-all flex items-center gap-1.5 border ${
+                className={`px-3.5 py-2 rounded-xl text-xs whitespace-nowrap transition-all flex items-center gap-1.5 border font-semibold ${
                   isSelected
-                    ? 'bg-shinobi-card border-shinobi-gold text-shinobi-gold font-bold shadow-sm'
-                    : 'bg-shinobi-card/60 border-shinobi-border/60 text-slate-400 hover:text-slate-200'
+                    ? 'bg-slate-900 border-2 border-shinobi-gold text-shinobi-gold font-bold shadow-glow-gold/30'
+                    : 'bg-slate-900/90 border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500'
                 }`}
               >
                 {p.icon && <span>{p.icon}</span>}

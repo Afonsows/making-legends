@@ -220,8 +220,8 @@ export const ShinobiBackground: React.FC<ShinobiBackgroundProps> = ({ opacity = 
       />
 
       {/* Gradiente sutil para manter legibilidade e contraste absoluto dos textos */}
-      <div className="absolute inset-0 bg-gradient-to-t from-shinobi-bg/85 via-shinobi-bg/35 to-shinobi-bg/55 pointer-events-none" />
-      <div className="absolute inset-0 bg-radial-vignette pointer-events-none opacity-30" />
+      <div className="absolute inset-0 bg-gradient-to-t from-shinobi-bg/95 via-shinobi-bg/70 to-shinobi-bg/80 pointer-events-none" />
+      <div className="absolute inset-0 bg-radial-vignette pointer-events-none opacity-40" />
     </div>
   );
 };
