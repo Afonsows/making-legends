@@ -7,6 +7,7 @@ import { getTodayString } from '../core/streakEngine';
 import { getLevelFromTotalXp, getRankIdFromLevel } from '../core/xpEngine';
 import { useUserStore } from './useUserStore';
 import { useDuelStore } from './useDuelStore';
+import { syncService } from '../services/syncService';
 import { soundFx } from '../utils/audio';
 import { triggerMissionConfetti } from '../utils/confetti';
 
@@ -242,9 +243,24 @@ export const useHabitStore = create<HabitStoreState>()(
 
       deleteMission: (id) => {
         const { missions } = get();
+        const mission = missions.find((m) => m.id === id);
+        if (!mission) return;
+
+        // Se a missão estava concluída hoje, reverte os ganhos de XP e Ryō
+        if (mission.isCompletedToday) {
+          const userStore = useUserStore.getState();
+          const ryoAmount = mission.ryoReward || getDefaultRyoReward(mission.rank);
+          userStore.removeXp(mission.xpReward, mission.pillarId);
+          userStore.removeRyo(ryoAmount);
+        }
+
+        const remainingMissions = missions.filter((m) => m.id !== id);
         set({
-          missions: missions.filter((m) => m.id !== id),
+          missions: remainingMissions,
         });
+
+        // Deleta imediatamente da nuvem (Supabase)
+        syncService.deleteMission(id);
       },
 
       resetDailyMissionsIfNewDay: () => {

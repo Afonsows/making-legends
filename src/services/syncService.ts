@@ -83,6 +83,12 @@ class SyncService {
         }));
 
         useHabitStore.getState().setCustomMissionList(mappedMissions);
+      } else if (missionsData && missionsData.length === 0 && !missionsErr) {
+        // Primeiro acesso sem missões no Supabase: inicializa nuvem com as missões locais
+        const localMissions = useHabitStore.getState().missions;
+        if (localMissions.length > 0) {
+          await this.pushMissions(localMissions, userId, true);
+        }
       }
 
       this.isHydrated = true;
@@ -129,8 +135,57 @@ class SyncService {
     }
   }
 
-  public async pushMissions(missions: Mission[], userId: string) {
+  public async deleteMission(missionId: string, userId?: string) {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const targetUserId = userId || session?.user?.id;
+      if (!targetUserId) return;
+
+      const { error } = await supabase
+        .from('missions')
+        .delete()
+        .eq('id', missionId)
+        .eq('user_id', targetUserId);
+
+      if (error) {
+        console.warn('Erro ao deletar missão no Supabase:', error);
+      }
+    } catch (err) {
+      console.warn('Sync offline: Exclusão da missão será sincronizada posteriormente.', err);
+    }
+  }
+
+  public async pushMissions(missions: Mission[], userId: string, bypassHydration: boolean = false) {
+    if (!this.isHydrated && !bypassHydration) {
+      return; // Previne sobrescrever a nuvem antes de baixar as missões existentes
+    }
+
+    try {
+      const currentIds = missions.map((m) => m.id);
+
+      // 1. Reconciliação: Deleta no Supabase missões que foram excluídas localmente
+      const { data: remoteMissions } = await supabase
+        .from('missions')
+        .select('id')
+        .eq('user_id', userId);
+
+      if (remoteMissions && remoteMissions.length > 0) {
+        const idsToDelete = remoteMissions
+          .map((r) => r.id)
+          .filter((remoteId) => !currentIds.includes(remoteId));
+
+        if (idsToDelete.length > 0) {
+          await supabase
+            .from('missions')
+            .delete()
+            .eq('user_id', userId)
+            .in('id', idsToDelete);
+        }
+      }
+
+      if (missions.length === 0) return;
+
+      // 2. Upsert das missões atuais mantidas
       const records = missions.map((m) => ({
         id: m.id,
         user_id: userId,
