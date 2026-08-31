@@ -43,6 +43,7 @@ export const OnboardingQuiz: React.FC<OnboardingQuizProps> = ({ onFinishOnboardi
 
   // Estados de Cadastro
   const [userName, setUserName] = useState('');
+  const [userGender, setUserGender] = useState<'male' | 'female'>('male');
   const [userEmail, setUserEmail] = useState('');
   const [userWhatsapp, setUserWhatsapp] = useState('');
   const [userPassword, setUserPassword] = useState('');
@@ -109,6 +110,7 @@ export const OnboardingQuiz: React.FC<OnboardingQuizProps> = ({ onFinishOnboardi
         options: {
           data: {
             name: userName.trim(),
+            gender: userGender,
             whatsapp: userWhatsapp.replace(/\D/g, ''),
           },
         },
@@ -127,7 +129,7 @@ export const OnboardingQuiz: React.FC<OnboardingQuizProps> = ({ onFinishOnboardi
       const user = data.user;
       if (user) {
         // 2. Atualiza estado local do usuário
-        completeOnboarding(userName.trim());
+        completeOnboarding(userName.trim(), userGender, userEmail.trim(), userWhatsapp.trim());
 
         // 3. Sincroniza dados iniciais no Supabase PostgreSQL
         const updatedProfile = useUserStore.getState().profile;
@@ -470,6 +472,39 @@ export const OnboardingQuiz: React.FC<OnboardingQuizProps> = ({ onFinishOnboardi
                       onChange={(e) => setUserName(e.target.value)}
                       className="w-full bg-shinobi-bg border border-shinobi-border rounded-xl px-3.5 py-2.5 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-shinobi-gold transition-colors"
                     />
+                  </div>
+
+                  {/* Gênero Shinobi */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-300">
+                      Gênero do Shinobi
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setUserGender('male')}
+                        className={`py-2.5 px-3 rounded-xl border text-xs font-medium flex items-center justify-center gap-2 transition-all ${
+                          userGender === 'male'
+                            ? 'border-shinobi-gold bg-shinobi-gold/15 text-shinobi-gold font-bold shadow-glow-gold/20'
+                            : 'border-shinobi-border bg-shinobi-bg/60 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <span className="text-base">🥷</span>
+                        <span>Masculino (Shinobi)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setUserGender('female')}
+                        className={`py-2.5 px-3 rounded-xl border text-xs font-medium flex items-center justify-center gap-2 transition-all ${
+                          userGender === 'female'
+                            ? 'border-shinobi-gold bg-shinobi-gold/15 text-shinobi-gold font-bold shadow-glow-gold/20'
+                            : 'border-shinobi-border bg-shinobi-bg/60 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <span className="text-base">🥷‍♀️</span>
+                        <span>Feminino (Kunoichi)</span>
+                      </button>
+                    </div>
                   </div>
 
                   {/* E-mail */}

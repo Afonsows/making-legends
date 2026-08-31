@@ -22,6 +22,7 @@ export interface AvatarConfig {
   outfit: 'tunic_dark' | 'armor_iron' | 'cloak_nomad' | 'wraps_monk';
   headband: 'iron_slate' | 'cloth_crimson' | 'band_gold' | 'mask_shadow';
   auraColor: 'crimson' | 'chakra' | 'jade' | 'gold' | 'violet';
+  customEmoji?: string;
 }
 
 export interface NotificationSettings {
@@ -34,6 +35,9 @@ export interface NotificationSettings {
 export interface UserProfile {
   id: string;
   name: string;
+  email?: string;
+  whatsapp?: string;
+  gender: 'male' | 'female';
   avatarConfig: AvatarConfig;
   level: number;
   totalXp: number;

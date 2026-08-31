@@ -69,7 +69,7 @@ export const shinobiTheme: ThemeConfig = {
       name: 'Aspirante de Academia',
       minLevel: 1,
       description: 'O início da jornada. O corpo e a mente ainda aprendem os primeiros fundamentos.',
-      badge: '🌱',
+      badge: '🥷',
       titleColor: '#94a3b8'
     },
     genin: {

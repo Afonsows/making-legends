@@ -46,7 +46,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         >
           <div className="relative">
             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-shinobi-card to-shinobi-scroll border-2 border-shinobi-gold/60 flex items-center justify-center text-lg shadow-glow-gold/30">
-              {rankInfo.badge}
+              {profile.avatarConfig.customEmoji || (profile.gender === 'female' ? '🥷‍♀️' : (rankInfo.badge === '🌱' ? '🥷' : rankInfo.badge))}
             </div>
             <span className="absolute -bottom-1 -right-1 bg-shinobi-crimson text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full border border-shinobi-bg">
               {profile.level}

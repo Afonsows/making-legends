@@ -50,15 +50,15 @@ export const AppContent: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Sincronização em background quando missões ou perfil mudam (se autenticado)
+  // Sincronização em background quando missões ou perfil mudam (se autenticado e hidratado)
   useEffect(() => {
-    if (currentUser?.id) {
+    if (currentUser?.id && syncService.isHydrated) {
       syncService.pushUserProfile(profile, currentUser.id);
     }
   }, [profile, currentUser]);
 
   useEffect(() => {
-    if (currentUser?.id) {
+    if (currentUser?.id && syncService.isHydrated) {
       syncService.pushMissions(missions, currentUser.id);
     }
   }, [missions, currentUser]);

@@ -10,6 +10,7 @@ import { useToolStore } from '../state/useToolStore';
  * e o banco de dados PostgreSQL na nuvem via Supabase.
  */
 class SyncService {
+  public isHydrated = false;
   private isSyncing = false;
 
   public async pullUserData(userId: string) {
@@ -30,7 +31,14 @@ class SyncService {
             ...state.profile,
             id: profileData.id,
             name: profileData.name || state.profile.name,
-            avatarConfig: profileData.avatar_config || state.profile.avatarConfig,
+            email: profileData.email || state.profile.email,
+            whatsapp: profileData.whatsapp || state.profile.whatsapp,
+            gender: (profileData.gender as 'male' | 'female') || state.profile.gender || 'male',
+            avatarConfig: {
+              ...state.profile.avatarConfig,
+              ...(profileData.avatar_config || {}),
+              customEmoji: (profileData.gender === 'female' ? '🥷‍♀️' : '🥷'),
+            },
             level: profileData.level || state.profile.level,
             totalXp: profileData.total_xp || state.profile.totalXp,
             currentRankId: profileData.current_rank_id || state.profile.currentRankId,
@@ -41,7 +49,7 @@ class SyncService {
             weeklyShieldsRemaining: profileData.weekly_shields_remaining ?? state.profile.weeklyShieldsRemaining,
             isHardModeEnabled: profileData.is_hard_mode_enabled ?? state.profile.isHardModeEnabled,
             subscriptionStatus: profileData.subscription_status || state.profile.subscriptionStatus,
-            hasCompletedOnboarding: profileData.has_completed_onboarding ?? state.profile.hasCompletedOnboarding,
+            hasCompletedOnboarding: profileData.has_completed_onboarding ?? true,
             unlockedCards: profileData.unlocked_cards || state.profile.unlockedCards,
             equippedItems: profileData.equipped_items || state.profile.equippedItems,
             inventory: profileData.inventory || state.profile.inventory,
@@ -74,6 +82,8 @@ class SyncService {
 
         useHabitStore.getState().setCustomMissionList(mappedMissions);
       }
+
+      this.isHydrated = true;
     } catch (err) {
       console.error('Erro ao sincronizar dados do Supabase:', err);
     } finally {
@@ -82,10 +92,17 @@ class SyncService {
   }
 
   public async pushUserProfile(profile: UserProfile, userId: string) {
+    if (!this.isHydrated && profile.name === 'Aspirante Shinobi') {
+      return; // Previne sobrescrever perfil na nuvem com dados padrão não hidratados
+    }
+
     try {
       await supabase.from('profiles').upsert({
         id: userId,
         name: profile.name,
+        email: profile.email,
+        whatsapp: profile.whatsapp,
+        gender: profile.gender,
         avatar_config: profile.avatarConfig,
         level: profile.level,
         total_xp: profile.totalXp,
