@@ -131,11 +131,15 @@ export const MissionCard: React.FC<MissionCardProps> = ({
             </p>
           )}
 
-          {/* Recompensa de XP */}
-          <div className="flex items-center gap-2 mt-2">
+          {/* Recompensa de XP e Ryō */}
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
             <span className="text-[11px] font-mono font-bold text-shinobi-gold flex items-center gap-1 bg-shinobi-gold/10 px-2 py-0.5 rounded border border-shinobi-gold/20">
               <Sparkles className="w-3 h-3" />
               +{mission.xpReward} XP
+            </span>
+            <span className="text-[11px] font-mono font-bold text-amber-300 flex items-center gap-1 bg-amber-950/40 px-2 py-0.5 rounded border border-amber-500/30">
+              <span>🪙</span>
+              +{mission.ryoReward || (mission.rank === 'S' ? 300 : mission.rank === 'A' ? 160 : mission.rank === 'B' ? 90 : mission.rank === 'C' ? 50 : mission.rank === 'D' ? 25 : 10)} Ryō
             </span>
             <span className="text-[10px] text-slate-500 font-mono">
               {rankInfo.recommendedTime}

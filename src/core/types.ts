@@ -9,6 +9,7 @@ export interface Mission {
   pillarId: PillarId;
   rank: MissionRank;
   xpReward: number;
+  ryoReward?: number;
   timeOfDay: TimeOfDay;
   isCompletedToday: boolean;
   completedDates: string[]; // YYYY-MM-DD
@@ -38,6 +39,7 @@ export interface UserProfile {
   email?: string;
   whatsapp?: string;
   gender: 'male' | 'female';
+  ryo: number; // Moeda Shinobi (両)
   avatarConfig: AvatarConfig;
   level: number;
   totalXp: number;

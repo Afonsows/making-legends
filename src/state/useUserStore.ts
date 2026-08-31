@@ -13,6 +13,7 @@ const defaultProfile: UserProfile = {
   name: 'Afonso',
   email: 'afonso7010@gmail.com',
   gender: 'male',
+  ryo: 0,
   avatarConfig: {
     silhouette: 'shadow',
     outfit: 'tunic_dark',
@@ -63,8 +64,11 @@ interface UserStoreState {
   toggleHardMode: () => void;
   completeOnboarding: (name: string, gender?: 'male' | 'female', email?: string, whatsapp?: string) => void;
   
-  // XP & Progression
+  // XP, Ryō & Progression
   addXp: (baseXp: number, pillarId: PillarId) => { finalXp: number; bonusXp: number; levelUp: boolean };
+  removeXp: (baseXp: number, pillarId: PillarId) => void;
+  addRyo: (amount: number) => void;
+  removeRyo: (amount: number) => void;
   closeLevelUpModal: () => void;
   
   // Equip & Inventory
@@ -198,6 +202,54 @@ export const useUserStore = create<UserStoreState>()(
         return { finalXp, bonusXp, levelUp: hasLeveledUp };
       },
 
+      removeXp: (baseXp: number, pillarId: PillarId) => {
+        const { profile } = get();
+        const equipped = get().getEquippedItems();
+
+        const { finalXp } = calculateXpGainWithBuffs(
+          baseXp,
+          pillarId,
+          equipped
+        );
+
+        const newTotalXp = Math.max(0, profile.totalXp - finalXp);
+        const newLevel = getLevelFromTotalXp(newTotalXp);
+        const newRank = getRankIdFromLevel(newLevel);
+
+        const newPillarXp = {
+          ...profile.pillarXp,
+          [pillarId]: Math.max(0, (profile.pillarXp[pillarId] || 0) - finalXp),
+        };
+
+        set((state) => ({
+          profile: {
+            ...state.profile,
+            totalXp: newTotalXp,
+            level: newLevel,
+            currentRankId: newRank,
+            pillarXp: newPillarXp,
+          },
+        }));
+      },
+
+      addRyo: (amount: number) => {
+        set((state) => ({
+          profile: {
+            ...state.profile,
+            ryo: (state.profile.ryo || 0) + amount,
+          },
+        }));
+      },
+
+      removeRyo: (amount: number) => {
+        set((state) => ({
+          profile: {
+            ...state.profile,
+            ryo: Math.max(0, (state.profile.ryo || 0) - amount),
+          },
+        }));
+      },
+
       closeLevelUpModal: () => {
         set({ activeLevelUpModal: null });
       },
@@ -214,10 +266,8 @@ export const useUserStore = create<UserStoreState>()(
         const item = allGameItems[itemId];
         if (!item) return;
 
-        // Se já está equipado, não faz nada
         if (profile.equippedItems.includes(itemId)) return;
 
-        // Remove outro item do mesmo slot se houver
         const currentEquipped = profile.equippedItems
           .map((id) => allGameItems[id])
           .filter(Boolean);

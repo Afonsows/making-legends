@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUserStore } from '../../state/useUserStore';
 import { useTheme } from '../../theme/ThemeContext';
 import { RadarChart } from './RadarChart';
 import { getLevelProgress } from '../../core/xpEngine';
 import { syncService } from '../../services/syncService';
+import { supabase } from '../../services/supabase';
+import { soundFx } from '../../utils/audio';
 import { 
   Shield, 
   Flame, 
@@ -20,9 +22,28 @@ import {
   Phone,
   Save,
   CheckCircle2,
-  Cloud
+  Cloud,
+  Coins
 } from 'lucide-react';
 import { allGameItems } from '../../core/itemsData';
+
+const AVATAR_OPTIONS = [
+  { emoji: '🥷', label: 'Shinobi das Sombras' },
+  { emoji: '🥷‍♀️', label: 'Kunoichi Ágil' },
+  { emoji: '👺', label: 'Mestre Tengu' },
+  { emoji: '🥋', label: 'Lutador Taijutsu' },
+  { emoji: '📜', label: 'Sábio Ninjutsu' },
+  { emoji: '⚡', label: 'Raio do Trovão' },
+  { emoji: '🐉', label: 'Espírito do Dragão' },
+  { emoji: '🦊', label: 'Guardião Místico' },
+  { emoji: '🎭', label: 'Anbu Mascarado' },
+  { emoji: '👑', label: 'Kage Soberano' },
+  { emoji: '🗡️', label: 'Ronin Solitário' },
+  { emoji: '🌸', label: 'Lótus Noturna' },
+  { emoji: '🐺', label: 'Lobo das Sombras' },
+  { emoji: '🦅', label: 'Falcão Estrategista' },
+  { emoji: '🔥', label: 'Chama Eterna' },
+];
 
 interface StatusWindowProps {
   onOpenAvatarCustomizer?: () => void;
@@ -39,20 +60,30 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({ onOpenAvatarCustomiz
   } = useUserStore();
   const { getRankByLevel, theme } = useTheme();
 
+  const rankInfo = getRankByLevel(profile.level);
+  const { currentLevel, currentLevelXp, nextLevelXpThreshold, progressPercent } = getLevelProgress(profile.totalXp);
+  const equippedList = getEquippedItems();
+
+  const avatarDisplay = profile.avatarConfig.customEmoji || (profile.gender === 'female' ? '🥷‍♀️' : (rankInfo.badge === '🌱' ? '🥷' : rankInfo.badge));
+
   // Estados de edição de perfil
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editName, setEditName] = useState(profile.name);
   const [editEmail, setEditEmail] = useState(profile.email || '');
   const [editWhatsapp, setEditWhatsapp] = useState(profile.whatsapp || '');
   const [editGender, setEditGender] = useState<'male' | 'female'>(profile.gender || 'male');
+  const [editAvatarEmoji, setEditAvatarEmoji] = useState(avatarDisplay);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  const rankInfo = getRankByLevel(profile.level);
-  const { currentLevel, currentLevelXp, nextLevelXpThreshold, progressPercent } = getLevelProgress(profile.totalXp);
-  const equippedList = getEquippedItems();
-
-  const avatarDisplay = profile.avatarConfig.customEmoji || (profile.gender === 'female' ? '🥷‍♀️' : (rankInfo.badge === '🌱' ? '🥷' : rankInfo.badge));
+  // Sincroniza campos quando o perfil carregar
+  useEffect(() => {
+    setEditName(profile.name);
+    setEditEmail(profile.email || '');
+    setEditWhatsapp(profile.whatsapp || '');
+    setEditGender(profile.gender || 'male');
+    setEditAvatarEmoji(avatarDisplay);
+  }, [profile, isEditingProfile]);
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,22 +97,30 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({ onOpenAvatarCustomiz
       gender: editGender,
       avatarConfig: {
         ...profile.avatarConfig,
-        customEmoji: editGender === 'female' ? '🥷‍♀️' : '🥷',
+        customEmoji: editAvatarEmoji,
       },
     };
 
     updateProfile(updatedData);
 
-    if (profile.id) {
-      await syncService.pushUserProfile({ ...profile, ...updatedData }, profile.id);
-    }
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const targetUserId = session?.user?.id || profile.id;
 
-    setIsSaving(false);
-    setSaveSuccess(true);
-    setTimeout(() => {
-      setSaveSuccess(false);
-      setIsEditingProfile(false);
-    }, 1200);
+      if (targetUserId) {
+        await syncService.pushUserProfile({ ...profile, ...updatedData }, targetUserId);
+      }
+      soundFx.playLevelUp();
+      setSaveSuccess(true);
+      setTimeout(() => {
+        setSaveSuccess(false);
+        setIsEditingProfile(false);
+      }, 1000);
+    } catch (err) {
+      console.error('Erro ao salvar perfil no Supabase:', err);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -100,7 +139,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({ onOpenAvatarCustomiz
             <button
               onClick={() => setIsEditingProfile(!isEditingProfile)}
               className="absolute -top-1 -right-1 p-1.5 bg-shinobi-card border border-shinobi-border text-slate-300 hover:text-shinobi-gold rounded-full transition-colors shadow-md"
-              title="Editar Perfil"
+              title="Editar Perfil e Foto"
             >
               <Edit className="w-3.5 h-3.5" />
             </button>
@@ -115,8 +154,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({ onOpenAvatarCustomiz
               <span className="text-xs text-slate-400 font-mono">
                 {profile.totalXp} XP Total
               </span>
-              <span className="text-[10px] text-slate-400 font-mono px-2 py-0.5 rounded bg-shinobi-card border border-shinobi-border">
-                {profile.gender === 'female' ? 'Kunoichi 🥷‍♀️' : 'Shinobi 🥷'}
+              <span className="text-[10px] text-amber-300 font-mono px-2 py-0.5 rounded bg-amber-950/40 border border-amber-500/30 flex items-center gap-1">
+                <span>🪙</span> {profile.ryo || 0} Ryō
               </span>
             </div>
 
@@ -128,7 +167,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({ onOpenAvatarCustomiz
                 onClick={() => setIsEditingProfile(!isEditingProfile)}
                 className="text-xs text-shinobi-gold hover:underline flex items-center gap-1 font-mono"
               >
-                (Editar Dados)
+                (Editar Dados & Foto)
               </button>
             </div>
 
@@ -153,13 +192,13 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({ onOpenAvatarCustomiz
         </div>
       </div>
 
-      {/* FORMULÁRIO DE EDIÇÃO DE PERFIL / DADOS */}
+      {/* FORMULÁRIO DE EDIÇÃO DE PERFIL / DADOS & ESCOLHA DE AVATAR */}
       {isEditingProfile && (
-        <div className="bg-shinobi-card/95 border border-shinobi-gold/60 rounded-2xl p-5 shadow-2xl space-y-4 animate-in fade-in duration-300">
+        <div className="bg-slate-950/95 border border-shinobi-gold/60 rounded-3xl p-6 shadow-2xl space-y-5 animate-in fade-in duration-300">
           <div className="flex items-center justify-between border-b border-shinobi-border pb-3">
-            <h3 className="font-cinzel text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
+            <h3 className="font-cinzel text-base font-bold text-slate-100 flex items-center gap-2">
               <User className="w-4 h-4 text-shinobi-gold" />
-              Editar Ficha de Shinobi
+              Editar Ficha & Foto de Shinobi
             </h3>
             <button
               onClick={() => setIsEditingProfile(false)}
@@ -169,8 +208,36 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({ onOpenAvatarCustomiz
             </button>
           </div>
 
-          <form onSubmit={handleSaveProfile} className="space-y-3.5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <form onSubmit={handleSaveProfile} className="space-y-4">
+            {/* SELETOR DE FOTO / AVATAR SHINOBI */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                <span>🥷</span> Escolha seu Avatar / Foto de Perfil
+              </label>
+              <div className="grid grid-cols-5 sm:grid-cols-8 gap-2 max-h-44 overflow-y-auto p-1 border border-shinobi-border/60 rounded-2xl bg-shinobi-bg/60">
+                {AVATAR_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.emoji}
+                    type="button"
+                    title={opt.label}
+                    onClick={() => {
+                      setEditAvatarEmoji(opt.emoji);
+                      if (opt.emoji === '🥷‍♀️') setEditGender('female');
+                      if (opt.emoji === '🥷') setEditGender('male');
+                    }}
+                    className={`h-12 rounded-xl text-2xl flex items-center justify-center border transition-all ${
+                      editAvatarEmoji === opt.emoji
+                        ? 'border-shinobi-gold bg-shinobi-gold/25 shadow-glow-gold/40 scale-105'
+                        : 'border-shinobi-border bg-shinobi-card/60 hover:bg-shinobi-card hover:border-slate-500'
+                    }`}
+                  >
+                    {opt.emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               {/* Nome */}
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
@@ -181,7 +248,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({ onOpenAvatarCustomiz
                   required
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="w-full bg-shinobi-bg border border-shinobi-border rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-shinobi-gold"
+                  className="w-full bg-shinobi-bg border border-shinobi-border rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-shinobi-gold"
                 />
               </div>
 
@@ -193,7 +260,10 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({ onOpenAvatarCustomiz
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => setEditGender('male')}
+                    onClick={() => {
+                      setEditGender('male');
+                      if (editAvatarEmoji === '🥷‍♀️') setEditAvatarEmoji('🥷');
+                    }}
                     className={`py-2 px-3 rounded-xl border text-xs font-medium flex items-center justify-center gap-1.5 transition-all ${
                       editGender === 'male'
                         ? 'border-shinobi-gold bg-shinobi-gold/15 text-shinobi-gold font-bold'
@@ -204,7 +274,10 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({ onOpenAvatarCustomiz
                   </button>
                   <button
                     type="button"
-                    onClick={() => setEditGender('female')}
+                    onClick={() => {
+                      setEditGender('female');
+                      if (editAvatarEmoji === '🥷') setEditAvatarEmoji('🥷‍♀️');
+                    }}
                     className={`py-2 px-3 rounded-xl border text-xs font-medium flex items-center justify-center gap-1.5 transition-all ${
                       editGender === 'female'
                         ? 'border-shinobi-gold bg-shinobi-gold/15 text-shinobi-gold font-bold'
@@ -226,40 +299,40 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({ onOpenAvatarCustomiz
                   value={editEmail}
                   onChange={(e) => setEditEmail(e.target.value)}
                   placeholder="seuemail@exemplo.com"
-                  className="w-full bg-shinobi-bg border border-shinobi-border rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-shinobi-gold"
+                  className="w-full bg-shinobi-bg border border-shinobi-border rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-shinobi-gold"
                 />
               </div>
 
               {/* WhatsApp */}
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                  <Phone className="w-3.5 h-3.5 text-emerald-400" /> WhatsApp
+                  <Phone className="w-3.5 h-3.5 text-emerald-400" /> WhatsApp com DDD
                 </label>
                 <input
                   type="tel"
                   value={editWhatsapp}
                   onChange={(e) => setEditWhatsapp(e.target.value)}
                   placeholder="(11) 99999-9999"
-                  className="w-full bg-shinobi-bg border border-shinobi-border rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-shinobi-gold"
+                  className="w-full bg-shinobi-bg border border-shinobi-border rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-shinobi-gold"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-2 border-t border-shinobi-border">
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-shinobi-border">
               <button
                 type="submit"
                 disabled={isSaving}
-                className="px-5 py-2.5 bg-gradient-to-r from-shinobi-gold to-amber-500 text-shinobi-bg font-bold text-xs rounded-xl shadow-glow-gold hover:opacity-95 transition-all flex items-center gap-2"
+                className="px-6 py-3 bg-gradient-to-r from-shinobi-gold to-amber-500 text-shinobi-bg font-bold text-xs rounded-xl shadow-glow-gold hover:opacity-95 transition-all flex items-center gap-2"
               >
                 {saveSuccess ? (
                   <>
                     <CheckCircle2 className="w-4 h-4 text-emerald-950" />
-                    <span>Dados Salvos na Nuvem!</span>
+                    <span>Dados & Foto Salvos na Nuvem!</span>
                   </>
                 ) : (
                   <>
                     <Save className="w-4 h-4" />
-                    <span>Salvar Alterações</span>
+                    <span>{isSaving ? 'Salvando...' : 'Salvar Alterações'}</span>
                   </>
                 )}
               </button>
@@ -269,7 +342,20 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({ onOpenAvatarCustomiz
       )}
 
       {/* Grid de Estatísticas Principais */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        {/* Saldo de Ryō */}
+        <div className="bg-shinobi-card p-4 rounded-xl border border-amber-500/30 text-center space-y-1 shadow-lg bg-amber-950/20">
+          <span className="text-[10px] font-mono font-bold uppercase text-amber-400 tracking-wider flex items-center justify-center gap-1">
+            <span>🪙</span> MOEDAS RYŌ
+          </span>
+          <div className="text-2xl font-cinzel font-bold text-amber-300">
+            {profile.ryo || 0}
+          </div>
+          <p className="text-[10px] text-slate-400">
+            Ganhos em missões
+          </p>
+        </div>
+
         {/* Dia do Protocolo */}
         <div className="bg-shinobi-card p-4 rounded-xl border border-shinobi-border text-center space-y-1 shadow-lg">
           <span className="text-[10px] font-mono font-bold uppercase text-slate-400 tracking-wider">
@@ -310,7 +396,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({ onOpenAvatarCustomiz
         </div>
 
         {/* Pergaminhos Desbloqueados */}
-        <div className="bg-shinobi-card p-4 rounded-xl border border-shinobi-border text-center space-y-1 shadow-lg">
+        <div className="bg-shinobi-card p-4 rounded-xl border border-shinobi-border text-center space-y-1 shadow-lg col-span-2 sm:col-span-1">
           <span className="text-[10px] font-mono font-bold uppercase text-slate-400 tracking-wider flex items-center justify-center gap-1">
             <Award className="w-3 h-3 text-purple-400" /> PERGAMINHOS
           </span>

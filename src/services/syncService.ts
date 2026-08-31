@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 import { UserProfile, Mission } from '../core/types';
 import { useUserStore } from '../state/useUserStore';
-import { useHabitStore } from '../state/useHabitStore';
+import { useHabitStore, getDefaultRyoReward } from '../state/useHabitStore';
 import { useDuelStore } from '../state/useDuelStore';
 import { useToolStore } from '../state/useToolStore';
 
@@ -34,10 +34,11 @@ class SyncService {
             email: profileData.email || state.profile.email,
             whatsapp: profileData.whatsapp || state.profile.whatsapp,
             gender: (profileData.gender as 'male' | 'female') || state.profile.gender || 'male',
+            ryo: profileData.ryo !== undefined && profileData.ryo !== null ? profileData.ryo : state.profile.ryo,
             avatarConfig: {
               ...state.profile.avatarConfig,
               ...(profileData.avatar_config || {}),
-              customEmoji: (profileData.gender === 'female' ? '🥷‍♀️' : '🥷'),
+              customEmoji: profileData.avatar_config?.customEmoji || (profileData.gender === 'female' ? '🥷‍♀️' : '🥷'),
             },
             level: profileData.level || state.profile.level,
             totalXp: profileData.total_xp || state.profile.totalXp,
@@ -72,6 +73,7 @@ class SyncService {
           pillarId: m.pillar_id,
           rank: m.rank,
           xpReward: m.xp_reward,
+          ryoReward: m.ryo_reward ?? getDefaultRyoReward(m.rank),
           timeOfDay: m.time_of_day,
           isCompletedToday: m.is_completed_today,
           completedDates: m.completed_dates || [],
@@ -103,6 +105,7 @@ class SyncService {
         email: profile.email,
         whatsapp: profile.whatsapp,
         gender: profile.gender,
+        ryo: profile.ryo || 0,
         avatar_config: profile.avatarConfig,
         level: profile.level,
         total_xp: profile.totalXp,
@@ -136,6 +139,7 @@ class SyncService {
         pillar_id: m.pillarId,
         rank: m.rank,
         xp_reward: m.xpReward,
+        ryo_reward: m.ryoReward || getDefaultRyoReward(m.rank),
         time_of_day: m.timeOfDay,
         is_completed_today: m.isCompletedToday,
         completed_dates: m.completedDates,

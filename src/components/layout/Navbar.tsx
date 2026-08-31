@@ -78,8 +78,19 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </button>
 
-        {/* Lado Direito: Sequência de Dias, Escudo e Ações */}
+        {/* Lado Direito: Sequência de Dias, Escudo, Ryō e Ações */}
         <div className="flex items-center gap-2">
+          {/* Badge de Ryō (Moedas) */}
+          <div
+            title={`Saldo de Ryō: ${profile.ryo || 0} Ryō`}
+            className="flex items-center gap-1 px-2.5 py-1 bg-amber-950/40 border border-amber-500/40 rounded-full shadow-glow-gold/20"
+          >
+            <span className="text-xs">🪙</span>
+            <span className="text-xs font-mono font-bold text-amber-300">
+              {profile.ryo || 0} <span className="text-[10px] text-amber-400 font-normal">Ryō</span>
+            </span>
+          </div>
+
           {/* Badge de Sequência (Streak) */}
           <div 
             title={`Sequência ativa: ${profile.currentStreak} dias no protocolo dos 66 dias`}

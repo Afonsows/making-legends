@@ -9,6 +9,18 @@ import { useDuelStore } from './useDuelStore';
 import { soundFx } from '../utils/audio';
 import { triggerMissionConfetti } from '../utils/confetti';
 
+export function getDefaultRyoReward(rank: MissionRank): number {
+  switch (rank) {
+    case 'E': return 10;
+    case 'D': return 25;
+    case 'C': return 50;
+    case 'B': return 90;
+    case 'A': return 160;
+    case 'S': return 300;
+    default: return 25;
+  }
+}
+
 const initialMissions: Mission[] = [
   {
     id: 'mis_01',
@@ -17,6 +29,7 @@ const initialMissions: Mission[] = [
     pillarId: 'chakra',
     rank: 'E',
     xpReward: 25,
+    ryoReward: 10,
     timeOfDay: 'morning',
     isCompletedToday: false,
     completedDates: [],
@@ -31,6 +44,7 @@ const initialMissions: Mission[] = [
     pillarId: 'taijutsu',
     rank: 'C',
     xpReward: 85,
+    ryoReward: 50,
     timeOfDay: 'morning',
     isCompletedToday: false,
     completedDates: [],
@@ -45,6 +59,7 @@ const initialMissions: Mission[] = [
     pillarId: 'ninjutsu',
     rank: 'D',
     xpReward: 50,
+    ryoReward: 25,
     timeOfDay: 'afternoon',
     isCompletedToday: false,
     completedDates: [],
@@ -59,6 +74,7 @@ const initialMissions: Mission[] = [
     pillarId: 'genjutsu',
     rank: 'B',
     xpReward: 140,
+    ryoReward: 90,
     timeOfDay: 'afternoon',
     isCompletedToday: false,
     completedDates: [],
@@ -73,6 +89,7 @@ const initialMissions: Mission[] = [
     pillarId: 'espirito',
     rank: 'D',
     xpReward: 50,
+    ryoReward: 25,
     timeOfDay: 'evening',
     isCompletedToday: false,
     completedDates: [],
@@ -87,6 +104,7 @@ const initialMissions: Mission[] = [
     pillarId: 'chakra',
     rank: 'E',
     xpReward: 25,
+    ryoReward: 10,
     timeOfDay: 'evening',
     isCompletedToday: false,
     completedDates: [],
@@ -135,6 +153,8 @@ export const useHabitStore = create<HabitStoreState>()(
 
         const todayStr = getTodayString();
         const willBeCompleted = !mission.isCompletedToday;
+        const ryoAmount = mission.ryoReward || getDefaultRyoReward(mission.rank);
+        const userStore = useUserStore.getState();
 
         const updatedMissions = missions.map((m) => {
           if (m.id === missionId) {
@@ -158,14 +178,18 @@ export const useHabitStore = create<HabitStoreState>()(
           soundFx.playMissionComplete();
           triggerMissionConfetti();
 
-          // Adiciona XP no perfil do usuário
-          const userStore = useUserStore.getState();
+          // Adiciona XP e Ryō no perfil do usuário
           const { finalXp } = userStore.addXp(mission.xpReward, mission.pillarId);
+          userStore.addRyo(ryoAmount);
 
           // Causa dano no Boss do Modo Duelo
           const duelStore = useDuelStore.getState();
           const equippedItems = userStore.getEquippedItems();
           duelStore.dealDamageFromMission(finalXp, mission.pillarId, equippedItems);
+        } else {
+          // Desmarcou a missão: retira o XP e o Ryō concedidos
+          userStore.removeXp(mission.xpReward, mission.pillarId);
+          userStore.removeRyo(ryoAmount);
         }
       },
 
@@ -177,55 +201,48 @@ export const useHabitStore = create<HabitStoreState>()(
           ...missionData,
           id: `mis_custom_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
           xpReward: missionData.xpReward || rankInfo.xpReward,
+          ryoReward: missionData.ryoReward || getDefaultRyoReward(missionData.rank),
           isCompletedToday: false,
           completedDates: [],
-          isCustom: true,
           order: missions.length + 1,
           createdAt: new Date().toISOString(),
         };
 
         set({ missions: [...missions, newMission] });
-        soundFx.playScrollOpen();
       },
 
       updateMission: (id, updates) => {
-        set((state) => ({
-          missions: state.missions.map((m) => (m.id === id ? { ...m, ...updates } : m))
-        }));
+        const { missions } = get();
+        set({
+          missions: missions.map((m) => (m.id === id ? { ...m, ...updates } : m)),
+        });
       },
 
       deleteMission: (id) => {
-        set((state) => ({
-          missions: state.missions.filter((m) => m.id !== id)
-        }));
+        const { missions } = get();
+        set({
+          missions: missions.filter((m) => m.id !== id),
+        });
       },
 
       resetDailyMissionsIfNewDay: () => {
         const { missions } = get();
         const todayStr = getTodayString();
 
-        const needsReset = missions.some((m) => {
-          const isMarked = m.isCompletedToday;
-          const wasCompletedToday = m.completedDates.includes(todayStr);
-          return isMarked && !wasCompletedToday;
-        });
+        const updated = missions.map((m) => ({
+          ...m,
+          isCompletedToday: m.completedDates.includes(todayStr),
+        }));
 
-        if (needsReset) {
-          set({
-            missions: missions.map((m) => ({
-              ...m,
-              isCompletedToday: m.completedDates.includes(todayStr),
-            }))
-          });
-        }
+        set({ missions: updated });
       },
 
       setCustomMissionList: (newMissions) => {
         set({ missions: newMissions });
-      }
+      },
     }),
     {
-      name: 'making-legends-habit-store',
+      name: 'shinobi_habit_store_v1',
     }
   )
 );
