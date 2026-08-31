@@ -1,9 +1,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Mission, TimeOfDay } from '../core/types';
+import { Mission, MissionLogEntry, TimeOfDay } from '../core/types';
 import { PillarId, MissionRank } from '../theme/types';
 import { shinobiTheme } from '../theme/shinobi.theme';
 import { getTodayString } from '../core/streakEngine';
+import { getLevelFromTotalXp, getRankIdFromLevel } from '../core/xpEngine';
 import { useUserStore } from './useUserStore';
 import { useDuelStore } from './useDuelStore';
 import { soundFx } from '../utils/audio';
@@ -116,6 +117,7 @@ const initialMissions: Mission[] = [
 
 interface HabitStoreState {
   missions: Mission[];
+  missionLogs: MissionLogEntry[];
   filterPillar: PillarId | 'all';
   filterTimeOfDay: TimeOfDay | 'all';
   searchQuery: string;
@@ -132,12 +134,18 @@ interface HabitStoreState {
   deleteMission: (id: string) => void;
   resetDailyMissionsIfNewDay: () => void;
   setCustomMissionList: (missions: Mission[]) => void;
+  
+  // Logs & Reconcile
+  addMissionLog: (log: MissionLogEntry) => void;
+  clearLogs: () => void;
+  recalibrateFromMissions: () => { totalXp: number; level: number; ryo: number };
 }
 
 export const useHabitStore = create<HabitStoreState>()(
   persist(
     (set, get) => ({
       missions: initialMissions,
+      missionLogs: [],
       filterPillar: 'all',
       filterTimeOfDay: 'all',
       searchQuery: '',
@@ -147,7 +155,7 @@ export const useHabitStore = create<HabitStoreState>()(
       setSearchQuery: (query) => set({ searchQuery: query }),
 
       toggleCompleteMission: (missionId: string) => {
-        const { missions } = get();
+        const { missions, missionLogs } = get();
         const mission = missions.find((m) => m.id === missionId);
         if (!mission) return;
 
@@ -171,23 +179,35 @@ export const useHabitStore = create<HabitStoreState>()(
           return m;
         });
 
-        set({ missions: updatedMissions });
+        // Cria o registro no histórico de missões
+        const newLogEntry: MissionLogEntry = {
+          id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+          missionId: mission.id,
+          missionTitle: mission.title,
+          pillarId: mission.pillarId,
+          rank: mission.rank,
+          xp: willBeCompleted ? mission.xpReward : -mission.xpReward,
+          ryo: willBeCompleted ? ryoAmount : -ryoAmount,
+          action: willBeCompleted ? 'completed' : 'reverted',
+          createdAt: new Date().toISOString(),
+        };
+
+        set({ 
+          missions: updatedMissions,
+          missionLogs: [newLogEntry, ...missionLogs].slice(0, 100), // Mantém os últimos 100 registros
+        });
 
         if (willBeCompleted) {
-          // Toca som e confetes
           soundFx.playMissionComplete();
           triggerMissionConfetti();
 
-          // Adiciona XP e Ryō no perfil do usuário
           const { finalXp } = userStore.addXp(mission.xpReward, mission.pillarId);
           userStore.addRyo(ryoAmount);
 
-          // Causa dano no Boss do Modo Duelo
           const duelStore = useDuelStore.getState();
           const equippedItems = userStore.getEquippedItems();
           duelStore.dealDamageFromMission(finalXp, mission.pillarId, equippedItems);
         } else {
-          // Desmarcou a missão: retira o XP e o Ryō concedidos
           userStore.removeXp(mission.xpReward, mission.pillarId);
           userStore.removeRyo(ryoAmount);
         }
@@ -239,6 +259,68 @@ export const useHabitStore = create<HabitStoreState>()(
 
       setCustomMissionList: (newMissions) => {
         set({ missions: newMissions });
+      },
+
+      addMissionLog: (log) => {
+        set((state) => ({
+          missionLogs: [log, ...state.missionLogs].slice(0, 100),
+        }));
+      },
+
+      clearLogs: () => {
+        set({ missionLogs: [] });
+      },
+
+      recalibrateFromMissions: () => {
+        const { missions } = get();
+        const userStore = useUserStore.getState();
+
+        let totalCalculatedXp = 0;
+        let totalCalculatedRyo = 0;
+        const pillarXpMap: Record<PillarId, number> = {
+          taijutsu: 0,
+          ninjutsu: 0,
+          chakra: 0,
+          espirito: 0,
+          genjutsu: 0,
+        };
+
+        missions.forEach((m) => {
+          if (m.isCompletedToday) {
+            totalCalculatedXp += m.xpReward;
+            totalCalculatedRyo += m.ryoReward || getDefaultRyoReward(m.rank);
+            pillarXpMap[m.pillarId] = (pillarXpMap[m.pillarId] || 0) + m.xpReward;
+          }
+        });
+
+        const newLevel = getLevelFromTotalXp(totalCalculatedXp);
+        const newRank = getRankIdFromLevel(newLevel);
+
+        const syncLog: MissionLogEntry = {
+          id: `log_sync_${Date.now()}`,
+          missionId: 'recalibrate',
+          missionTitle: 'Recalibração & Sincronização de Ficha',
+          pillarId: 'chakra',
+          rank: 'E',
+          xp: totalCalculatedXp,
+          ryo: totalCalculatedRyo,
+          action: 'synced',
+          createdAt: new Date().toISOString(),
+        };
+
+        userStore.updateProfile({
+          totalXp: totalCalculatedXp,
+          level: newLevel,
+          currentRankId: newRank,
+          ryo: totalCalculatedRyo,
+          pillarXp: pillarXpMap,
+        });
+
+        set((state) => ({
+          missionLogs: [syncLog, ...state.missionLogs].slice(0, 100),
+        }));
+
+        return { totalXp: totalCalculatedXp, level: newLevel, ryo: totalCalculatedRyo };
       },
     }),
     {

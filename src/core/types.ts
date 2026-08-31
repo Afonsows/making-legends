@@ -18,6 +18,18 @@ export interface Mission {
   createdAt: string;
 }
 
+export interface MissionLogEntry {
+  id: string;
+  missionId: string;
+  missionTitle: string;
+  pillarId: PillarId;
+  rank: MissionRank;
+  xp: number;
+  ryo: number;
+  action: 'completed' | 'reverted' | 'synced';
+  createdAt: string; // ISO
+}
+
 export interface AvatarConfig {
   silhouette: 'shadow' | 'blade' | 'sage' | 'ghost' | 'phoenix';
   outfit: 'tunic_dark' | 'armor_iron' | 'cloak_nomad' | 'wraps_monk';
