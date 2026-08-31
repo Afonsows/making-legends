@@ -26,36 +26,36 @@ export const ShinobiBackground: React.FC<ShinobiBackgroundProps> = ({ opacity = 
 
     window.addEventListener('resize', handleResize);
 
-    // 1. Estrelas Cintilantes no Céu
-    const stars = Array.from({ length: 60 }).map(() => ({
+    // 1. Estrelas
+    const stars = Array.from({ length: 65 }).map(() => ({
       x: Math.random() * width,
-      y: Math.random() * (height * 0.6),
-      radius: Math.random() * 1.5 + 0.5,
+      y: Math.random() * (height * 0.65),
+      radius: Math.random() * 1.4 + 0.4,
       alpha: Math.random() * 0.8 + 0.2,
       pulseSpeed: Math.random() * 0.03 + 0.01,
       phase: Math.random() * Math.PI * 2,
     }));
 
     // 2. Brasas Vivas da Fogueira
-    const embers = Array.from({ length: 35 }).map(() => ({
+    const embers = Array.from({ length: 40 }).map(() => ({
       x: 0,
       y: 0,
-      size: Math.random() * 2.5 + 1,
-      speedX: (Math.random() - 0.5) * 1.2,
-      speedY: -Math.random() * 2.5 - 1.2,
+      size: Math.random() * 2.8 + 1,
+      speedX: (Math.random() - 0.5) * 1.5,
+      speedY: -Math.random() * 2.8 - 1.4,
       color: Math.random() > 0.4 ? '#f59e0b' : '#ef4444',
       alpha: Math.random() * 0.9 + 0.3,
-      life: Math.random() * 60 + 20,
-      maxLife: 80,
+      life: Math.random() * 70 + 20,
+      maxLife: 90,
     }));
 
     // 3. Pétalas de Sakura Noturna ao Vento
-    const petals = Array.from({ length: 24 }).map(() => ({
+    const petals = Array.from({ length: 26 }).map(() => ({
       x: Math.random() * width,
       y: Math.random() * height,
       size: Math.random() * 6 + 4,
-      speedX: Math.random() * 1.4 + 0.8,
-      speedY: Math.random() * 0.7 + 0.3,
+      speedX: Math.random() * 1.5 + 0.8,
+      speedY: Math.random() * 0.8 + 0.3,
       rotation: Math.random() * Math.PI * 2,
       rotSpeed: (Math.random() - 0.5) * 0.04,
       swingAngle: Math.random() * Math.PI * 2,
@@ -64,14 +64,14 @@ export const ShinobiBackground: React.FC<ShinobiBackgroundProps> = ({ opacity = 
     }));
 
     // 4. Orbes Flutuantes de Chakra
-    const chakraMotes = Array.from({ length: 18 }).map(() => ({
+    const chakraMotes = Array.from({ length: 20 }).map(() => ({
       x: Math.random() * width,
       y: Math.random() * height,
-      radius: Math.random() * 2.5 + 1.2,
-      speedX: (Math.random() - 0.5) * 0.6,
-      speedY: -Math.random() * 0.8 - 0.3,
+      radius: Math.random() * 2.2 + 1.2,
+      speedX: (Math.random() - 0.5) * 0.5,
+      speedY: -Math.random() * 0.7 - 0.3,
       color: Math.random() > 0.5 ? '#06b6d4' : '#10b981',
-      alpha: Math.random() * 0.6 + 0.2,
+      alpha: Math.random() * 0.55 + 0.2,
       pulse: Math.random() * Math.PI * 2,
     }));
 
@@ -81,27 +81,27 @@ export const ShinobiBackground: React.FC<ShinobiBackgroundProps> = ({ opacity = 
       frame++;
       ctx.clearRect(0, 0, width, height);
 
-      // Posicionamento dinâmico da cena (Fogueira e Shinobi)
-      // No desktop: canto inferior esquerdo/centro; no mobile: posicionado estrategicamente na base
       const isMobile = width < 768;
       const groundY = height * 0.88;
-      const fireX = isMobile ? width * 0.35 : width * 0.25;
-      const fireY = groundY - 10;
-      const shinobiX = fireX - (isMobile ? 75 : 95);
-      const shinobiY = groundY - 5;
+      
+      // Posição da Fogueira e do Shinobi (claramente visíveis e posicionados harmonicamente)
+      const fireX = isMobile ? width * 0.55 : width * 0.38;
+      const fireY = groundY - 8;
+      const shinobiX = fireX - (isMobile ? 100 : 130);
+      const shinobiY = groundY - 15;
 
       // ==========================================
-      // 1. CÉU NOTURNO & GRADIENTE ATMOSFÉRICO
+      // 1. CÉU NOTURNO PROFUNDO
       // ==========================================
       const skyGrad = ctx.createLinearGradient(0, 0, 0, height);
-      skyGrad.addColorStop(0, '#05070c');
-      skyGrad.addColorStop(0.5, '#0a0d18');
-      skyGrad.addColorStop(0.85, '#111628');
-      skyGrad.addColorStop(1, '#070911');
+      skyGrad.addColorStop(0, '#04060b');
+      skyGrad.addColorStop(0.45, '#080c18');
+      skyGrad.addColorStop(0.85, '#0f1424');
+      skyGrad.addColorStop(1, '#05070e');
       ctx.fillStyle = skyGrad;
       ctx.fillRect(0, 0, width, height);
 
-      // Estrelas piscando suavemente
+      // Estrelas cintilantes
       stars.forEach((star) => {
         const starAlpha = Math.max(0.1, star.alpha + Math.sin(frame * star.pulseSpeed + star.phase) * 0.35);
         ctx.fillStyle = `rgba(226, 232, 240, ${starAlpha})`;
@@ -111,81 +111,101 @@ export const ShinobiBackground: React.FC<ShinobiBackgroundProps> = ({ opacity = 
       });
 
       // ==========================================
-      // 2. LUA NOVA MÍSTICA (CRESCENT MOON COM AURA)
+      // 2. LUA REALISTA COM CRATERAS & AURA
       // ==========================================
-      const moonX = isMobile ? width * 0.8 : width * 0.78;
-      const moonY = height * 0.2;
-      const moonRadius = Math.min(width, height) * 0.085 + 25;
+      const moonX = isMobile ? width * 0.82 : width * 0.78;
+      const moonY = height * 0.22;
+      const moonRadius = Math.min(width, height) * 0.08 + 32;
 
-      // Aura Mística da Lua
-      const moonGlow = ctx.createRadialGradient(moonX, moonY, moonRadius * 0.3, moonX, moonY, moonRadius * 3);
-      moonGlow.addColorStop(0, 'rgba(6, 182, 212, 0.18)');
-      moonGlow.addColorStop(0.4, 'rgba(234, 179, 8, 0.08)');
-      moonGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = moonGlow;
+      // Aura Eterea Externa da Lua
+      const moonOuterGlow = ctx.createRadialGradient(moonX, moonY, moonRadius * 0.8, moonX, moonY, moonRadius * 2.8);
+      moonOuterGlow.addColorStop(0, 'rgba(219, 234, 254, 0.22)');
+      moonOuterGlow.addColorStop(0.4, 'rgba(147, 197, 253, 0.08)');
+      moonOuterGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = moonOuterGlow;
       ctx.beginPath();
-      ctx.arc(moonX, moonY, moonRadius * 3, 0, Math.PI * 2);
+      ctx.arc(moonX, moonY, moonRadius * 2.8, 0, Math.PI * 2);
       ctx.fill();
 
-      // Desenho do Crescente da Lua Mística
+      // Disco Principal da Lua
+      const moonDisk = ctx.createRadialGradient(
+        moonX - moonRadius * 0.3,
+        moonY - moonRadius * 0.3,
+        moonRadius * 0.1,
+        moonX,
+        moonY,
+        moonRadius
+      );
+      moonDisk.addColorStop(0, '#ffffff');
+      moonDisk.addColorStop(0.4, '#f8fafc');
+      moonDisk.addColorStop(0.75, '#e2e8f0');
+      moonDisk.addColorStop(1, '#cbd5e1');
+      ctx.fillStyle = moonDisk;
+      ctx.beginPath();
+      ctx.arc(moonX, moonY, moonRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Crateras e Mares Lunares (Textura Realista Suave)
       ctx.save();
-      ctx.fillStyle = '#fef3c7';
-      ctx.shadowColor = '#06b6d4';
-      ctx.shadowBlur = 15;
-      ctx.beginPath();
-      ctx.arc(moonX, moonY, moonRadius, 0.2 * Math.PI, 1.8 * Math.PI, false);
-      ctx.arc(moonX + moonRadius * 0.45, moonY - moonRadius * 0.1, moonRadius * 0.85, 1.7 * Math.PI, 0.3 * Math.PI, true);
-      ctx.closePath();
-      ctx.fill();
+      ctx.clip(); // Limita as crateras ao círculo da lua
+
+      const craters = [
+        { x: moonX - moonRadius * 0.25, y: moonY - moonRadius * 0.15, rx: moonRadius * 0.28, ry: moonRadius * 0.22, rot: 0.3, opacity: 0.15 },
+        { x: moonX + moonRadius * 0.35, y: moonY - moonRadius * 0.1, rx: moonRadius * 0.24, ry: moonRadius * 0.35, rot: -0.2, opacity: 0.18 },
+        { x: moonX - moonRadius * 0.1, y: moonY + moonRadius * 0.4, rx: moonRadius * 0.32, ry: moonRadius * 0.2, rot: 0.1, opacity: 0.14 },
+        { x: moonX + moonRadius * 0.2, y: moonY + moonRadius * 0.3, rx: moonRadius * 0.18, ry: moonRadius * 0.15, rot: 0.4, opacity: 0.16 },
+        { x: moonX - moonRadius * 0.4, y: moonY + moonRadius * 0.1, rx: moonRadius * 0.12, ry: moonRadius * 0.12, rot: 0, opacity: 0.12 },
+      ];
+
+      craters.forEach((c) => {
+        ctx.fillStyle = `rgba(100, 116, 139, ${c.opacity})`;
+        ctx.beginPath();
+        ctx.ellipse(c.x, c.y, c.rx, c.ry, c.rot, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Névoa translúcida sutil cruzando a lua
+      const cloudOffset = (frame * 0.15) % (width + 200);
+      const cloudGrad = ctx.createLinearGradient(moonX - moonRadius, moonY, moonX + moonRadius, moonY);
+      cloudGrad.addColorStop(0, 'rgba(15, 23, 42, 0)');
+      cloudGrad.addColorStop(0.5, 'rgba(15, 23, 42, 0.25)');
+      cloudGrad.addColorStop(1, 'rgba(15, 23, 42, 0)');
+      ctx.fillStyle = cloudGrad;
+      ctx.fillRect(moonX - moonRadius * 1.5, moonY - moonRadius * 0.3, moonRadius * 3, moonRadius * 0.6);
+
       ctx.restore();
 
       // ==========================================
-      // 3. MONTANHAS & SILHUETAS DISTANTES
+      // 3. MONTANHAS & HORIZONTE
       // ==========================================
-      // Cordilheira de montanhas distantes
-      ctx.fillStyle = '#070a14';
+      ctx.fillStyle = '#060912';
       ctx.beginPath();
       ctx.moveTo(0, height);
-      ctx.lineTo(0, height * 0.72);
-      ctx.quadraticCurveTo(width * 0.25, height * 0.62, width * 0.5, height * 0.7);
-      ctx.quadraticCurveTo(width * 0.75, height * 0.64, width, height * 0.68);
+      ctx.lineTo(0, height * 0.73);
+      ctx.quadraticCurveTo(width * 0.3, height * 0.62, width * 0.55, height * 0.7);
+      ctx.quadraticCurveTo(width * 0.8, height * 0.64, width, height * 0.69);
       ctx.lineTo(width, height);
       ctx.fill();
 
-      // Silhueta de Torii / Templo na Colina distante
-      const toriiX = isMobile ? width * 0.82 : width * 0.65;
-      const toriiY = height * 0.67;
-      ctx.fillStyle = '#04060b';
-      // Pilares do Torii
-      ctx.fillRect(toriiX, toriiY, 3, 18);
-      ctx.fillRect(toriiX + 16, toriiY, 3, 18);
-      // Viga superior curva
-      ctx.beginPath();
-      ctx.moveTo(toriiX - 5, toriiY + 2);
-      ctx.quadraticCurveTo(toriiX + 8, toriiY - 2, toriiX + 24, toriiY + 2);
-      ctx.lineWidth = 2.5;
-      ctx.strokeStyle = '#04060b';
-      ctx.stroke();
-
       // ==========================================
-      // 4. SOLO ROCHOSO & ACAMPAMENTO
+      // 4. SOLO & ILUMINAÇÃO DA FOGUEIRA
       // ==========================================
       ctx.fillStyle = '#080c16';
       ctx.beginPath();
       ctx.moveTo(0, height);
       ctx.lineTo(0, groundY - 15);
-      ctx.quadraticCurveTo(width * 0.4, groundY - 25, width * 0.8, groundY - 10);
+      ctx.quadraticCurveTo(width * 0.4, groundY - 20, width * 0.8, groundY - 8);
       ctx.lineTo(width, groundY);
       ctx.lineTo(width, height);
       ctx.fill();
 
-      // Brilho quente da fogueira refletindo no chão
-      const fireFlicker = Math.sin(frame * 0.15) * 8 + Math.cos(frame * 0.28) * 5;
-      const fireLightRadius = (isMobile ? 180 : 250) + fireFlicker;
-      const fireGlow = ctx.createRadialGradient(fireX, fireY, 10, fireX, fireY, fireLightRadius);
-      fireGlow.addColorStop(0, 'rgba(249, 115, 22, 0.45)');
-      fireGlow.addColorStop(0.3, 'rgba(234, 179, 8, 0.22)');
-      fireGlow.addColorStop(0.7, 'rgba(225, 29, 72, 0.08)');
+      // Pulso dinâmico de luz da fogueira refletindo no ambiente
+      const fireFlicker = Math.sin(frame * 0.18) * 10 + Math.cos(frame * 0.32) * 6;
+      const fireLightRadius = (isMobile ? 220 : 320) + fireFlicker;
+      const fireGlow = ctx.createRadialGradient(fireX, fireY, 15, fireX, fireY, fireLightRadius);
+      fireGlow.addColorStop(0, 'rgba(249, 115, 22, 0.55)');
+      fireGlow.addColorStop(0.25, 'rgba(234, 179, 8, 0.28)');
+      fireGlow.addColorStop(0.65, 'rgba(225, 29, 72, 0.1)');
       fireGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = fireGlow;
       ctx.beginPath();
@@ -193,160 +213,292 @@ export const ShinobiBackground: React.FC<ShinobiBackgroundProps> = ({ opacity = 
       ctx.fill();
 
       // Pedras ao redor da fogueira
-      ctx.fillStyle = '#181e2e';
-      [-22, -12, 0, 14, 24].forEach((offset, idx) => {
+      ctx.fillStyle = '#1c2438';
+      [-26, -14, 0, 16, 28].forEach((offset, idx) => {
         ctx.beginPath();
-        ctx.ellipse(fireX + offset, fireY + 12, 8, 4.5, (idx - 2) * 0.2, 0, Math.PI * 2);
+        ctx.ellipse(fireX + offset, fireY + 14, 9, 5, (idx - 2) * 0.2, 0, Math.PI * 2);
         ctx.fill();
       });
 
       // Troncos de madeira cruzados
-      ctx.strokeStyle = '#29180c';
-      ctx.lineWidth = 5;
+      ctx.strokeStyle = '#2d1b0f';
+      ctx.lineWidth = 6;
       ctx.beginPath();
-      ctx.moveTo(fireX - 16, fireY + 8);
-      ctx.lineTo(fireX + 16, fireY + 4);
-      ctx.moveTo(fireX + 14, fireY + 8);
-      ctx.lineTo(fireX - 14, fireY + 3);
+      ctx.moveTo(fireX - 20, fireY + 10);
+      ctx.lineTo(fireX + 20, fireY + 4);
+      ctx.moveTo(fireX + 18, fireY + 10);
+      ctx.lineTo(fireX - 18, fireY + 3);
       ctx.stroke();
 
       // ==========================================
-      // 5. CHAMAS ANIMADAS DA FOGUEIRA
+      // 5. CHAMAS VIVAS DA FOGUEIRA
       // ==========================================
-      const flameHeight = 32 + Math.sin(frame * 0.25) * 6 + Math.cos(frame * 0.4) * 4;
+      const flameH = 38 + Math.sin(frame * 0.28) * 8 + Math.cos(frame * 0.45) * 5;
 
-      // Chama externa (Vermelho / Carmesim)
-      ctx.fillStyle = 'rgba(225, 29, 72, 0.85)';
+      // Chama externa (Vermelho Carmesim)
+      ctx.fillStyle = 'rgba(225, 29, 72, 0.9)';
       ctx.beginPath();
-      ctx.moveTo(fireX - 14, fireY + 6);
-      ctx.quadraticCurveTo(fireX - 8 + Math.sin(frame * 0.2) * 4, fireY - flameHeight * 0.7, fireX, fireY - flameHeight);
-      ctx.quadraticCurveTo(fireX + 8 - Math.cos(frame * 0.2) * 4, fireY - flameHeight * 0.7, fireX + 14, fireY + 6);
+      ctx.moveTo(fireX - 16, fireY + 8);
+      ctx.quadraticCurveTo(fireX - 10 + Math.sin(frame * 0.2) * 5, fireY - flameH * 0.75, fireX, fireY - flameH);
+      ctx.quadraticCurveTo(fireX + 10 - Math.cos(frame * 0.2) * 5, fireY - flameH * 0.75, fireX + 16, fireY + 8);
       ctx.closePath();
       ctx.fill();
 
-      // Chama média (Laranja quente)
-      ctx.fillStyle = 'rgba(249, 115, 22, 0.92)';
+      // Chama intermediária (Laranja Fogo)
+      ctx.fillStyle = 'rgba(249, 115, 22, 0.95)';
       ctx.beginPath();
-      ctx.moveTo(fireX - 10, fireY + 6);
-      ctx.quadraticCurveTo(fireX - 5 + Math.cos(frame * 0.3) * 3, fireY - flameHeight * 0.6, fireX, fireY - flameHeight * 0.85);
-      ctx.quadraticCurveTo(fireX + 5 - Math.sin(frame * 0.3) * 3, fireY - flameHeight * 0.6, fireX + 10, fireY + 6);
+      ctx.moveTo(fireX - 12, fireY + 8);
+      ctx.quadraticCurveTo(fireX - 6 + Math.cos(frame * 0.3) * 4, fireY - flameH * 0.65, fireX, fireY - flameH * 0.88);
+      ctx.quadraticCurveTo(fireX + 6 - Math.sin(frame * 0.3) * 4, fireY - flameH * 0.65, fireX + 12, fireY + 8);
       ctx.closePath();
       ctx.fill();
 
-      // Núcleo da chama (Amarelo brilhante / Branco)
-      ctx.fillStyle = 'rgba(254, 240, 138, 0.98)';
+      // Núcleo brilhante (Dourado / Branco)
+      ctx.fillStyle = '#fef08a';
       ctx.beginPath();
-      ctx.moveTo(fireX - 6, fireY + 6);
-      ctx.quadraticCurveTo(fireX, fireY - flameHeight * 0.4, fireX, fireY - flameHeight * 0.55);
-      ctx.quadraticCurveTo(fireX, fireY - flameHeight * 0.4, fireX + 6, fireY + 6);
+      ctx.moveTo(fireX - 7, fireY + 8);
+      ctx.quadraticCurveTo(fireX, fireY - flameH * 0.45, fireX, fireY - flameH * 0.6);
+      ctx.quadraticCurveTo(fireX, fireY - flameH * 0.45, fireX + 7, fireY + 8);
       ctx.closePath();
       ctx.fill();
 
       // ==========================================
-      // 6. O SHINOBI (SENTADO DIANTE DO FOGO)
+      // 6. SHINOBI DETALHADO (ESTILO ANIME COM COLETE TÁTICO & ILUMINAÇÃO)
       // ==========================================
-      // Respiração suave do Shinobi
-      const breathe = Math.sin(frame * 0.05) * 1.5;
+      const breathe = Math.sin(frame * 0.05) * 2;
+      const scale = isMobile ? 1.15 : 1.35; // Escala bem visível
 
       ctx.save();
       ctx.translate(shinobiX, shinobiY);
+      ctx.scale(scale, scale);
 
-      // Sombra projetada pelo fogo atrás do Shinobi
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      // Sombra projetada no chão
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
       ctx.beginPath();
-      ctx.ellipse(-15, 5, 30, 8, -0.2, 0, Math.PI * 2);
+      ctx.ellipse(-15, 8, 35, 10, -0.15, 0, Math.PI * 2);
       ctx.fill();
 
-      // Pedra / Tronco onde o Shinobi está apoiado
-      ctx.fillStyle = '#0f1422';
+      // Pedra onde está sentado
+      ctx.fillStyle = '#141a29';
       ctx.beginPath();
-      ctx.ellipse(-12, 0, 26, 14, 0, 0, Math.PI * 2);
+      ctx.ellipse(-15, 2, 28, 14, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Katana descansando nas costas / bainha apoiada
-      ctx.strokeStyle = '#475569';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.moveTo(-18, -32 + breathe);
-      ctx.lineTo(-40, 4);
-      ctx.stroke();
-
-      // Cabo da Katana (Tsuka com detalhe de ouro)
-      ctx.strokeStyle = '#eab308';
+      // Katana / Bainha apoiada ao lado
+      ctx.strokeStyle = '#334155';
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(-14, -38 + breathe);
-      ctx.lineTo(-18, -32 + breathe);
+      ctx.moveTo(-22, -35 + breathe);
+      ctx.lineTo(-44, 6);
       ctx.stroke();
 
-      // CORPO DO SHINOBI (Silhueta escura com iluminação de fogo na frente)
-      // Pernas cruzadas em meditação
-      ctx.fillStyle = '#090d18';
+      // Cabo da Katana (Tsuka com enrolamento dourado)
+      ctx.strokeStyle = '#eab308';
+      ctx.lineWidth = 3.5;
       ctx.beginPath();
-      ctx.moveTo(-20, 2);
-      ctx.quadraticCurveTo(5, 5, 22, 2);
-      ctx.quadraticCurveTo(26, -10, 16, -14);
-      ctx.quadraticCurveTo(-5, -12, -22, -8);
+      ctx.moveTo(-18, -42 + breathe);
+      ctx.lineTo(-22, -35 + breathe);
+      ctx.stroke();
+
+      // PERNAS CRUZADAS / CALÇA ESCURA
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.moveTo(-24, 4);
+      ctx.quadraticCurveTo(8, 7, 26, 4);
+      ctx.quadraticCurveTo(28, -8, 18, -12);
+      ctx.quadraticCurveTo(-6, -10, -26, -6);
       ctx.closePath();
       ctx.fill();
 
-      // Tronco / Túnica Shinobi (com respiração sutil)
+      // Faixas brancas nos tornozelos (Bandagens Shinobi)
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(16, -4, 9, 6);
+      ctx.fillRect(-22, -4, 9, 6);
+
+      // COLETE TÁTICO SHINOBI (Verde Oliva / Cinza Tático estilo Jounin)
+      const vestColor = '#27382b';
+      const vestShadow = '#18241c';
+      const vestHighlight = '#45614c';
+
+      // Base do Tronco com Colete
+      ctx.fillStyle = vestColor;
       ctx.beginPath();
-      ctx.moveTo(-18, -10);
-      ctx.quadraticCurveTo(-14, -34 + breathe, -6, -42 + breathe);
-      ctx.quadraticCurveTo(12, -40 + breathe, 14, -20);
-      ctx.quadraticCurveTo(18, -8, 12, 0);
-      ctx.lineTo(-18, 0);
+      ctx.moveTo(-20, -8);
+      ctx.quadraticCurveTo(-16, -38 + breathe, -6, -46 + breathe);
+      ctx.quadraticCurveTo(14, -44 + breathe, 16, -20);
+      ctx.quadraticCurveTo(20, -6, 14, 2);
+      ctx.lineTo(-20, 2);
       ctx.closePath();
       ctx.fill();
 
-      // Braços repousados sobre os joelhos olhando para a chama
+      // Gola Alta Acolchoada do Colete Tático
+      ctx.fillStyle = vestShadow;
       ctx.beginPath();
-      ctx.moveTo(-8, -26 + breathe);
-      ctx.quadraticCurveTo(8, -22 + breathe, 18, -12);
-      ctx.quadraticCurveTo(12, -6, 2, -12);
+      ctx.moveTo(-12, -44 + breathe);
+      ctx.lineTo(-4, -58 + breathe);
+      ctx.lineTo(12, -54 + breathe);
+      ctx.lineTo(8, -40 + breathe);
       ctx.closePath();
       ctx.fill();
 
-      // Cabeça / Máscara Shinobi inclinada contemplando o fogo
-      ctx.beginPath();
-      ctx.arc(2, -48 + breathe, 9.5, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Testeira / Faixa Shinobi com pontas esvoaçando com o vento
-      ctx.fillStyle = '#060a14';
-      ctx.beginPath();
-      ctx.ellipse(2, -50 + breathe, 10, 3, 0.15, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Pontas da fita da testeira flutuando para trás
-      const ribbonWave1 = Math.sin(frame * 0.08) * 4;
-      const ribbonWave2 = Math.cos(frame * 0.1) * 5;
-      ctx.strokeStyle = '#e11d48'; // Fita Carmesim
+      // Detalhe da borda da gola iluminada pelo fogo
+      ctx.strokeStyle = 'rgba(251, 146, 60, 0.85)';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(-7, -49 + breathe);
-      ctx.quadraticCurveTo(-20, -52 + ribbonWave1, -34, -46 + ribbonWave2);
-      ctx.moveTo(-7, -48 + breathe);
-      ctx.quadraticCurveTo(-18, -44 + ribbonWave2, -30, -38 + ribbonWave1);
+      ctx.moveTo(8, -40 + breathe);
+      ctx.lineTo(12, -54 + breathe);
       ctx.stroke();
 
-      // ILUMINAÇÃO DE BORDA DA FOGUEIRA NO SHINOBI (Rim Light Quente)
-      // Dá contraste e faz o Shinobi ser perfeitamente visível mesmo sendo dark!
-      ctx.strokeStyle = 'rgba(251, 146, 60, 0.75)';
-      ctx.lineWidth = 1.8;
-      ctx.beginPath();
-      // Contorno iluminado no peito e joelhos
-      ctx.moveTo(12, -46 + breathe);
-      ctx.quadraticCurveTo(15, -34 + breathe, 16, -18);
-      ctx.quadraticCurveTo(22, -10, 22, 2);
-      ctx.stroke();
+      // Bolsos Utilitários Frontais no Colete (Pouches)
+      ctx.fillStyle = vestHighlight;
+      // Bolso 1
+      ctx.fillRect(4, -28 + breathe, 6, 10);
+      ctx.strokeStyle = '#18241c';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(4, -28 + breathe, 6, 10);
+      // Bolso 2
+      ctx.fillRect(11, -28 + breathe, 6, 10);
+      ctx.strokeRect(11, -28 + breathe, 6, 10);
 
-      // Contorno iluminado no perfil do rosto/máscara
-      ctx.strokeStyle = 'rgba(253, 224, 71, 0.85)';
+      // Zíper Central
+      ctx.strokeStyle = '#475569';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.arc(2, -48 + breathe, 9.5, -0.3 * Math.PI, 0.4 * Math.PI);
+      ctx.moveTo(2, -42 + breathe);
+      ctx.lineTo(2, -10 + breathe);
+      ctx.stroke();
+
+      // BRAÇOS E MANGAS ESCURAS
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.moveTo(-8, -32 + breathe);
+      ctx.quadraticCurveTo(10, -28 + breathe, 20, -14);
+      ctx.quadraticCurveTo(14, -6, 2, -14);
+      ctx.closePath();
+      ctx.fill();
+
+      // Luvas Shinobi com placa de metal
+      ctx.fillStyle = '#090d16';
+      ctx.beginPath();
+      ctx.arc(18, -12 + breathe, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(16, -14 + breathe, 4, 3); // Placa de ferro na luva
+
+      // CABEÇA & ROSTO
+      const headX = 2;
+      const headY = -56 + breathe;
+
+      // Pele do rosto
+      ctx.fillStyle = '#e2b18a';
+      ctx.beginPath();
+      ctx.arc(headX, headY, 11, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Olhos concentrados olhando calmamente para o fogo
+      ctx.fillStyle = '#090d16';
+      ctx.beginPath();
+      ctx.ellipse(headX + 4, headY - 1, 2.5, 1.2, 0.1, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Sobrancelha estilizada
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(headX + 1, headY - 4);
+      ctx.lineTo(headX + 7, headY - 3);
+      ctx.stroke();
+
+      // MÁSCARA SHINOBI (cobrindo do nariz até o pescoço)
+      ctx.fillStyle = '#1e293b';
+      ctx.beginPath();
+      ctx.moveTo(headX - 4, headY + 1);
+      ctx.quadraticCurveTo(headX + 6, headY + 1, headX + 9, headY + 3);
+      ctx.lineTo(headX + 7, headY + 12);
+      ctx.lineTo(headX - 6, headY + 10);
+      ctx.closePath();
+      ctx.fill();
+
+      // CABELO ESPETADO ESTILO ANIME (Prateado / Cinza Claro)
+      ctx.fillStyle = '#cbd5e1';
+      ctx.beginPath();
+      // Mechas espetadas dinâmicas
+      ctx.moveTo(headX - 10, headY - 4);
+      ctx.lineTo(headX - 18, headY - 12);
+      ctx.lineTo(headX - 11, headY - 14);
+      ctx.lineTo(headX - 16, headY - 24);
+      ctx.lineTo(headX - 6, headY - 20);
+      ctx.lineTo(headX - 4, headY - 30);
+      ctx.lineTo(headX + 4, headY - 24);
+      ctx.lineTo(headX + 12, headY - 28);
+      ctx.lineTo(headX + 10, headY - 18);
+      ctx.lineTo(headX + 18, headY - 16);
+      ctx.lineTo(headX + 10, headY - 8);
+      ctx.lineTo(headX + 14, headY + 2);
+      ctx.lineTo(headX + 6, headY - 6);
+      ctx.lineTo(headX - 2, headY - 6);
+      ctx.closePath();
+      ctx.fill();
+
+      // Detalhes de sombra no cabelo
+      ctx.fillStyle = '#94a3b8';
+      ctx.beginPath();
+      ctx.moveTo(headX - 10, headY - 4);
+      ctx.lineTo(headX - 14, headY - 16);
+      ctx.lineTo(headX - 6, headY - 14);
+      ctx.closePath();
+      ctx.fill();
+
+      // TESTEIRA SHINOBI (Faixa escura com placa protetora metálica)
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.ellipse(headX + 1, headY - 6, 11, 3.5, 0.1, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Placa de ferro metálica na testeira
+      ctx.fillStyle = '#e2e8f0';
+      ctx.beginPath();
+      ctx.ellipse(headX + 3, headY - 6, 5, 2.2, 0.1, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+
+      // Fita da testeira flutuando para trás no vento
+      const ribbon1 = Math.sin(frame * 0.08) * 5;
+      const ribbon2 = Math.cos(frame * 0.11) * 6;
+      ctx.strokeStyle = '#e11d48'; // Carmesim
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(headX - 9, headY - 6);
+      ctx.quadraticCurveTo(headX - 22, headY - 8 + ribbon1, headX - 38, headY - 4 + ribbon2);
+      ctx.moveTo(headX - 9, headY - 5);
+      ctx.quadraticCurveTo(headX - 20, headY - 2 + ribbon2, headX - 34, headY + 3 + ribbon1);
+      ctx.stroke();
+
+      // ILUMINAÇÃO CEL-SHADING DA FOGUEIRA NO SHINOBI (Brilho Quente Alaranjado)
+      // Destaque nítido e visível no perfil frontal, colete e mechas do cabelo
+      ctx.strokeStyle = 'rgba(253, 224, 71, 0.9)'; // Amarelo Dourado
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      // Borda do queixo e máscara iluminada
+      ctx.moveTo(headX + 5, headY + 2);
+      ctx.lineTo(headX + 9, headY + 6);
+      ctx.lineTo(headX + 8, headY + 12);
+      // Borda frontal do colete
+      ctx.moveTo(14, -40 + breathe);
+      ctx.quadraticCurveTo(18, -25 + breathe, 20, -10);
+      ctx.lineTo(24, 2);
+      ctx.stroke();
+
+      // Brilho alaranjado nas mechas frontais do cabelo
+      ctx.strokeStyle = 'rgba(249, 115, 22, 0.85)';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(headX + 4, headY - 24);
+      ctx.lineTo(headX + 12, headY - 28);
+      ctx.lineTo(headX + 10, headY - 18);
+      ctx.lineTo(headX + 18, headY - 16);
       ctx.stroke();
 
       ctx.restore();
@@ -356,11 +508,11 @@ export const ShinobiBackground: React.FC<ShinobiBackgroundProps> = ({ opacity = 
       // ==========================================
       embers.forEach((emb) => {
         if (emb.life <= 0) {
-          emb.x = fireX + (Math.random() - 0.5) * 12;
-          emb.y = fireY - 5;
+          emb.x = fireX + (Math.random() - 0.5) * 14;
+          emb.y = fireY - 6;
           emb.life = emb.maxLife;
-          emb.speedY = -Math.random() * 2.5 - 1.2;
-          emb.speedX = (Math.random() - 0.5) * 1.5 + 0.3; // Sopradas levemente pelo vento
+          emb.speedY = -Math.random() * 2.8 - 1.4;
+          emb.speedX = (Math.random() - 0.5) * 1.8 + 0.4;
         }
 
         emb.x += emb.speedX;
@@ -371,7 +523,7 @@ export const ShinobiBackground: React.FC<ShinobiBackgroundProps> = ({ opacity = 
         ctx.fillStyle = emb.color;
         ctx.globalAlpha = Math.max(0, emberAlpha);
         ctx.shadowColor = emb.color;
-        ctx.shadowBlur = 6;
+        ctx.shadowBlur = 7;
         ctx.beginPath();
         ctx.arc(emb.x, emb.y, emb.size, 0, Math.PI * 2);
         ctx.fill();
@@ -380,7 +532,7 @@ export const ShinobiBackground: React.FC<ShinobiBackgroundProps> = ({ opacity = 
       });
 
       // ==========================================
-      // 8. ORBES DE CHAKRA ESPIRITUAL
+      // 8. ORBES ESPIRITUAIS DE CHAKRA
       // ==========================================
       chakraMotes.forEach((mote) => {
         mote.x += mote.speedX;
@@ -404,7 +556,7 @@ export const ShinobiBackground: React.FC<ShinobiBackgroundProps> = ({ opacity = 
       });
 
       // ==========================================
-      // 9. PÉTALAS DE SAKURA AO VENTO NOTURNO
+      // 9. PÉTALAS DE SAKURA NOTURNA AO VENTO
       // ==========================================
       petals.forEach((petal) => {
         petal.swingAngle += petal.swingSpeed;
@@ -425,7 +577,6 @@ export const ShinobiBackground: React.FC<ShinobiBackgroundProps> = ({ opacity = 
         ctx.rotate(petal.rotation);
         ctx.globalAlpha = petal.alpha;
 
-        // Pétala com curvatura natural
         ctx.fillStyle = '#e11d48';
         ctx.beginPath();
         ctx.moveTo(0, 0);
@@ -454,8 +605,8 @@ export const ShinobiBackground: React.FC<ShinobiBackgroundProps> = ({ opacity = 
         className="w-full h-full block transition-opacity duration-1000"
         style={{ opacity }}
       />
-      {/* Vinheta escura periférica para manter foco e contraste nos textos do quiz */}
-      <div className="absolute inset-0 bg-gradient-to-t from-shinobi-bg/90 via-transparent to-shinobi-bg/60 pointer-events-none" />
+      {/* Vinheta escura periférica para manter legibilidade sem ofuscar o shinobi */}
+      <div className="absolute inset-0 bg-gradient-to-t from-shinobi-bg/80 via-transparent to-shinobi-bg/50 pointer-events-none" />
     </div>
   );
 };
