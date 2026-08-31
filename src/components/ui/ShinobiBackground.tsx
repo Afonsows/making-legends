@@ -26,57 +26,54 @@ export const ShinobiBackground: React.FC<ShinobiBackgroundProps> = ({ opacity = 
 
     window.addEventListener('resize', handleResize);
 
-    // 1. Brasas e Fagulhas Vivas Subindo da Fogueira
-    const embersCount = width < 768 ? 30 : 50;
+    const isMobile = width < 768;
+
+    // 1. Brasas Vivas e Quentes da Fogueira subindo e espalhando pelo ambiente
+    const embersCount = isMobile ? 50 : 90;
     const embers = Array.from({ length: embersCount }).map(() => ({
       x: 0,
       y: 0,
-      size: Math.random() * 2.8 + 1,
-      speedX: (Math.random() - 0.5) * 1.8 + 0.3,
-      speedY: -Math.random() * 2.8 - 1.2,
-      color: Math.random() > 0.4 ? '#f59e0b' : Math.random() > 0.2 ? '#ef4444' : '#fbbf24',
+      size: Math.random() * 2.8 + 0.8,
+      speedX: (Math.random() - 0.35) * 2.2 + 0.5,
+      speedY: -Math.random() * 2.6 - 1.0,
+      color: Math.random() > 0.45 ? '#fbbf24' : Math.random() > 0.2 ? '#f97316' : '#ef4444',
       alpha: Math.random() * 0.9 + 0.3,
-      life: Math.random() * 70 + 20,
-      maxLife: 90,
+      life: Math.random() * 80 + 20,
+      maxLife: 100,
     }));
 
-    // 2. Micro-Fagulhas do Crepitar da Madeira (Popping Sparks)
-    const crackleSparks = Array.from({ length: 15 }).map(() => ({
-      x: 0,
-      y: 0,
-      size: Math.random() * 1.5 + 0.8,
-      speedX: (Math.random() - 0.5) * 4,
-      speedY: -Math.random() * 4 - 2,
-      alpha: 0,
-      life: 0,
-      maxLife: 25,
-    }));
-
-    // 3. Fagulhas de Chakra Roxo / Sombra Mística (Estilo Solo Leveling)
-    const purpleWisps = Array.from({ length: 20 }).map(() => ({
-      x: 0,
-      y: 0,
-      size: Math.random() * 3.5 + 1.5,
-      speedX: (Math.random() - 0.5) * 0.8 + 0.2,
-      speedY: -Math.random() * 1.2 - 0.4,
-      color: Math.random() > 0.5 ? '#a855f7' : '#c084fc',
-      alpha: Math.random() * 0.7 + 0.2,
-      pulse: Math.random() * Math.PI * 2,
-    }));
-
-    // 4. Pétalas de Sakura Noturna ao Vento
-    const petals = Array.from({ length: 22 }).map(() => ({
+    // 2. Orbes de Chakra Espiritual e Sombra Mística (Roxo Solo Leveling, Ciano Shinobi & Dourado)
+    const chakraCount = isMobile ? 30 : 55;
+    const chakraMotes = Array.from({ length: chakraCount }).map(() => ({
       x: Math.random() * width,
       y: Math.random() * height,
-      size: Math.random() * 5 + 3.5,
-      speedX: Math.random() * 1.5 + 0.7,
-      speedY: Math.random() * 0.8 + 0.3,
-      rotation: Math.random() * Math.PI * 2,
-      rotSpeed: (Math.random() - 0.5) * 0.04,
-      swingAngle: Math.random() * Math.PI * 2,
-      swingSpeed: Math.random() * 0.02 + 0.01,
-      alpha: Math.random() * 0.5 + 0.2,
+      radius: Math.random() * 2.8 + 1.2,
+      speedX: (Math.random() - 0.5) * 0.6 + 0.2,
+      speedY: -Math.random() * 0.9 - 0.3,
+      color: Math.random() > 0.5 ? '#c084fc' : Math.random() > 0.25 ? '#06b6d4' : '#eab308',
+      alpha: Math.random() * 0.65 + 0.25,
+      pulse: Math.random() * Math.PI * 2,
+      pulseSpeed: Math.random() * 0.03 + 0.015,
     }));
+
+    // 3. Pétalas de Sakura Noturna ao Vento (Camadas de profundidade / Parallax)
+    const petalsCount = isMobile ? 35 : 65;
+    const petals = Array.from({ length: petalsCount }).map(() => {
+      const isForeground = Math.random() > 0.75;
+      return {
+        x: Math.random() * width,
+        y: Math.random() * height,
+        size: isForeground ? Math.random() * 4 + 6 : Math.random() * 3 + 3,
+        speedX: (isForeground ? 1.8 : 1.2) + Math.random() * 0.8,
+        speedY: (isForeground ? 1.0 : 0.6) + Math.random() * 0.4,
+        rotation: Math.random() * Math.PI * 2,
+        rotSpeed: (Math.random() - 0.5) * 0.05,
+        swingAngle: Math.random() * Math.PI * 2,
+        swingSpeed: Math.random() * 0.025 + 0.01,
+        alpha: isForeground ? Math.random() * 0.4 + 0.4 : Math.random() * 0.3 + 0.2,
+        color: Math.random() > 0.3 ? '#e11d48' : '#be123c',
+      };
+    });
 
     let frame = 0;
 
@@ -84,23 +81,19 @@ export const ShinobiBackground: React.FC<ShinobiBackgroundProps> = ({ opacity = 
       frame++;
       ctx.clearRect(0, 0, width, height);
 
-      // Localização precisa da fogueira e do shinobi na imagem de fundo
-      const isMobile = width < 768;
-      const fireX = width * (isMobile ? 0.35 : 0.33);
-      const fireY = height * (isMobile ? 0.84 : 0.81);
-      const shinobiX = width * (isMobile ? 0.65 : 0.62);
-      const shinobiY = height * (isMobile ? 0.62 : 0.58);
+      const fireX = width * (width < 768 ? 0.35 : 0.33);
+      const fireY = height * (width < 768 ? 0.84 : 0.81);
 
       // ==========================================
-      // 1. ILUMINAÇÃO DINÂMICA DA FOGUEIRA (RADIAL PULSE)
+      // 1. ILUMINAÇÃO SUTIL DA FOGUEIRA NO AMBIENTE
       // ==========================================
-      const fireFlicker = Math.sin(frame * 0.2) * 14 + Math.cos(frame * 0.35) * 8 + Math.sin(frame * 0.5) * 5;
-      const fireRadius = (isMobile ? 190 : 270) + fireFlicker;
+      const fireFlicker = Math.sin(frame * 0.15) * 12 + Math.cos(frame * 0.28) * 8;
+      const fireRadius = (width < 768 ? 200 : 280) + fireFlicker;
 
       const fireGlow = ctx.createRadialGradient(fireX, fireY, 15, fireX, fireY, fireRadius);
-      fireGlow.addColorStop(0, 'rgba(251, 146, 60, 0.35)');
-      fireGlow.addColorStop(0.25, 'rgba(234, 179, 8, 0.18)');
-      fireGlow.addColorStop(0.65, 'rgba(225, 29, 72, 0.06)');
+      fireGlow.addColorStop(0, 'rgba(251, 146, 60, 0.25)');
+      fireGlow.addColorStop(0.3, 'rgba(234, 179, 8, 0.12)');
+      fireGlow.addColorStop(0.7, 'rgba(225, 29, 72, 0.04)');
       fireGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
       ctx.fillStyle = fireGlow;
@@ -109,102 +102,15 @@ export const ShinobiBackground: React.FC<ShinobiBackgroundProps> = ({ opacity = 
       ctx.fill();
 
       // ==========================================
-      // 2. CHAMAS VIVAS ANIMADAS (ANIMATED FLAMES & DANCING TONGUES)
-      // ==========================================
-      ctx.save();
-      // Usar blend mode 'screen' / 'lighter' para criar fogo brilhante e vivo
-      ctx.globalCompositeOperation = 'screen';
-
-      const baseFlameH = isMobile ? 36 : 48;
-      
-      // Múltiplas línguas de fogo dançando com turbulência orgânica
-      const flameTongues = [
-        { offsetX: -12, hMult: 0.8, waveSpeed: 0.28, phase: 0, color: 'rgba(239, 68, 68, 0.75)' },
-        { offsetX: 12, hMult: 0.85, waveSpeed: 0.24, phase: 1.5, color: 'rgba(239, 68, 68, 0.75)' },
-        { offsetX: -6, hMult: 1.05, waveSpeed: 0.32, phase: 0.8, color: 'rgba(249, 115, 22, 0.85)' },
-        { offsetX: 6, hMult: 1.1, waveSpeed: 0.3, phase: 2.2, color: 'rgba(249, 115, 22, 0.85)' },
-        { offsetX: 0, hMult: 1.25, waveSpeed: 0.36, phase: 0.4, color: 'rgba(253, 224, 71, 0.95)' }, // Núcleo brilhante
-      ];
-
-      flameTongues.forEach((t) => {
-        const tongueH = baseFlameH * t.hMult + Math.sin(frame * t.waveSpeed + t.phase) * 10 + Math.cos(frame * 0.45) * 6;
-        const tipWobbleX = Math.sin(frame * (t.waveSpeed * 1.2) + t.phase) * 8;
-        const baseW = isMobile ? 14 : 18;
-
-        ctx.fillStyle = t.color;
-        ctx.beginPath();
-        ctx.moveTo(fireX + t.offsetX - baseW * 0.5, fireY + 8);
-        ctx.quadraticCurveTo(
-          fireX + t.offsetX - baseW * 0.3 + tipWobbleX * 0.5,
-          fireY - tongueH * 0.5,
-          fireX + t.offsetX + tipWobbleX,
-          fireY - tongueH
-        );
-        ctx.quadraticCurveTo(
-          fireX + t.offsetX + baseW * 0.3 - tipWobbleX * 0.5,
-          fireY - tongueH * 0.5,
-          fireX + t.offsetX + baseW * 0.5,
-          fireY + 8
-        );
-        ctx.closePath();
-        ctx.fill();
-      });
-
-      // Centro em brasa viva super quente (Hot Coal Core)
-      const coreGlow = ctx.createRadialGradient(fireX, fireY + 4, 2, fireX, fireY + 4, 18);
-      coreGlow.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
-      coreGlow.addColorStop(0.4, 'rgba(254, 240, 138, 0.9)');
-      coreGlow.addColorStop(0.8, 'rgba(249, 115, 22, 0.6)');
-      coreGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = coreGlow;
-      ctx.beginPath();
-      ctx.arc(fireX, fireY + 4, 18, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.restore();
-
-      // ==========================================
-      // 3. CREPITAR DA MADEIRA (POPPING CRACKLE SPARKS)
-      // ==========================================
-      crackleSparks.forEach((spk) => {
-        if (spk.life <= 0) {
-          if (Math.random() < 0.12) { // Dispara esporadicamente
-            spk.x = fireX + (Math.random() - 0.5) * 20;
-            spk.y = fireY + 2;
-            spk.speedX = (Math.random() - 0.5) * 5 + (Math.random() > 0.5 ? 1 : -1);
-            spk.speedY = -Math.random() * 4 - 2.5;
-            spk.life = spk.maxLife;
-            spk.alpha = 1.0;
-          }
-        } else {
-          spk.x += spk.speedX;
-          spk.y += spk.speedY;
-          spk.speedY += 0.12; // Gravidade leve na faísca
-          spk.life--;
-          spk.alpha = spk.life / spk.maxLife;
-
-          ctx.save();
-          ctx.fillStyle = '#fef08a';
-          ctx.globalAlpha = spk.alpha;
-          ctx.shadowColor = '#f59e0b';
-          ctx.shadowBlur = 6;
-          ctx.beginPath();
-          ctx.arc(spk.x, spk.y, spk.size, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-        }
-      });
-
-      // ==========================================
-      // 4. BRASAS & FAGULHAS FLUTUANTES DA FOGUEIRA
+      // 2. BRASAS & FAGULHAS VIVAS DA FOGUEIRA
       // ==========================================
       embers.forEach((emb) => {
         if (emb.life <= 0) {
-          emb.x = fireX + (Math.random() - 0.5) * 45;
-          emb.y = fireY - 12 + (Math.random() - 0.5) * 15;
+          emb.x = fireX + (Math.random() - 0.5) * 60;
+          emb.y = fireY - 10 + (Math.random() - 0.5) * 20;
           emb.life = emb.maxLife;
           emb.speedY = -Math.random() * 2.8 - 1.2;
-          emb.speedX = (Math.random() - 0.5) * 1.6 + 0.4;
+          emb.speedX = (Math.random() - 0.4) * 2.0 + 0.6;
         }
 
         emb.x += emb.speedX;
@@ -224,44 +130,49 @@ export const ShinobiBackground: React.FC<ShinobiBackgroundProps> = ({ opacity = 
       });
 
       // ==========================================
-      // 5. AURA DE CHAKRA ROXO / SOMBRA FLUTUANTE
+      // 3. ORBES DE CHAKRA ESPIRITUAL PELO AMBIENTE
       // ==========================================
-      purpleWisps.forEach((wisp, idx) => {
-        wisp.pulse += 0.03;
-        const radiusOffset = 45 + (idx % 5) * 15;
-        const angle = frame * 0.02 + idx;
+      chakraMotes.forEach((mote) => {
+        mote.pulse += mote.pulseSpeed;
+        mote.x += mote.speedX;
+        mote.y += mote.speedY;
 
-        const wx = shinobiX + Math.cos(angle) * radiusOffset;
-        const wy = shinobiY + Math.sin(angle) * (radiusOffset * 0.8) - 15;
+        if (mote.y < -20) {
+          mote.y = height + 20;
+          mote.x = Math.random() * width;
+        }
+        if (mote.x > width + 20) {
+          mote.x = -20;
+        }
 
-        const dynAlpha = Math.max(0.05, wisp.alpha + Math.sin(wisp.pulse) * 0.2);
+        const dynAlpha = Math.max(0.1, mote.alpha + Math.sin(mote.pulse) * 0.25);
 
         ctx.save();
-        ctx.fillStyle = wisp.color;
+        ctx.fillStyle = mote.color;
         ctx.globalAlpha = dynAlpha;
-        ctx.shadowColor = '#c084fc';
+        ctx.shadowColor = mote.color;
         ctx.shadowBlur = 12;
         ctx.beginPath();
-        ctx.arc(wx, wy, wisp.size, 0, Math.PI * 2);
+        ctx.arc(mote.x, mote.y, mote.radius, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       });
 
       // ==========================================
-      // 6. PÉTALAS DE SAKURA NOTURNA AO VENTO
+      // 4. PÉTALAS DE SAKURA NOTURNA AO VENTO
       // ==========================================
       petals.forEach((petal) => {
         petal.swingAngle += petal.swingSpeed;
         petal.rotation += petal.rotSpeed;
-        petal.x += petal.speedX + Math.sin(petal.swingAngle) * 0.9;
+        petal.x += petal.speedX + Math.sin(petal.swingAngle) * 1.1;
         petal.y += petal.speedY;
 
-        if (petal.y > height + 20) {
-          petal.y = -20;
+        if (petal.y > height + 25) {
+          petal.y = -25;
           petal.x = Math.random() * width;
         }
-        if (petal.x > width + 20) {
-          petal.x = -20;
+        if (petal.x > width + 25) {
+          petal.x = -25;
         }
 
         ctx.save();
@@ -269,7 +180,7 @@ export const ShinobiBackground: React.FC<ShinobiBackgroundProps> = ({ opacity = 
         ctx.rotate(petal.rotation);
         ctx.globalAlpha = petal.alpha;
 
-        ctx.fillStyle = '#e11d48';
+        ctx.fillStyle = petal.color;
         ctx.beginPath();
         ctx.moveTo(0, 0);
         ctx.quadraticCurveTo(petal.size, -petal.size * 0.6, petal.size * 1.5, 0);
@@ -297,18 +208,18 @@ export const ShinobiBackground: React.FC<ShinobiBackgroundProps> = ({ opacity = 
         className="absolute inset-0 bg-cover bg-center sm:bg-[center_top] transform scale-105 transition-transform duration-1000"
         style={{
           backgroundImage: `url('/images/shinobi-campfire-anime.jpg')`,
-          filter: 'brightness(0.75) contrast(1.1)',
+          filter: 'brightness(0.8) contrast(1.1)',
         }}
       />
 
-      {/* Camada de Partículas, Chamas Vivas da Fogueira & Crepitar em Loop */}
+      {/* Camada Rica de Pétalas de Sakura, Brasas Vivas e Orbes de Chakra em Loop */}
       <canvas
         ref={canvasRef}
         className="absolute inset-0 w-full h-full block"
         style={{ opacity }}
       />
 
-      {/* Gradiente suave para garantir legibilidade perfeita dos textos */}
+      {/* Gradiente sutil para manter legibilidade e contraste absoluto dos textos */}
       <div className="absolute inset-0 bg-gradient-to-t from-shinobi-bg/85 via-shinobi-bg/35 to-shinobi-bg/55 pointer-events-none" />
       <div className="absolute inset-0 bg-radial-vignette pointer-events-none opacity-30" />
     </div>
