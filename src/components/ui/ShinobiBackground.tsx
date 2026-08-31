@@ -26,22 +26,34 @@ export const ShinobiBackground: React.FC<ShinobiBackgroundProps> = ({ opacity = 
 
     window.addEventListener('resize', handleResize);
 
-    // 1. Brasas Vivas Subindo da Fogueira
-    const embersCount = width < 768 ? 25 : 45;
+    // 1. Brasas e Fagulhas Vivas Subindo da Fogueira
+    const embersCount = width < 768 ? 30 : 50;
     const embers = Array.from({ length: embersCount }).map(() => ({
       x: 0,
       y: 0,
       size: Math.random() * 2.8 + 1,
-      speedX: (Math.random() - 0.5) * 1.6 + 0.3,
-      speedY: -Math.random() * 2.5 - 1.2,
+      speedX: (Math.random() - 0.5) * 1.8 + 0.3,
+      speedY: -Math.random() * 2.8 - 1.2,
       color: Math.random() > 0.4 ? '#f59e0b' : Math.random() > 0.2 ? '#ef4444' : '#fbbf24',
       alpha: Math.random() * 0.9 + 0.3,
       life: Math.random() * 70 + 20,
       maxLife: 90,
     }));
 
-    // 2. Fagulhas de Chakra Roxo / Sombra Mística (Estilo Solo Leveling / Shinobi)
-    const purpleWisps = Array.from({ length: 22 }).map(() => ({
+    // 2. Micro-Fagulhas do Crepitar da Madeira (Popping Sparks)
+    const crackleSparks = Array.from({ length: 15 }).map(() => ({
+      x: 0,
+      y: 0,
+      size: Math.random() * 1.5 + 0.8,
+      speedX: (Math.random() - 0.5) * 4,
+      speedY: -Math.random() * 4 - 2,
+      alpha: 0,
+      life: 0,
+      maxLife: 25,
+    }));
+
+    // 3. Fagulhas de Chakra Roxo / Sombra Mística (Estilo Solo Leveling)
+    const purpleWisps = Array.from({ length: 20 }).map(() => ({
       x: 0,
       y: 0,
       size: Math.random() * 3.5 + 1.5,
@@ -52,8 +64,8 @@ export const ShinobiBackground: React.FC<ShinobiBackgroundProps> = ({ opacity = 
       pulse: Math.random() * Math.PI * 2,
     }));
 
-    // 3. Pétalas de Sakura Noturna ao Vento
-    const petals = Array.from({ length: 24 }).map(() => ({
+    // 4. Pétalas de Sakura Noturna ao Vento
+    const petals = Array.from({ length: 22 }).map(() => ({
       x: Math.random() * width,
       y: Math.random() * height,
       size: Math.random() * 5 + 3.5,
@@ -72,23 +84,23 @@ export const ShinobiBackground: React.FC<ShinobiBackgroundProps> = ({ opacity = 
       frame++;
       ctx.clearRect(0, 0, width, height);
 
-      // Localização aproximada da fogueira e do shinobi na imagem de fundo
+      // Localização precisa da fogueira e do shinobi na imagem de fundo
       const isMobile = width < 768;
       const fireX = width * (isMobile ? 0.35 : 0.33);
-      const fireY = height * (isMobile ? 0.85 : 0.82);
+      const fireY = height * (isMobile ? 0.84 : 0.81);
       const shinobiX = width * (isMobile ? 0.65 : 0.62);
       const shinobiY = height * (isMobile ? 0.62 : 0.58);
 
       // ==========================================
-      // 1. ILUMINAÇÃO DINÂMICA DA FOGUEIRA
+      // 1. ILUMINAÇÃO DINÂMICA DA FOGUEIRA (RADIAL PULSE)
       // ==========================================
-      const fireFlicker = Math.sin(frame * 0.2) * 12 + Math.cos(frame * 0.35) * 8;
-      const fireRadius = (isMobile ? 180 : 260) + fireFlicker;
+      const fireFlicker = Math.sin(frame * 0.2) * 14 + Math.cos(frame * 0.35) * 8 + Math.sin(frame * 0.5) * 5;
+      const fireRadius = (isMobile ? 190 : 270) + fireFlicker;
 
       const fireGlow = ctx.createRadialGradient(fireX, fireY, 15, fireX, fireY, fireRadius);
-      fireGlow.addColorStop(0, 'rgba(251, 146, 60, 0.22)');
-      fireGlow.addColorStop(0.35, 'rgba(234, 179, 8, 0.12)');
-      fireGlow.addColorStop(0.7, 'rgba(225, 29, 72, 0.04)');
+      fireGlow.addColorStop(0, 'rgba(251, 146, 60, 0.35)');
+      fireGlow.addColorStop(0.25, 'rgba(234, 179, 8, 0.18)');
+      fireGlow.addColorStop(0.65, 'rgba(225, 29, 72, 0.06)');
       fireGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
       ctx.fillStyle = fireGlow;
@@ -97,15 +109,102 @@ export const ShinobiBackground: React.FC<ShinobiBackgroundProps> = ({ opacity = 
       ctx.fill();
 
       // ==========================================
-      // 2. BRASAS & FAGULHAS DA FOGUEIRA
+      // 2. CHAMAS VIVAS ANIMADAS (ANIMATED FLAMES & DANCING TONGUES)
+      // ==========================================
+      ctx.save();
+      // Usar blend mode 'screen' / 'lighter' para criar fogo brilhante e vivo
+      ctx.globalCompositeOperation = 'screen';
+
+      const baseFlameH = isMobile ? 36 : 48;
+      
+      // Múltiplas línguas de fogo dançando com turbulência orgânica
+      const flameTongues = [
+        { offsetX: -12, hMult: 0.8, waveSpeed: 0.28, phase: 0, color: 'rgba(239, 68, 68, 0.75)' },
+        { offsetX: 12, hMult: 0.85, waveSpeed: 0.24, phase: 1.5, color: 'rgba(239, 68, 68, 0.75)' },
+        { offsetX: -6, hMult: 1.05, waveSpeed: 0.32, phase: 0.8, color: 'rgba(249, 115, 22, 0.85)' },
+        { offsetX: 6, hMult: 1.1, waveSpeed: 0.3, phase: 2.2, color: 'rgba(249, 115, 22, 0.85)' },
+        { offsetX: 0, hMult: 1.25, waveSpeed: 0.36, phase: 0.4, color: 'rgba(253, 224, 71, 0.95)' }, // Núcleo brilhante
+      ];
+
+      flameTongues.forEach((t) => {
+        const tongueH = baseFlameH * t.hMult + Math.sin(frame * t.waveSpeed + t.phase) * 10 + Math.cos(frame * 0.45) * 6;
+        const tipWobbleX = Math.sin(frame * (t.waveSpeed * 1.2) + t.phase) * 8;
+        const baseW = isMobile ? 14 : 18;
+
+        ctx.fillStyle = t.color;
+        ctx.beginPath();
+        ctx.moveTo(fireX + t.offsetX - baseW * 0.5, fireY + 8);
+        ctx.quadraticCurveTo(
+          fireX + t.offsetX - baseW * 0.3 + tipWobbleX * 0.5,
+          fireY - tongueH * 0.5,
+          fireX + t.offsetX + tipWobbleX,
+          fireY - tongueH
+        );
+        ctx.quadraticCurveTo(
+          fireX + t.offsetX + baseW * 0.3 - tipWobbleX * 0.5,
+          fireY - tongueH * 0.5,
+          fireX + t.offsetX + baseW * 0.5,
+          fireY + 8
+        );
+        ctx.closePath();
+        ctx.fill();
+      });
+
+      // Centro em brasa viva super quente (Hot Coal Core)
+      const coreGlow = ctx.createRadialGradient(fireX, fireY + 4, 2, fireX, fireY + 4, 18);
+      coreGlow.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+      coreGlow.addColorStop(0.4, 'rgba(254, 240, 138, 0.9)');
+      coreGlow.addColorStop(0.8, 'rgba(249, 115, 22, 0.6)');
+      coreGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = coreGlow;
+      ctx.beginPath();
+      ctx.arc(fireX, fireY + 4, 18, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+
+      // ==========================================
+      // 3. CREPITAR DA MADEIRA (POPPING CRACKLE SPARKS)
+      // ==========================================
+      crackleSparks.forEach((spk) => {
+        if (spk.life <= 0) {
+          if (Math.random() < 0.12) { // Dispara esporadicamente
+            spk.x = fireX + (Math.random() - 0.5) * 20;
+            spk.y = fireY + 2;
+            spk.speedX = (Math.random() - 0.5) * 5 + (Math.random() > 0.5 ? 1 : -1);
+            spk.speedY = -Math.random() * 4 - 2.5;
+            spk.life = spk.maxLife;
+            spk.alpha = 1.0;
+          }
+        } else {
+          spk.x += spk.speedX;
+          spk.y += spk.speedY;
+          spk.speedY += 0.12; // Gravidade leve na faísca
+          spk.life--;
+          spk.alpha = spk.life / spk.maxLife;
+
+          ctx.save();
+          ctx.fillStyle = '#fef08a';
+          ctx.globalAlpha = spk.alpha;
+          ctx.shadowColor = '#f59e0b';
+          ctx.shadowBlur = 6;
+          ctx.beginPath();
+          ctx.arc(spk.x, spk.y, spk.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      });
+
+      // ==========================================
+      // 4. BRASAS & FAGULHAS FLUTUANTES DA FOGUEIRA
       // ==========================================
       embers.forEach((emb) => {
         if (emb.life <= 0) {
-          emb.x = fireX + (Math.random() - 0.5) * 50;
-          emb.y = fireY - 10 + (Math.random() - 0.5) * 20;
+          emb.x = fireX + (Math.random() - 0.5) * 45;
+          emb.y = fireY - 12 + (Math.random() - 0.5) * 15;
           emb.life = emb.maxLife;
           emb.speedY = -Math.random() * 2.8 - 1.2;
-          emb.speedX = (Math.random() - 0.5) * 1.5 + 0.4;
+          emb.speedX = (Math.random() - 0.5) * 1.6 + 0.4;
         }
 
         emb.x += emb.speedX;
@@ -125,7 +224,7 @@ export const ShinobiBackground: React.FC<ShinobiBackgroundProps> = ({ opacity = 
       });
 
       // ==========================================
-      // 3. AURA DE CHAKRA ROXO / SOMBRA FLUTUANTE
+      // 5. AURA DE CHAKRA ROXO / SOMBRA FLUTUANTE
       // ==========================================
       purpleWisps.forEach((wisp, idx) => {
         wisp.pulse += 0.03;
@@ -149,7 +248,7 @@ export const ShinobiBackground: React.FC<ShinobiBackgroundProps> = ({ opacity = 
       });
 
       // ==========================================
-      // 4. PÉTALAS DE SAKURA NOTURNA AO VENTO
+      // 6. PÉTALAS DE SAKURA NOTURNA AO VENTO
       // ==========================================
       petals.forEach((petal) => {
         petal.swingAngle += petal.swingSpeed;
@@ -198,20 +297,20 @@ export const ShinobiBackground: React.FC<ShinobiBackgroundProps> = ({ opacity = 
         className="absolute inset-0 bg-cover bg-center sm:bg-[center_top] transform scale-105 transition-transform duration-1000"
         style={{
           backgroundImage: `url('/images/shinobi-campfire-anime.jpg')`,
-          filter: 'brightness(0.72) contrast(1.1)',
+          filter: 'brightness(0.75) contrast(1.1)',
         }}
       />
 
-      {/* Camada de Partículas & Fogo Animado em Loop */}
+      {/* Camada de Partículas, Chamas Vivas da Fogueira & Crepitar em Loop */}
       <canvas
         ref={canvasRef}
         className="absolute inset-0 w-full h-full block"
         style={{ opacity }}
       />
 
-      {/* Gradiente sutil para garantir legibilidade dos textos centrais */}
-      <div className="absolute inset-0 bg-gradient-to-t from-shinobi-bg via-shinobi-bg/40 to-shinobi-bg/60 pointer-events-none" />
-      <div className="absolute inset-0 bg-radial-vignette pointer-events-none opacity-40" />
+      {/* Gradiente suave para garantir legibilidade perfeita dos textos */}
+      <div className="absolute inset-0 bg-gradient-to-t from-shinobi-bg/85 via-shinobi-bg/35 to-shinobi-bg/55 pointer-events-none" />
+      <div className="absolute inset-0 bg-radial-vignette pointer-events-none opacity-30" />
     </div>
   );
 };
