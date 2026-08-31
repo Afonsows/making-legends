@@ -85,7 +85,7 @@ export const AppContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-shinobi-bg text-slate-100 flex flex-col selection:bg-shinobi-crimson selection:text-white relative overflow-x-hidden">
       {/* Ambientação Shinobi Animada */}
-      <ShinobiBackground opacity={0.35} showNinjaDash={true} />
+      <ShinobiBackground opacity={0.5} />
 
       {/* Navbar Superior com Nível, Rank, Streak, Escudo e Status Nuvem */}
       <Navbar

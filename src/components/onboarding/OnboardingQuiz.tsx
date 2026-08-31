@@ -57,8 +57,8 @@ export const OnboardingQuiz: React.FC<OnboardingQuizProps> = ({ onFinishOnboardi
 
   return (
     <div className="min-h-screen bg-shinobi-bg text-slate-100 flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      {/* Fundo Shinobi Animado em Loop */}
-      <ShinobiBackground opacity={0.65} showNinjaDash={true} />
+      {/* Fundo Shinobi Animado em Loop: Fogueira, Shinobi, Lua Nova e Sakura */}
+      <ShinobiBackground opacity={1} />
 
       <div className="w-full max-w-xl relative z-10 space-y-6">
         {/* Header da Academia */}
