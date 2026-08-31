@@ -58,10 +58,10 @@ export const MissionCard: React.FC<MissionCardProps> = ({
 
   return (
     <div
-      className={`group relative overflow-hidden rounded-2xl border transition-all duration-300 flex flex-col justify-between p-4 pl-4.5 min-h-[148px] shadow-lg ${
+      className={`group relative overflow-hidden rounded-2xl transition-all duration-300 flex flex-col justify-between p-4 pl-4.5 min-h-[148px] select-none touch-manipulation active:scale-[0.99] ${
         mission.isCompletedToday
-          ? 'bg-emerald-950/30 backdrop-blur-md border-emerald-500/40 opacity-85 hover:opacity-100 hover:bg-emerald-950/45 hover:backdrop-blur-xl hover:border-emerald-400/60'
-          : 'bg-slate-900/75 backdrop-blur-md border-slate-700/80 hover:bg-slate-800/40 hover:backdrop-blur-2xl hover:border-slate-400/70 hover:shadow-[0_12px_36px_rgba(0,0,0,0.5)] hover:scale-[1.015]'
+          ? 'liquid-glass-completed opacity-85 hover:opacity-100'
+          : 'liquid-glass-card'
       }`}
     >
       {/* Camada de Brilho Liquid Glass / Efeito Translúcido e Fosco */}

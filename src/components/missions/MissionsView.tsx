@@ -74,13 +74,13 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
     }
   };
 
-  const pillars: { id: PillarId | 'all'; label: string; icon?: string }[] = [
-    { id: 'all', label: 'Todos os Pilares' },
-    { id: 'taijutsu', label: 'Taijutsu (Corpo)', icon: '🥋' },
-    { id: 'ninjutsu', label: 'Ninjutsu (Mente)', icon: '📜' },
-    { id: 'chakra', label: 'Chakra (Disciplina)', icon: '⚡' },
-    { id: 'espirito', label: 'Espírito (Confiança)', icon: '🛡️' },
-    { id: 'genjutsu', label: 'Genjutsu (Foco)', icon: '👁️' },
+  const pillars: { id: PillarId | 'all'; label: string; shortLabel: string; icon?: string }[] = [
+    { id: 'all', label: 'Todos os Pilares', shortLabel: 'Todos' },
+    { id: 'taijutsu', label: 'Taijutsu (Corpo)', shortLabel: 'Taijutsu', icon: '🥋' },
+    { id: 'ninjutsu', label: 'Ninjutsu (Mente)', shortLabel: 'Ninjutsu', icon: '📜' },
+    { id: 'chakra', label: 'Chakra (Disciplina)', shortLabel: 'Chakra', icon: '⚡' },
+    { id: 'espirito', label: 'Espírito (Confiança)', shortLabel: 'Espírito', icon: '🛡️' },
+    { id: 'genjutsu', label: 'Genjutsu (Foco)', shortLabel: 'Genjutsu', icon: '👁️' },
   ];
 
   const times: { id: TimeOfDay | 'all'; label: string }[] = [
@@ -238,30 +238,31 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
           </div>
         </div>
 
-        {/* Filtro de Pilares: 3 em cima, 3 embaixo sem barra de rolagem */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {/* Filtro de Pilares: 3 em cima, 3 embaixo sem barra de rolagem (100% responsivo para Mobile PWA e Desktop) */}
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
           {pillars.map((p) => {
             const isSelected = filterPillar === p.id;
             return (
               <button
                 key={p.id}
                 onClick={() => setFilterPillar(p.id)}
-                className={`py-2 px-2.5 rounded-xl text-xs transition-all flex items-center justify-center sm:justify-start gap-1.5 border font-semibold truncate ${
+                className={`py-2 px-1.5 sm:px-2.5 rounded-xl text-[11px] sm:text-xs transition-all flex items-center justify-center gap-1 sm:gap-1.5 border font-semibold select-none active:scale-[0.98] ${
                   isSelected
                     ? 'bg-slate-900 border-2 border-shinobi-gold text-shinobi-gold font-bold shadow-glow-gold/30 scale-[1.02]'
                     : 'bg-slate-900/80 backdrop-blur-md border border-slate-700/80 text-slate-300 hover:text-white hover:border-slate-500 hover:bg-slate-800/80'
                 }`}
               >
-                {p.icon && <span className="flex-shrink-0">{p.icon}</span>}
-                <span className="truncate">{p.label}</span>
+                {p.icon && <span className="flex-shrink-0 text-xs sm:text-sm">{p.icon}</span>}
+                <span className="hidden sm:inline truncate">{p.label}</span>
+                <span className="sm:hidden truncate">{p.shortLabel}</span>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Lista de Missões em Formato de Cards (2 colunas em telas médias/largas) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+      {/* Lista de Missões em Formato de Cards (1 coluna em mobile compacto, 2 colunas a partir de sm: 640px) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         {filteredMissions.length > 0 ? (
           filteredMissions.map((mission) => (
             <MissionCard
