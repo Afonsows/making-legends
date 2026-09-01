@@ -83,86 +83,87 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </button>
 
-        {/* Lado Direito: Pílulas de Status (Ryō, Streak, Escudo) e Ações Rápidas */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {/* Badge de Ryō (Moedas) */}
-          <div
-            title={`Saldo de Ryō: ${profile.ryo || 0} Ryō`}
-            className="flex items-center gap-1 px-2 py-1 sm:px-2.5 sm:py-1 bg-amber-950/45 border border-amber-500/40 rounded-xl shadow-[0_0_10px_rgba(245,158,11,0.15)] whitespace-nowrap"
-          >
-            <span className="text-xs">🪙</span>
-            <span className="text-xs font-mono font-bold text-amber-300">
-              {profile.ryo || 0}
-              <span className="text-[9px] text-amber-400/90 font-normal ml-0.5 hidden sm:inline">Ryō</span>
-            </span>
+        {/* Lado Direito: Quebra de linha — 3 Ícones da Jornada em cima & 3 Ícones Técnicos em baixo */}
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
+          {/* Linha de CIMA: 3 Ícones da Jornada (Ryō, Sequência, Escudo) */}
+          <div className="flex items-center gap-1 sm:gap-1.5">
+            {/* 1. Ryō (Moedas) */}
+            <div
+              title={`Saldo de Ryō: ${profile.ryo || 0} Ryō`}
+              className="flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 bg-amber-950/45 border border-amber-500/40 rounded-lg sm:rounded-xl shadow-[0_0_10px_rgba(245,158,11,0.15)] whitespace-nowrap"
+            >
+              <span className="text-[11px] sm:text-xs">🪙</span>
+              <span className="text-[11px] sm:text-xs font-mono font-bold text-amber-300">
+                {profile.ryo || 0}
+              </span>
+            </div>
+
+            {/* 2. Sequência (Streak) */}
+            <div 
+              title={`Sequência ativa: ${profile.currentStreak} dias no protocolo`}
+              className="flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 bg-rose-950/45 border border-rose-500/40 rounded-lg sm:rounded-xl shadow-[0_0_10px_rgba(244,63,94,0.15)] whitespace-nowrap"
+            >
+              <Flame className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-rose-400 animate-pulse shrink-0" />
+              <span className="text-[11px] sm:text-xs font-mono font-bold text-slate-100">
+                {profile.currentStreak}
+              </span>
+            </div>
+
+            {/* 3. Escudo de Chakra Semanal */}
+            <div
+              title={`Escudos de Chakra restantes: ${profile.weeklyShieldsRemaining}/${profile.weeklyShieldsMax}`}
+              className={`flex items-center gap-1 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-lg sm:rounded-xl border text-[11px] sm:text-xs font-mono transition-colors whitespace-nowrap ${
+                profile.weeklyShieldsRemaining > 0
+                  ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-400'
+                  : 'bg-slate-900/50 border-slate-700/50 text-slate-500'
+              }`}
+            >
+              <Shield className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+              <span className="text-[11px] sm:text-xs font-bold">{profile.weeklyShieldsRemaining}</span>
+            </div>
           </div>
 
-          {/* Badge de Sequência (Streak) */}
-          <div 
-            title={`Sequência ativa: ${profile.currentStreak} dias no protocolo`}
-            className="flex items-center gap-1 px-2 py-1 sm:px-2.5 sm:py-1 bg-rose-950/45 border border-rose-500/40 rounded-xl shadow-[0_0_10px_rgba(244,63,94,0.15)] whitespace-nowrap"
-          >
-            <Flame className="w-3.5 h-3.5 text-rose-400 animate-pulse shrink-0" />
-            <span className="text-xs font-mono font-bold text-slate-100">
-              {profile.currentStreak}
-              <span className="text-[9px] text-slate-400 ml-0.5 hidden sm:inline">dias</span>
-            </span>
-          </div>
-
-          {/* Escudo de Chakra Semanal */}
-          <div
-            title={`Escudos de Chakra restantes: ${profile.weeklyShieldsRemaining}/${profile.weeklyShieldsMax}`}
-            className={`flex items-center gap-1 px-2 py-1 rounded-xl border text-xs font-mono transition-colors whitespace-nowrap ${
-              profile.weeklyShieldsRemaining > 0
-                ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-400'
-                : 'bg-slate-900/50 border-slate-700/50 text-slate-500'
-            }`}
-          >
-            <Shield className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
-            <span className="text-xs font-bold">{profile.weeklyShieldsRemaining}</span>
-          </div>
-
-          {/* Cluster de Botões de Utilidade */}
-          <div className="flex items-center bg-slate-950/50 rounded-xl border border-white/10 p-0.5">
-            {/* Nuvem Supabase / Auth */}
+          {/* Linha de BAIXO: 3 Ícones de Informações Técnicas (Nuvem, Som, Notificações) */}
+          <div className="flex items-center bg-slate-950/60 rounded-lg border border-white/10 px-1 py-0.5">
+            {/* 1. Nuvem Supabase / Auth */}
             <button
               onClick={onOpenAuth}
               title={isCloudSynced ? 'Sincronizado na nuvem (Supabase)' : 'Salvar progresso na nuvem'}
-              className={`p-1.5 rounded-lg transition-colors ${
+              className={`p-1 rounded-md transition-colors ${
                 isCloudSynced
                   ? 'text-emerald-400 hover:bg-emerald-950/50'
                   : 'text-slate-400 hover:text-shinobi-gold hover:bg-white/5'
               }`}
             >
               {isCloudSynced ? (
-                <CloudCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <CloudCheck className="w-3.5 h-3.5" />
               ) : (
-                <Cloud className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <Cloud className="w-3.5 h-3.5" />
               )}
             </button>
 
-            {/* Botão de Som */}
+            {/* 2. Botão de Som */}
             <button
               onClick={toggleSound}
               title={profile.notificationSettings.soundEnabled ? 'Desativar sons' : 'Ativar sons'}
               aria-label="Alternar som"
-              className="p-1.5 text-slate-400 hover:text-slate-100 hover:bg-white/5 rounded-lg transition-colors"
+              className="p-1 text-slate-400 hover:text-slate-100 hover:bg-white/5 rounded-md transition-colors"
             >
               {profile.notificationSettings.soundEnabled ? (
-                <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-300" />
+                <Volume2 className="w-3.5 h-3.5 text-slate-300" />
               ) : (
-                <VolumeX className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500" />
+                <VolumeX className="w-3.5 h-3.5 text-slate-500" />
               )}
             </button>
 
-            {/* Botão de Notificações */}
+            {/* 3. Botão de Notificações */}
             <button
               onClick={onOpenNotifications}
               title="Configurar Notificações"
               aria-label="Configurar notificações"
-              className="p-1.5 text-slate-400 hover:text-slate-100 hover:bg-white/5 rounded-lg transition-colors"
+              className="p-1 text-slate-400 hover:text-slate-100 hover:bg-white/5 rounded-md transition-colors"
             >
-              <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-300" />
+              <Bell className="w-3.5 h-3.5 text-slate-300" />
             </button>
           </div>
         </div>
