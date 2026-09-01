@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useHabitStore } from '../../state/useHabitStore';
 import { useUserStore } from '../../state/useUserStore';
 import { useTheme } from '../../theme/ThemeContext';
 import { evaluateProtocolStatus } from '../../core/streakEngine';
+import { getTimeUntilMidnightString } from '../../core/dailyResetEngine';
 import { MissionCard } from './MissionCard';
 import { AddMissionModal } from './AddMissionModal';
 import { DailyCheckInCard } from './DailyCheckInCard';
@@ -20,7 +21,8 @@ import {
   Compass, 
   Calendar,
   CheckCircle2,
-  History
+  History,
+  Clock
 } from 'lucide-react';
 
 interface MissionsViewProps {
@@ -56,6 +58,13 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [editingMission, setEditingMission] = useState<Mission | null>(null);
+  const [timeUntilReset, setTimeUntilReset] = useState(getTimeUntilMidnightString());
+
+  useEffect(() => {
+    const updateCountdown = () => setTimeUntilReset(getTimeUntilMidnightString());
+    const timer = setInterval(updateCountdown, 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   const protocolStatus = evaluateProtocolStatus(profile, missions);
   const currentPhase = getPhaseInfo(protocolStatus.currentDay);
@@ -155,6 +164,10 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
             <span className="text-xs font-mono font-bold text-shinobi-gold">
               {completionPercentage}% Concluído
             </span>
+          </div>
+          <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-mono mt-1.5">
+            <Clock className="w-3 h-3 text-shinobi-gold" />
+            <span>Ciclo diário fecha às 00:00 • Próxima renovação em <strong className="text-shinobi-gold">{timeUntilReset}</strong></span>
           </div>
         </div>
 

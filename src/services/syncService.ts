@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { UserProfile, Mission } from '../core/types';
+import { getTodayString } from '../core/streakEngine';
 import { useUserStore } from '../state/useUserStore';
 import { useHabitStore, getDefaultRyoReward } from '../state/useHabitStore';
 import { useDuelStore } from '../state/useDuelStore';
@@ -66,21 +67,26 @@ class SyncService {
         .order('mission_order', { ascending: true });
 
       if (missionsData && missionsData.length > 0 && !missionsErr) {
-        const mappedMissions: Mission[] = missionsData.map((m) => ({
-          id: m.id,
-          title: m.title,
-          description: m.description || undefined,
-          pillarId: m.pillar_id,
-          rank: m.rank,
-          xpReward: m.xp_reward,
-          ryoReward: m.ryo_reward ?? getDefaultRyoReward(m.rank),
-          timeOfDay: m.time_of_day,
-          isCompletedToday: m.is_completed_today,
-          completedDates: m.completed_dates || [],
-          isCustom: m.is_custom,
-          order: m.mission_order,
-          createdAt: m.created_at,
-        }));
+        const todayStr = getTodayString();
+        const mappedMissions: Mission[] = missionsData.map((m) => {
+          const completedDates: string[] = m.completed_dates || [];
+          const isCompletedToday = completedDates.includes(todayStr);
+          return {
+            id: m.id,
+            title: m.title,
+            description: m.description || undefined,
+            pillarId: m.pillar_id,
+            rank: m.rank,
+            xpReward: m.xp_reward,
+            ryoReward: m.ryo_reward ?? getDefaultRyoReward(m.rank),
+            timeOfDay: m.time_of_day,
+            isCompletedToday: isCompletedToday,
+            completedDates: completedDates,
+            isCustom: m.is_custom,
+            order: m.mission_order,
+            createdAt: m.created_at,
+          };
+        });
 
         useHabitStore.getState().setCustomMissionList(mappedMissions);
       } else if (missionsData && missionsData.length === 0 && !missionsErr) {
@@ -186,22 +192,27 @@ class SyncService {
       if (missions.length === 0) return;
 
       // 2. Upsert das missões atuais mantidas
-      const records = missions.map((m) => ({
-        id: m.id,
-        user_id: userId,
-        title: m.title,
-        description: m.description || null,
-        pillar_id: m.pillarId,
-        rank: m.rank,
-        xp_reward: m.xpReward,
-        ryo_reward: m.ryoReward || getDefaultRyoReward(m.rank),
-        time_of_day: m.timeOfDay,
-        is_completed_today: m.isCompletedToday,
-        completed_dates: m.completedDates,
-        is_custom: m.isCustom,
-        mission_order: m.order,
-        updated_at: new Date().toISOString(),
-      }));
+      const todayStr = getTodayString();
+      const records = missions.map((m) => {
+        const completedDates = m.completedDates || [];
+        const isCompletedToday = completedDates.includes(todayStr);
+        return {
+          id: m.id,
+          user_id: userId,
+          title: m.title,
+          description: m.description || null,
+          pillar_id: m.pillarId,
+          rank: m.rank,
+          xp_reward: m.xpReward,
+          ryo_reward: m.ryoReward || getDefaultRyoReward(m.rank),
+          time_of_day: m.timeOfDay,
+          is_completed_today: isCompletedToday,
+          completed_dates: completedDates,
+          is_custom: m.isCustom,
+          mission_order: m.order,
+          updated_at: new Date().toISOString(),
+        };
+      });
 
       await supabase.from('missions').upsert(records);
     } catch (err) {

@@ -20,15 +20,23 @@ import { NotificationSettingsModal } from './components/pwa/NotificationSettings
 import { AuthModal } from './components/auth/AuthModal';
 import { ShinobiBackground } from './components/ui/ShinobiBackground';
 
+import { initDailyResetEngine } from './core/dailyResetEngine';
+
 export const AppContent: React.FC = () => {
-  const { profile, checkDayTransition } = useUserStore();
-  const { missions, resetDailyMissionsIfNewDay } = useHabitStore();
+  const { profile } = useUserStore();
+  const { missions } = useHabitStore();
 
   const [activeTab, setActiveTab] = useState<TabType>('missions');
   const [isIosModalOpen, setIsIosModalOpen] = useState(false);
   const [isNotifModalOpen, setIsNotifModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ email?: string; id?: string } | null>(null);
+
+  // Inicialização do Motor de Renovação Diária (00:00, Visibilidade, Foco e Intervalo)
+  useEffect(() => {
+    const cleanupDailyEngine = initDailyResetEngine();
+    return cleanupDailyEngine;
+  }, []);
 
   // Inicialização de Auth do Supabase e sincronização automática
   useEffect(() => {
@@ -63,12 +71,6 @@ export const AppContent: React.FC = () => {
       syncService.pushMissions(missions, currentUser.id);
     }
   }, [missions, currentUser]);
-
-  // Checagem de transição diária e reset de missões ao carregar
-  useEffect(() => {
-    checkDayTransition();
-    resetDailyMissionsIfNewDay();
-  }, [checkDayTransition, resetDailyMissionsIfNewDay]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

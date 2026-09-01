@@ -116,6 +116,8 @@ export const bookSummariesList: BookSummary[] = [
 ];
 
 interface ToolStoreState {
+  lastActiveDate: string;
+
   // 1. Nutrição
   nutritionLogs: Record<string, NutritionLog>;
   currentCalorieTarget: number;
@@ -145,11 +147,15 @@ interface ToolStoreState {
   // 6. Registro de Treinamento (Taijutsu)
   trainingLogs: TrainingLogEntry[];
   addTrainingLog: (entry: Omit<TrainingLogEntry, 'id' | 'date'>) => void;
+
+  // 7. Manutenção Diária (Reset de Contadores às 00:00)
+  resetDailyToolsIfNewDay: () => void;
 }
 
 export const useToolStore = create<ToolStoreState>()(
   persist(
     (set, get) => ({
+      lastActiveDate: getTodayString(),
       nutritionLogs: {},
       currentCalorieTarget: 2200,
       currentProteinTarget: 140,
@@ -159,6 +165,20 @@ export const useToolStore = create<ToolStoreState>()(
       sealMinutesRemaining: 0,
       bodyJournal: {},
       trainingLogs: [],
+
+      resetDailyToolsIfNewDay: () => {
+        const todayStr = getTodayString();
+        const { lastActiveDate } = get();
+        if (lastActiveDate !== todayStr) {
+          set({
+            lastActiveDate: todayStr,
+            pomodoroSessionsCompletedToday: 0,
+            meditationMinutesToday: 0,
+            sealLockActive: false,
+            sealMinutesRemaining: 0,
+          });
+        }
+      },
 
       addMeal: (meal) => {
         const todayStr = getTodayString();
@@ -274,6 +294,18 @@ export const useToolStore = create<ToolStoreState>()(
     }),
     {
       name: 'making-legends-tool-store',
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          const todayStr = getTodayString();
+          if (state.lastActiveDate !== todayStr) {
+            state.lastActiveDate = todayStr;
+            state.pomodoroSessionsCompletedToday = 0;
+            state.meditationMinutesToday = 0;
+            state.sealLockActive = false;
+            state.sealMinutesRemaining = 0;
+          }
+        }
+      },
     }
   )
 );

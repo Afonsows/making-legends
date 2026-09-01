@@ -278,16 +278,30 @@ export const useHabitStore = create<HabitStoreState>()(
         const { missions } = get();
         const todayStr = getTodayString();
 
-        const updated = missions.map((m) => ({
-          ...m,
-          isCompletedToday: m.completedDates.includes(todayStr),
-        }));
+        const updated = missions.map((m) => {
+          const completedDates = m.completedDates || [];
+          const isCompletedToday = completedDates.includes(todayStr);
+          return {
+            ...m,
+            completedDates,
+            isCompletedToday,
+          };
+        });
 
         set({ missions: updated });
       },
 
       setCustomMissionList: (newMissions) => {
-        set({ missions: newMissions });
+        const todayStr = getTodayString();
+        const sanitized = newMissions.map((m) => {
+          const completedDates = m.completedDates || [];
+          return {
+            ...m,
+            completedDates,
+            isCompletedToday: completedDates.includes(todayStr),
+          };
+        });
+        set({ missions: sanitized });
       },
 
       reorderMissions: (newMissions) => {
@@ -374,6 +388,19 @@ export const useHabitStore = create<HabitStoreState>()(
     }),
     {
       name: 'shinobi_habit_store_v1',
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          const todayStr = getTodayString();
+          state.missions = (state.missions || []).map((m) => {
+            const completedDates = m.completedDates || [];
+            return {
+              ...m,
+              completedDates,
+              isCompletedToday: completedDates.includes(todayStr),
+            };
+          });
+        }
+      },
     }
   )
 );
