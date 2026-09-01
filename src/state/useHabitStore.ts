@@ -365,7 +365,7 @@ export const useHabitStore = create<HabitStoreState>()(
           genjutsu: 0,
         };
 
-        // 1. Processa todas as conclusões históricas de cada missão
+        // 1. Processa estritamente as conclusões ativas (não canceladas) de cada missão
         missions.forEach((m) => {
           const rankInfo = shinobiTheme.missionRanks[m.rank] || shinobiTheme.missionRanks.D;
           const ryoPerCompletion = (!m.isCustom || !m.ryoReward || (m.ryoReward === 25 && m.rank !== 'E'))
@@ -375,29 +375,28 @@ export const useHabitStore = create<HabitStoreState>()(
             ? rankInfo.xpReward
             : m.xpReward;
 
-          const distinctDates = new Set<string>(m.completedDates || []);
+          // Filtra apenas datas válidas de conclusão efetiva.
+          // Se a missão não está marcada hoje (m.isCompletedToday === false), todayStr é removido (cancelamento efetivo).
+          const activeDates = new Set<string>(
+            (m.completedDates || []).filter((d) => d && typeof d === 'string' && (d !== todayStr || m.isCompletedToday))
+          );
+
           if (m.isCompletedToday) {
-            distinctDates.add(todayStr);
+            activeDates.add(todayStr);
           }
 
-          // Se o Dia 1 do Desafio foi marcado/concluído mas completedDates estava vazio, computa o Dia 1
-          if (distinctDates.size === 0 && activeChallenge?.checkIns?.[1]?.checked) {
-            distinctDates.add('dia_1_protocolo');
+          const netCompletions = activeDates.size;
+          if (netCompletions > 0) {
+            const missionXp = xpPerCompletion * netCompletions;
+            const missionRyo = ryoPerCompletion * netCompletions;
+
+            totalCalculatedXp += missionXp;
+            totalCalculatedRyo += missionRyo;
+            pillarXpMap[m.pillarId] = (pillarXpMap[m.pillarId] || 0) + missionXp;
           }
-
-          const completionCount = Math.max(1, distinctDates.size);
-          // Se nenhuma data foi registrada e não está completa hoje, não conta
-          const finalCount = (distinctDates.size === 0 && !m.isCompletedToday) ? 0 : completionCount;
-
-          const missionXp = xpPerCompletion * finalCount;
-          const missionRyo = ryoPerCompletion * finalCount;
-
-          totalCalculatedXp += missionXp;
-          totalCalculatedRyo += missionRyo;
-          pillarXpMap[m.pillarId] = (pillarXpMap[m.pillarId] || 0) + missionXp;
         });
 
-        // 2. Adiciona os bônus de estipêndio diário dos Check-ins de Presença concluídos
+        // 2. Adiciona estipêndios apenas de dias com Check-in de Presença marcado no desafio (sem cancelamento)
         if (activeChallenge?.checkIns) {
           Object.values(activeChallenge.checkIns).forEach((checkIn) => {
             if (checkIn.checked) {
@@ -407,37 +406,32 @@ export const useHabitStore = create<HabitStoreState>()(
           });
         }
 
-        // 3. Calcula o Nível e Rank reais baseados no XP Total acumulado
+        // 3. Calcula o Nível e Rank oficiais exatos
         const newLevel = getLevelFromTotalXp(totalCalculatedXp);
+        const newRank = getRankIdFromLevel(newLevel);
 
         // 4. Adiciona as recompensas em Ryō de cada Nível alcançado
         for (let lvl = 2; lvl <= newLevel; lvl++) {
           totalCalculatedRyo += getLevelUpRyoReward(lvl);
         }
 
-        // Garante que o XP e Ryō acumulados reflitam a totalidade do histórico
-        const finalXp = totalCalculatedXp;
-        const finalLevel = getLevelFromTotalXp(finalXp);
-        const finalRank = getRankIdFromLevel(finalLevel);
-        const finalRyo = totalCalculatedRyo;
-
         const syncLog: MissionLogEntry = {
           id: `log_sync_${Date.now()}`,
           missionId: 'recalibrate',
-          missionTitle: 'Recalibração & Auditoria de Ficha Completa',
+          missionTitle: 'Recalibração & Auditoria de Saldo Real',
           pillarId: 'chakra',
           rank: 'E',
-          xp: finalXp,
-          ryo: finalRyo,
+          xp: totalCalculatedXp,
+          ryo: totalCalculatedRyo,
           action: 'synced',
           createdAt: new Date().toISOString(),
         };
 
         userStore.updateProfile({
-          totalXp: finalXp,
-          level: finalLevel,
-          currentRankId: finalRank,
-          ryo: finalRyo,
+          totalXp: totalCalculatedXp,
+          level: newLevel,
+          currentRankId: newRank,
+          ryo: totalCalculatedRyo,
           pillarXp: pillarXpMap,
         });
 
@@ -445,7 +439,7 @@ export const useHabitStore = create<HabitStoreState>()(
           missionLogs: [syncLog, ...state.missionLogs].slice(0, 100),
         }));
 
-        return { totalXp: finalXp, level: finalLevel, ryo: finalRyo };
+        return { totalXp: totalCalculatedXp, level: newLevel, ryo: totalCalculatedRyo };
       },
     }),
     {
