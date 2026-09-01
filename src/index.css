@@ -38,6 +38,14 @@
   .font-cinzel {
     font-family: 'Cinzel', serif;
   }
+
+  .pt-safe {
+    padding-top: max(env(safe-area-inset-top, 0px), 0.75rem);
+  }
+
+  .pb-safe {
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.75rem);
+  }
   
   .shinobi-gradient-border {
     position: relative;
