@@ -1,11 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { UserChallenge, ChallengeHabit } from '../core/types';
+import { UserChallenge, ChallengeHabit, UserProfile, Mission } from '../core/types';
 import { PillarId } from '../theme/types';
 import { getTodayString } from '../core/streakEngine';
 import { soundFx } from '../utils/audio';
 import { triggerMissionConfetti } from '../utils/confetti';
 import { useUserStore } from './useUserStore';
+import { useHabitStore } from './useHabitStore';
 
 export interface DayStripInfo {
   date: string; // YYYY-MM-DD
@@ -179,65 +180,46 @@ export function generate6MonthHeatmap(completedDates: string[] = []): HeatmapDay
   return weeks;
 }
 
-const initialOfficial66Challenge: UserChallenge = {
-  id: 'challenge_official_66',
-  title: 'Desafio 66 Dias — Maestria Shinobi',
-  description: 'O protocolo supremo de neuroplasticidade e formação de hábitos lendários. 66 dias para reprogramar seu cérebro e seu destino.',
-  category: 'Neuroplasticidade & Hábitos',
-  icon: '⚡',
-  targetDays: 66,
-  startDate: getTodayString(),
-  status: 'active',
-  isOfficial66: true,
-  createdAt: new Date().toISOString(),
-  habits: [
-    {
-      id: 'hab_66_reading',
-      title: 'Leitura',
-      description: 'Ler 15 minutos por dia com foco e anotações',
-      pillarId: 'ninjutsu',
-      color: '#10b981',
-      completedDates: [],
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'hab_66_workout',
-      title: 'Treinamento Físico',
-      description: '30 a 45 minutos de exercício, corrida ou força',
-      pillarId: 'taijutsu',
-      color: '#e11d48',
-      completedDates: [],
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'hab_66_water',
-      title: 'Despertar Sem Telas & Hidratação',
-      description: '500ml de água e 15 minutos sem redes sociais ao acordar',
-      pillarId: 'chakra',
-      color: '#06b6d4',
-      completedDates: [],
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'hab_66_deepwork',
-      title: 'Sessão de Deep Work',
-      description: '45 minutos de foco pleno na tarefa mais importante',
-      pillarId: 'genjutsu',
-      color: '#8b5cf6',
-      completedDates: [],
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'hab_66_courage',
-      title: 'Ato de Coragem & Disciplina',
-      description: 'Enfrentar a tarefa mais desconfortável da lista sem hesitar',
-      pillarId: 'espirito',
-      color: '#f59e0b',
-      completedDates: [],
-      createdAt: new Date().toISOString(),
-    },
-  ],
+const pillarColorMap: Record<PillarId, string> = {
+  taijutsu: '#e11d48',
+  ninjutsu: '#06b6d4',
+  chakra: '#10b981',
+  espirito: '#f59e0b',
+  genjutsu: '#8b5cf6',
 };
+
+/**
+ * Constrói o objeto do Desafio de 66 Dias em sincronização perfeita e em tempo real
+ * com a tela inicial (useUserStore.profile e useHabitStore.missions).
+ */
+export function buildSyncedOfficial66Challenge(profile: UserProfile, missions: Mission[]): UserChallenge {
+  const habits: ChallengeHabit[] = (missions || []).map((m) => ({
+    id: m.id,
+    title: m.title,
+    description: m.description,
+    pillarId: m.pillarId,
+    color: pillarColorMap[m.pillarId] || '#10b981',
+    completedDates: m.completedDates || [],
+    createdAt: m.createdAt,
+  }));
+
+  const cycle = profile.activeChallenge;
+  const cycleNumber = cycle?.cycleNumber || 1;
+
+  return {
+    id: 'challenge_official_66',
+    title: `Desafio 66 Dias — Ciclo #${cycleNumber}`,
+    description: 'O protocolo supremo de neuroplasticidade e formação de hábitos lendários. 100% sincronizado com a tela inicial.',
+    category: 'Neuroplasticidade & Hábitos',
+    icon: '⚡',
+    targetDays: 66,
+    startDate: cycle?.startDate || profile.lastActiveDate || getTodayString(),
+    status: cycle?.status === 'completed' ? 'completed' : 'active',
+    isOfficial66: true,
+    habits,
+    createdAt: cycle?.createdAt || profile.createdAt || new Date().toISOString(),
+  };
+}
 
 interface ChallengeStoreState {
   challenges: UserChallenge[];
@@ -283,7 +265,7 @@ interface ChallengeStoreState {
 export const useChallengeStore = create<ChallengeStoreState>()(
   persist(
     (set, get) => ({
-      challenges: [initialOfficial66Challenge],
+      challenges: [],
       activeChallengeId: 'challenge_official_66',
       selectedChallengeForModal: null,
       isCreateModalOpen: false,
@@ -293,6 +275,17 @@ export const useChallengeStore = create<ChallengeStoreState>()(
       closeCreateModal: () => set({ isCreateModalOpen: false }),
 
       openDetailModal: (challengeId: string) => {
+        if (challengeId === 'challenge_official_66') {
+          const profile = useUserStore.getState().profile;
+          const missions = useHabitStore.getState().missions;
+          const official = buildSyncedOfficial66Challenge(profile, missions);
+          set({
+            selectedChallengeForModal: official,
+            isDetailModalOpen: true,
+          });
+          return;
+        }
+
         const { challenges } = get();
         const found = challenges.find((c) => c.id === challengeId);
         if (found) {
@@ -432,6 +425,22 @@ export const useChallengeStore = create<ChallengeStoreState>()(
       addHabitToChallenge: (challengeId, habitData) => {
         if (!habitData.title.trim()) return;
 
+        const isOfficial = challengeId === 'challenge_official_66' || challengeId.includes('official');
+        if (isOfficial) {
+          useHabitStore.getState().addMission({
+            title: habitData.title.trim(),
+            description: habitData.description?.trim() || '',
+            pillarId: habitData.pillarId || 'chakra',
+            rank: 'D',
+            xpReward: 50,
+            ryoReward: 35,
+            timeOfDay: 'anytime',
+            isCustom: true,
+          });
+          soundFx.playScrollOpen();
+          return;
+        }
+
         const newHabit: ChallengeHabit = {
           id: `hab_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
           title: habitData.title.trim(),
@@ -469,6 +478,12 @@ export const useChallengeStore = create<ChallengeStoreState>()(
       },
 
       removeHabitFromChallenge: (challengeId, habitId) => {
+        const isOfficial = challengeId === 'challenge_official_66' || challengeId.includes('official');
+        if (isOfficial) {
+          useHabitStore.getState().deleteMission(habitId);
+          return;
+        }
+
         set((state) => {
           const updated = state.challenges.map((c) => {
             if (c.id === challengeId) {
@@ -494,6 +509,16 @@ export const useChallengeStore = create<ChallengeStoreState>()(
       },
 
       updateHabit: (challengeId, habitId, updates) => {
+        const isOfficial = challengeId === 'challenge_official_66' || challengeId.includes('official');
+        if (isOfficial) {
+          useHabitStore.getState().updateMission(habitId, {
+            title: updates.title,
+            description: updates.description,
+            pillarId: updates.pillarId,
+          });
+          return;
+        }
+
         set((state) => {
           const updated = state.challenges.map((c) => {
             if (c.id === challengeId) {
@@ -521,6 +546,49 @@ export const useChallengeStore = create<ChallengeStoreState>()(
       },
 
       toggleHabitDay: (challengeId, habitId, dateStr) => {
+        const todayStr = getTodayString();
+        const isOfficial = challengeId === 'challenge_official_66' || challengeId.includes('official');
+
+        if (isOfficial) {
+          const habitStore = useHabitStore.getState();
+          const mission = habitStore.missions.find((m) => m.id === habitId);
+
+          if (dateStr === todayStr) {
+            // Alterna a missão de hoje no motor oficial de missões (garante sincronia com a home)
+            habitStore.toggleCompleteMission(habitId);
+            const updatedMission = useHabitStore.getState().missions.find((m) => m.id === habitId);
+            const streaks = calculateHabitStreaks(updatedMission?.completedDates || []);
+            return {
+              isCompleted: Boolean(updatedMission?.isCompletedToday),
+              currentStreak: streaks.currentStreak,
+              bestStreak: streaks.bestStreak,
+            };
+          } else {
+            // Alterna data no histórico da missão
+            const currentDates = mission?.completedDates || [];
+            const willBeCompleted = !currentDates.includes(dateStr);
+            const updatedDates = willBeCompleted
+              ? Array.from(new Set([...currentDates, dateStr])).sort()
+              : currentDates.filter((d) => d !== dateStr);
+
+            const updatedMissions = habitStore.missions.map((m) =>
+              m.id === habitId ? { ...m, completedDates: updatedDates } : m
+            );
+            habitStore.setCustomMissionList(updatedMissions);
+
+            const streaks = calculateHabitStreaks(updatedDates);
+            if (willBeCompleted) {
+              soundFx.playMissionComplete();
+            }
+            return {
+              isCompleted: willBeCompleted,
+              currentStreak: streaks.currentStreak,
+              bestStreak: streaks.bestStreak,
+            };
+          }
+        }
+
+        // Desafio Personalizado
         const { challenges } = get();
         const challenge = challenges.find((c) => c.id === challengeId);
         const habit = challenge?.habits.find((h) => h.id === habitId);
@@ -571,7 +639,6 @@ export const useChallengeStore = create<ChallengeStoreState>()(
           };
         });
 
-        const todayStr = getTodayString();
         if (willBeCompleted) {
           soundFx.playMissionComplete();
           if (dateStr === todayStr) {
@@ -590,18 +657,6 @@ export const useChallengeStore = create<ChallengeStoreState>()(
     }),
     {
       name: 'shinobi_challenge_store_v1',
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          if (!state.challenges || state.challenges.length === 0) {
-            state.challenges = [initialOfficial66Challenge];
-          } else {
-            const has66 = state.challenges.some((c) => c.isOfficial66 || c.id === 'challenge_official_66');
-            if (!has66) {
-              state.challenges.unshift(initialOfficial66Challenge);
-            }
-          }
-        }
-      },
     }
   )
 );

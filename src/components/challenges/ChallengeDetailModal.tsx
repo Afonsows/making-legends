@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { useChallengeStore } from '../../state/useChallengeStore';
+import { useChallengeStore, buildSyncedOfficial66Challenge } from '../../state/useChallengeStore';
+import { useUserStore } from '../../state/useUserStore';
+import { useHabitStore } from '../../state/useHabitStore';
+import { evaluateProtocolStatus } from '../../core/streakEngine';
 import { UserChallenge } from '../../core/types';
 import { ChallengeHabitCard } from './ChallengeHabitCard';
 import { PillarId } from '../../theme/types';
@@ -15,7 +18,9 @@ import {
   CheckCircle2, 
   RotateCcw,
   Award,
-  Layers
+  Layers,
+  Zap,
+  Map
 } from 'lucide-react';
 
 interface ChallengeDetailModalProps {
@@ -37,6 +42,9 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
     toggleChallengeStatus 
   } = useChallengeStore();
 
+  const { profile, openChallengeMapModal } = useUserStore();
+  const { missions } = useHabitStore();
+
   const [isAddingHabit, setIsAddingHabit] = useState(false);
   const [newHabitTitle, setNewHabitTitle] = useState('');
   const [newHabitDesc, setNewHabitDesc] = useState('');
@@ -45,23 +53,36 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
   if (!isOpen || !challenge) return null;
 
   const todayStr = getTodayString();
+  const isOfficial = challenge.isOfficial66 || challenge.id === 'challenge_official_66';
 
-  // Cálculo de dias desde o início
-  const startDate = new Date(challenge.startDate + 'T00:00:00');
-  const todayDate = new Date(todayStr + 'T00:00:00');
-  const diffTime = Math.max(0, todayDate.getTime() - startDate.getTime());
-  const daysElapsed = Math.min(challenge.targetDays, Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1);
-  const progressPercent = Math.min(100, Math.round((daysElapsed / challenge.targetDays) * 100));
+  // Se for o desafio oficial dos 66 dias, sincroniza 100% com o estado do motor de hábitos
+  const protocolStatus = evaluateProtocolStatus(profile, missions);
+  const effectiveChallenge: UserChallenge = isOfficial
+    ? buildSyncedOfficial66Challenge(profile, missions)
+    : challenge;
 
-  // Contagem de hábitos completados hoje
-  const completedTodayCount = challenge.habits.filter((h) => h.completedDates.includes(todayStr)).length;
-  const totalHabits = challenge.habits.length;
+  // Cálculo de dias e métricas
+  const daysElapsed = isOfficial 
+    ? protocolStatus.currentDay 
+    : (() => {
+        const startDate = new Date(effectiveChallenge.startDate + 'T00:00:00');
+        const todayDate = new Date(todayStr + 'T00:00:00');
+        const diffTime = Math.max(0, todayDate.getTime() - startDate.getTime());
+        return Math.min(effectiveChallenge.targetDays, Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1);
+      })();
+
+  const progressPercent = isOfficial
+    ? protocolStatus.protocolProgressPercent
+    : Math.min(100, Math.round((daysElapsed / effectiveChallenge.targetDays) * 100));
+
+  const completedTodayCount = effectiveChallenge.habits.filter((h) => h.completedDates.includes(todayStr)).length;
+  const totalHabits = effectiveChallenge.habits.length;
 
   const handleCreateNewHabit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newHabitTitle.trim()) return;
 
-    addHabitToChallenge(challenge.id, {
+    addHabitToChallenge(effectiveChallenge.id, {
       title: newHabitTitle.trim(),
       description: newHabitDesc.trim(),
       color: newHabitColor,
@@ -74,14 +95,14 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
   };
 
   const handleDeleteHabit = (habitId: string, habitTitle: string) => {
-    if (window.confirm(`Deseja realmente excluir o hábito "${habitTitle}" deste desafio?`)) {
-      removeHabitFromChallenge(challenge.id, habitId);
+    if (window.confirm(`Deseja realmente excluir a missão/hábito "${habitTitle}"?`)) {
+      removeHabitFromChallenge(effectiveChallenge.id, habitId);
     }
   };
 
   const handleDeleteChallenge = () => {
-    if (window.confirm(`Tem certeza que deseja excluir o desafio "${challenge.title}"? Esta ação não pode ser desfeita.`)) {
-      deleteChallenge(challenge.id);
+    if (window.confirm(`Tem certeza que deseja excluir o desafio "${effectiveChallenge.title}"? Esta ação não pode ser desfeita.`)) {
+      deleteChallenge(effectiveChallenge.id);
       onClose();
     }
   };
@@ -97,32 +118,38 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-1.5 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                {challenge.isOfficial66 ? (
+                {isOfficial ? (
                   <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-shinobi-gold text-slate-950 text-[10px] font-extrabold uppercase tracking-wider shadow-glow-gold/40">
                     ⭐ MAIS POPULAR • FORMAÇÃO DE HÁBITO
                   </span>
                 ) : (
                   <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 text-[10px] font-mono font-bold">
-                    {challenge.category || 'Desafio Pessoal'}
+                    {effectiveChallenge.category || 'Desafio Pessoal'}
+                  </span>
+                )}
+
+                {isOfficial && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-shinobi-gold border border-shinobi-gold/40 text-[10px] font-mono font-bold">
+                    Ciclo #{profile.activeChallenge?.cycleNumber || 1} • {protocolStatus.phaseName} (Fase {protocolStatus.phaseIndex})
                   </span>
                 )}
 
                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
-                  challenge.status === 'completed'
+                  effectiveChallenge.status === 'completed'
                     ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
                     : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40'
                 }`}>
-                  {challenge.status === 'completed' ? 'CONCLUÍDO 🏆' : 'EM ANDAMENTO ⚡'}
+                  {effectiveChallenge.status === 'completed' ? 'CONCLUÍDO 🏆' : 'EM ANDAMENTO ⚡'}
                 </span>
               </div>
 
               <h2 className="font-cinzel text-lg sm:text-2xl font-bold text-slate-100 flex items-center gap-2">
-                <span>{challenge.title}</span>
+                <span>{effectiveChallenge.title}</span>
               </h2>
 
-              {challenge.description && (
+              {effectiveChallenge.description && (
                 <p className="text-xs text-slate-400 line-clamp-2 max-w-2xl">
-                  {challenge.description}
+                  {effectiveChallenge.description}
                 </p>
               )}
             </div>
@@ -135,64 +162,82 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
             </button>
           </div>
 
-          {/* Barra de Progresso & Métricas do Desafio */}
+          {/* Barra de Progresso & Métricas do Desafio Sincronizadas */}
           <div className="mt-4 pt-3 border-t border-slate-800/80 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
             <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
-              <span className="text-slate-400 block text-[10px]">Progresso</span>
+              <span className="text-slate-400 block text-[10px]">Dia Atual</span>
               <span className="font-bold text-shinobi-gold font-mono text-sm sm:text-base">
-                Dia {daysElapsed} / {challenge.targetDays} ({progressPercent}%)
+                Dia {daysElapsed} / {effectiveChallenge.targetDays} ({progressPercent}%)
               </span>
             </div>
 
             <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
-              <span className="text-slate-400 block text-[10px]">Hábitos Hoje</span>
+              <span className="text-slate-400 block text-[10px]">Missões Concluídas Hoje</span>
               <span className="font-bold text-emerald-400 font-mono text-sm sm:text-base">
                 {completedTodayCount} / {totalHabits}
               </span>
             </div>
 
             <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
-              <span className="text-slate-400 block text-[10px]">Total de Hábitos</span>
+              <span className="text-slate-400 block text-[10px]">
+                {isOfficial ? 'Presenças Marcadas' : 'Total de Hábitos'}
+              </span>
               <span className="font-bold text-cyan-400 font-mono text-sm sm:text-base">
-                {totalHabits} ativos
+                {isOfficial ? `${profile.activeChallenge?.daysCompleted || 0} dias` : `${totalHabits} ativos`}
               </span>
             </div>
 
             <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
               <span className="text-slate-400 block text-[10px]">Dias Restantes</span>
               <span className="font-bold text-rose-400 font-mono text-sm sm:text-base">
-                {Math.max(0, challenge.targetDays - daysElapsed)} dias
+                {Math.max(0, effectiveChallenge.targetDays - daysElapsed)} dias
               </span>
             </div>
           </div>
 
           {/* Barra Visual de Dias */}
-          <div className="mt-3 w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+          <div className="mt-3 w-full h-2.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
             <div
-              className="h-full bg-gradient-to-r from-shinobi-gold to-emerald-400 transition-all duration-500 rounded-full"
+              className="h-full bg-gradient-to-r from-shinobi-gold via-amber-400 to-emerald-400 transition-all duration-500 rounded-full"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
         </div>
 
-        {/* Lista de Hábitos do Desafio (Cards Detalhados conforme referência) */}
+        {/* Lista de Hábitos do Desafio */}
         <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Layers className="w-4 h-4 text-shinobi-gold" />
               <h3 className="font-cinzel text-sm sm:text-base font-bold text-slate-100">
-                Acompanhamento Individual de Cada Missão ({challenge.habits.length})
+                Acompanhamento Detalhado de Cada Missão ({effectiveChallenge.habits.length})
               </h3>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setIsAddingHabit(true)}
-              className="px-3 py-1.5 bg-gradient-to-r from-shinobi-crimson to-rose-600 hover:from-rose-600 hover:to-rose-500 text-white text-xs font-bold rounded-xl shadow-glow-crimson transition-all flex items-center gap-1.5"
-            >
-              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>Novo Hábito</span>
-            </button>
+            <div className="flex items-center gap-2">
+              {isOfficial && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    openChallengeMapModal();
+                  }}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-shinobi-gold text-xs font-bold rounded-xl border border-shinobi-gold/40 transition-all flex items-center gap-1.5"
+                  title="Ver mapa dos 66 dias"
+                >
+                  <Map className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Mapa 66 Dias</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setIsAddingHabit(true)}
+                className="px-3 py-1.5 bg-gradient-to-r from-shinobi-crimson to-rose-600 hover:from-rose-600 hover:to-rose-500 text-white text-xs font-bold rounded-xl shadow-glow-crimson transition-all flex items-center gap-1.5"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Nova Missão / Hábito</span>
+              </button>
+            </div>
           </div>
 
           {/* Formulário Inline para Adicionar Novo Hábito */}
@@ -203,7 +248,7 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-shinobi-gold flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5" /> Adicionar Hábito ao Desafio
+                  <Sparkles className="w-3.5 h-3.5" /> Adicionar ao Desafio
                 </span>
                 <button
                   type="button"
@@ -220,7 +265,7 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
                     type="text"
                     value={newHabitTitle}
                     onChange={(e) => setNewHabitTitle(e.target.value)}
-                    placeholder="Nome (Ex: Leitura)"
+                    placeholder="Nome da missão (Ex: Leitura)"
                     required
                     className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-shinobi-gold"
                   />
@@ -248,7 +293,7 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
                     type="submit"
                     className="flex-1 px-4 py-2 bg-shinobi-gold hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-glow-gold transition-all"
                   >
-                    Salvar Hábito
+                    Salvar Missão
                   </button>
                 </div>
               </div>
@@ -256,25 +301,25 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
           )}
 
           {/* Cards de Hábitos */}
-          {challenge.habits.length > 0 ? (
+          {effectiveChallenge.habits.length > 0 ? (
             <div className="space-y-4">
-              {challenge.habits.map((habit) => (
+              {effectiveChallenge.habits.map((habit) => (
                 <ChallengeHabitCard
                   key={habit.id}
                   habit={habit}
-                  onToggleDay={(dateStr) => toggleHabitDay(challenge.id, habit.id, dateStr)}
+                  onToggleDay={(dateStr) => toggleHabitDay(effectiveChallenge.id, habit.id, dateStr)}
                   onDelete={() => handleDeleteHabit(habit.id, habit.title)}
                 />
               ))}
             </div>
           ) : (
             <div className="p-8 text-center bg-slate-950/60 rounded-3xl border border-slate-800 text-slate-400 text-xs space-y-2">
-              <p>Nenhum hábito cadastrado neste desafio ainda.</p>
+              <p>Nenhuma missão cadastrada neste desafio ainda.</p>
               <button
                 onClick={() => setIsAddingHabit(true)}
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-shinobi-gold border border-shinobi-gold/50 rounded-xl font-bold text-xs transition-colors inline-flex items-center gap-1.5"
               >
-                <Plus className="w-3.5 h-3.5" /> Adicionar Primeiro Hábito
+                <Plus className="w-3.5 h-3.5" /> Adicionar Primeira Missão
               </button>
             </div>
           )}
@@ -283,7 +328,7 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
         {/* Footer com Ações Globais */}
         <div className="p-4 sm:p-5 border-t border-slate-800 bg-slate-950 flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2">
-            {!challenge.isOfficial66 && (
+            {!isOfficial && (
               <button
                 type="button"
                 onClick={handleDeleteChallenge}
@@ -297,10 +342,10 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
 
             <button
               type="button"
-              onClick={() => toggleChallengeStatus(challenge.id)}
+              onClick={() => toggleChallengeStatus(effectiveChallenge.id)}
               className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5"
             >
-              {challenge.status === 'completed' ? (
+              {effectiveChallenge.status === 'completed' ? (
                 <>
                   <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
                   <span>Reabrir Desafio</span>
