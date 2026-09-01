@@ -37,7 +37,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-shinobi-bg/90 backdrop-blur-md border-b border-shinobi-border px-4 py-2.5">
+    <header className="sticky top-0 z-40 w-full liquid-glass-header px-4 py-2.5 relative">
+      {/* Filete de Brilho Especular Superior (Liquid Glass Sheen) */}
+      <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
       <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
         {/* Lado Esquerdo: Identidade & Rank */}
         <button

@@ -46,7 +46,7 @@ export const ToolsHub: React.FC = () => {
     addTrainingLog 
   } = useToolStore();
 
-  const { addXp } = useUserStore();
+  const { addXp, addRyo } = useUserStore();
   const { theme } = useTheme();
 
   const [activeTool, setActiveTool] = useState<ActiveTool>('nutrition');
@@ -150,6 +150,7 @@ export const ToolsHub: React.FC = () => {
     });
 
     addXp(15, 'taijutsu');
+    addRyo(10);
     setMealName('');
     setMealCals('');
     setMealProtein('');
@@ -168,6 +169,7 @@ export const ToolsHub: React.FC = () => {
     });
 
     addXp(40, 'taijutsu');
+    addRyo(30);
     soundFx.playMissionComplete();
     setExerciseName('');
   };
@@ -175,6 +177,7 @@ export const ToolsHub: React.FC = () => {
   const handleSaveSleep = () => {
     logSleep(sleepHours, sleepQuality);
     addXp(20, 'taijutsu');
+    addRyo(15);
     soundFx.playMissionComplete();
   };
 
@@ -525,13 +528,14 @@ export const ToolsHub: React.FC = () => {
                   const minutes = Math.floor(meditationElapsed / 60);
                   logMeditationSession(minutes);
                   addXp(minutes * 20, 'chakra');
+                  addRyo(minutes * 15);
                   soundFx.playLevelUp();
                   setMeditationElapsed(0);
                   setIsMeditating(false);
                 }}
                 className="px-4 py-3 bg-shinobi-gold text-shinobi-bg font-bold text-xs rounded-xl shadow-glow-gold transition-all"
               >
-                Concluir Sessão (+{Math.floor(meditationElapsed / 60) * 20} XP)
+                Concluir Sessão (+{Math.floor(meditationElapsed / 60) * 20} XP, +{Math.floor(meditationElapsed / 60) * 15} Ryō)
               </button>
             )}
           </div>
@@ -570,6 +574,7 @@ export const ToolsHub: React.FC = () => {
               if (!sealLockActive) {
                 soundFx.playMissionComplete();
                 addXp(30, 'chakra');
+                addRyo(20);
               }
             }}
             className={`px-6 py-3 font-bold text-xs rounded-xl transition-all ${
@@ -578,7 +583,7 @@ export const ToolsHub: React.FC = () => {
                 : 'bg-shinobi-gold text-shinobi-bg shadow-glow-gold'
             }`}
           >
-            {sealLockActive ? 'Desativar Selo de Bloqueio' : 'Ativar Selo de Bloqueio (+30 XP Chakra)'}
+            {sealLockActive ? 'Desativar Selo de Bloqueio' : 'Ativar Selo de Bloqueio (+30 XP, +20 Ryō)'}
           </button>
         </div>
       )}

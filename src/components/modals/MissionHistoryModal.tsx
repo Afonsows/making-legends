@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useHabitStore } from '../../state/useHabitStore';
 import { useUserStore } from '../../state/useUserStore';
 import { getLevelProgress } from '../../core/xpEngine';
+import { getDefaultRyoReward } from '../../core/ryoEngine';
 import { syncService } from '../../services/syncService';
 import { supabase } from '../../services/supabase';
 import { soundFx } from '../../utils/audio';
@@ -53,7 +54,7 @@ export const MissionHistoryModal: React.FC<MissionHistoryModalProps> = ({ isOpen
 
   const completedTodayMissions = missions.filter((m) => m.isCompletedToday);
   const calculatedXp = completedTodayMissions.reduce((acc, m) => acc + m.xpReward, 0);
-  const calculatedRyo = completedTodayMissions.reduce((acc, m) => acc + (m.ryoReward || 25), 0);
+  const calculatedRyo = completedTodayMissions.reduce((acc, m) => acc + (m.ryoReward || getDefaultRyoReward(m.rank)), 0);
   const correspondingLevel = getLevelProgress(calculatedXp).currentLevel;
 
   const filteredLogs = filterAction === 'all' 

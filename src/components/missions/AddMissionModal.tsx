@@ -39,6 +39,7 @@ export const AddMissionModal: React.FC<AddMissionModalProps> = ({
       pillarId,
       rank,
       xpReward: currentRankInfo.xpReward,
+      ryoReward: currentRankInfo.ryoReward,
       timeOfDay,
       isCustom: true,
     });
@@ -135,13 +136,21 @@ export const AddMissionModal: React.FC<AddMissionModalProps> = ({
 
           {/* Seleção de Rank / Dificuldade */}
           <div>
-            <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
               <label className="block text-xs font-bold text-slate-200">
                 Rank de Esforço & Dificuldade
               </label>
-              <span className="text-xs font-mono font-bold" style={{ color: currentRankInfo.color }}>
-                +{currentRankInfo.xpReward} XP ({currentRankInfo.recommendedTime})
-              </span>
+              <div className="flex items-center gap-2 text-xs font-mono font-bold">
+                <span style={{ color: currentRankInfo.color }}>
+                  +{currentRankInfo.xpReward} XP
+                </span>
+                <span className="text-amber-300">
+                  🪙 +{currentRankInfo.ryoReward} Ryō
+                </span>
+                <span className="text-[10px] text-slate-400 font-normal">
+                  ({currentRankInfo.recommendedTime})
+                </span>
+              </div>
             </div>
 
             <div className="grid grid-cols-6 gap-1.5">

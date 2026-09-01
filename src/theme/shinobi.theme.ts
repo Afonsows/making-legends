@@ -126,6 +126,7 @@ export const shinobiTheme: ThemeConfig = {
       rank: 'E',
       label: 'Rank E (Básico)',
       xpReward: 25,
+      ryoReward: 15,
       recommendedTime: '< 5 min',
       color: '#94a3b8',
       borderColor: 'border-slate-600'
@@ -134,6 +135,7 @@ export const shinobiTheme: ThemeConfig = {
       rank: 'D',
       label: 'Rank D (Regular)',
       xpReward: 50,
+      ryoReward: 35,
       recommendedTime: '10–20 min',
       color: '#38bdf8',
       borderColor: 'border-cyan-600'
@@ -142,6 +144,7 @@ export const shinobiTheme: ThemeConfig = {
       rank: 'C',
       label: 'Rank C (Focado)',
       xpReward: 85,
+      ryoReward: 70,
       recommendedTime: '30–45 min',
       color: '#34d399',
       borderColor: 'border-emerald-600'
@@ -150,6 +153,7 @@ export const shinobiTheme: ThemeConfig = {
       rank: 'B',
       label: 'Rank B (Avançado)',
       xpReward: 140,
+      ryoReward: 130,
       recommendedTime: '45–90 min',
       color: '#fbbf24',
       borderColor: 'border-amber-500'
@@ -158,6 +162,7 @@ export const shinobiTheme: ThemeConfig = {
       rank: 'A',
       label: 'Rank A (Mestre)',
       xpReward: 220,
+      ryoReward: 220,
       recommendedTime: '2h+',
       color: '#f43f5e',
       borderColor: 'border-rose-500'
@@ -166,6 +171,7 @@ export const shinobiTheme: ThemeConfig = {
       rank: 'S',
       label: 'Rank S (Lendário)',
       xpReward: 350,
+      ryoReward: 400,
       recommendedTime: 'Desafio Máximo',
       color: '#c084fc',
       borderColor: 'border-purple-500'

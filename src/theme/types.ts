@@ -34,6 +34,7 @@ export interface ThemeMissionRankConfig {
   rank: MissionRank;
   label: string;            // Ex: "Rank E - Básico"
   xpReward: number;         // XP base
+  ryoReward: number;        // Ryō base
   recommendedTime: string;  // Ex: "< 5 min"
   color: string;
   borderColor: string;

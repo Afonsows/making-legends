@@ -5,23 +5,14 @@ import { PillarId, MissionRank } from '../theme/types';
 import { shinobiTheme } from '../theme/shinobi.theme';
 import { getTodayString } from '../core/streakEngine';
 import { getLevelFromTotalXp, getRankIdFromLevel } from '../core/xpEngine';
+import { getDefaultRyoReward, calculateRyoGainWithBuffs } from '../core/ryoEngine';
 import { useUserStore } from './useUserStore';
 import { useDuelStore } from './useDuelStore';
 import { syncService } from '../services/syncService';
 import { soundFx } from '../utils/audio';
 import { triggerMissionConfetti } from '../utils/confetti';
 
-export function getDefaultRyoReward(rank: MissionRank): number {
-  switch (rank) {
-    case 'E': return 10;
-    case 'D': return 25;
-    case 'C': return 50;
-    case 'B': return 90;
-    case 'A': return 160;
-    case 'S': return 300;
-    default: return 25;
-  }
-}
+export { getDefaultRyoReward, calculateRyoGainWithBuffs };
 
 const initialMissions: Mission[] = [
   {
@@ -31,7 +22,7 @@ const initialMissions: Mission[] = [
     pillarId: 'chakra',
     rank: 'E',
     xpReward: 25,
-    ryoReward: 10,
+    ryoReward: 15,
     timeOfDay: 'morning',
     isCompletedToday: false,
     completedDates: [],
@@ -46,7 +37,7 @@ const initialMissions: Mission[] = [
     pillarId: 'taijutsu',
     rank: 'C',
     xpReward: 85,
-    ryoReward: 50,
+    ryoReward: 70,
     timeOfDay: 'morning',
     isCompletedToday: false,
     completedDates: [],
@@ -61,7 +52,7 @@ const initialMissions: Mission[] = [
     pillarId: 'ninjutsu',
     rank: 'D',
     xpReward: 50,
-    ryoReward: 25,
+    ryoReward: 35,
     timeOfDay: 'afternoon',
     isCompletedToday: false,
     completedDates: [],
@@ -76,7 +67,7 @@ const initialMissions: Mission[] = [
     pillarId: 'genjutsu',
     rank: 'B',
     xpReward: 140,
-    ryoReward: 90,
+    ryoReward: 130,
     timeOfDay: 'afternoon',
     isCompletedToday: false,
     completedDates: [],
@@ -91,7 +82,7 @@ const initialMissions: Mission[] = [
     pillarId: 'espirito',
     rank: 'D',
     xpReward: 50,
-    ryoReward: 25,
+    ryoReward: 35,
     timeOfDay: 'evening',
     isCompletedToday: false,
     completedDates: [],
@@ -106,7 +97,7 @@ const initialMissions: Mission[] = [
     pillarId: 'chakra',
     rank: 'E',
     xpReward: 25,
-    ryoReward: 10,
+    ryoReward: 15,
     timeOfDay: 'evening',
     isCompletedToday: false,
     completedDates: [],
@@ -164,8 +155,17 @@ export const useHabitStore = create<HabitStoreState>()(
 
         const todayStr = getTodayString();
         const willBeCompleted = !mission.isCompletedToday;
-        const ryoAmount = mission.ryoReward || getDefaultRyoReward(mission.rank);
         const userStore = useUserStore.getState();
+        const equippedItems = userStore.getEquippedItems();
+
+        const baseRyo = mission.ryoReward || getDefaultRyoReward(mission.rank);
+        const { finalRyo } = calculateRyoGainWithBuffs(
+          baseRyo,
+          userStore.profile.currentStreak,
+          userStore.profile.level,
+          equippedItems
+        );
+        const ryoAmount = finalRyo;
 
         const updatedMissions = missions.map((m) => {
           if (m.id === missionId) {
@@ -208,7 +208,6 @@ export const useHabitStore = create<HabitStoreState>()(
           userStore.addRyo(ryoAmount);
 
           const duelStore = useDuelStore.getState();
-          const equippedItems = userStore.getEquippedItems();
           duelStore.dealDamageFromMission(finalXp, mission.pillarId, equippedItems);
         } else {
           userStore.removeXp(mission.xpReward, mission.pillarId);
@@ -224,7 +223,7 @@ export const useHabitStore = create<HabitStoreState>()(
           ...missionData,
           id: `mis_custom_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
           xpReward: missionData.xpReward || rankInfo.xpReward,
-          ryoReward: missionData.ryoReward || getDefaultRyoReward(missionData.rank),
+          ryoReward: missionData.ryoReward || rankInfo.ryoReward || getDefaultRyoReward(missionData.rank),
           isCompletedToday: false,
           completedDates: [],
           order: missions.length + 1,
@@ -237,7 +236,19 @@ export const useHabitStore = create<HabitStoreState>()(
       updateMission: (id, updates) => {
         const { missions } = get();
         set({
-          missions: missions.map((m) => (m.id === id ? { ...m, ...updates } : m)),
+          missions: missions.map((m) => {
+            if (m.id !== id) return m;
+            const newRank = updates.rank || m.rank;
+            const rankInfo = shinobiTheme.missionRanks[newRank] || shinobiTheme.missionRanks.D;
+            const newXpReward = updates.xpReward ?? (updates.rank ? rankInfo.xpReward : m.xpReward);
+            const newRyoReward = updates.ryoReward ?? (updates.rank ? (rankInfo.ryoReward || getDefaultRyoReward(newRank)) : (m.ryoReward || getDefaultRyoReward(newRank)));
+            return {
+              ...m,
+              ...updates,
+              xpReward: newXpReward,
+              ryoReward: newRyoReward,
+            };
+          }),
         });
       },
 

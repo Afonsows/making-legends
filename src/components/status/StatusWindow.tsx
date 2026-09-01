@@ -4,6 +4,7 @@ import { useHabitStore } from '../../state/useHabitStore';
 import { useTheme } from '../../theme/ThemeContext';
 import { RadarChart } from './RadarChart';
 import { getLevelProgress } from '../../core/xpEngine';
+import { getDefaultRyoReward } from '../../core/ryoEngine';
 import { syncService } from '../../services/syncService';
 import { supabase } from '../../services/supabase';
 import { soundFx } from '../../utils/audio';
@@ -768,7 +769,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
             <div className="p-2 bg-slate-900/80 rounded-xl border border-slate-800">
               <span className="text-slate-400 block text-[10px]">Ryō Calculado</span>
               <span className="font-bold text-amber-300 font-mono text-sm">
-                {missions.filter((m) => m.isCompletedToday).reduce((acc, m) => acc + (m.ryoReward || 25), 0)} Ryō
+                {missions.filter((m) => m.isCompletedToday).reduce((acc, m) => acc + (m.ryoReward || getDefaultRyoReward(m.rank)), 0)} Ryō
               </span>
             </div>
             <div className="p-2 bg-slate-900/80 rounded-xl border border-slate-800">

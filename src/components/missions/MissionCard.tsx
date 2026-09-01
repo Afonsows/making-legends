@@ -1,6 +1,7 @@
 import React from 'react';
 import { Mission } from '../../core/types';
 import { useTheme } from '../../theme/ThemeContext';
+import { getDefaultRyoReward } from '../../core/ryoEngine';
 import { 
   Check, 
   Sun, 
@@ -251,7 +252,7 @@ export const MissionCard: React.FC<MissionCardProps> = ({
           </span>
           <span className="text-[11px] font-mono font-bold text-amber-300 flex items-center gap-1 bg-amber-950/50 px-2 py-0.5 rounded-lg border border-amber-500/40">
             <span>🪙</span>
-            +{mission.ryoReward || (mission.rank === 'S' ? 300 : mission.rank === 'A' ? 160 : mission.rank === 'B' ? 90 : mission.rank === 'C' ? 50 : mission.rank === 'D' ? 25 : 10)} Ryō
+            +{mission.ryoReward || rankInfo.ryoReward || getDefaultRyoReward(mission.rank)} Ryō
           </span>
         </div>
 

@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { UserProfile, AvatarConfig, NotificationSettings, Item, ProtocolChallengeCycle } from '../core/types';
 import { PillarId, UserRankId } from '../theme/types';
 import { getLevelFromTotalXp, getRankIdFromLevel, calculateXpGainWithBuffs } from '../core/xpEngine';
+import { getLevelUpRyoReward, getDailyCheckInRyoBonus } from '../core/ryoEngine';
 import { 
   getTodayString, 
   processDayTransition, 
@@ -197,6 +198,8 @@ export const useUserStore = create<UserStoreState>()(
 
         const hasLeveledUp = newLevel > oldLevel;
 
+        const levelUpRyoReward = hasLeveledUp ? getLevelUpRyoReward(newLevel) : 0;
+
         set((state) => ({
           profile: {
             ...state.profile,
@@ -204,6 +207,7 @@ export const useUserStore = create<UserStoreState>()(
             level: newLevel,
             currentRankId: newRank,
             pillarXp: newPillarXp,
+            ryo: (state.profile.ryo || 0) + levelUpRyoReward,
           },
           activeLevelUpModal: hasLeveledUp
             ? {
@@ -426,18 +430,24 @@ export const useUserStore = create<UserStoreState>()(
         };
 
         let newStreak = profile.currentStreak;
+        const dailyRyoStipend = getDailyCheckInRyoBonus(newStreak, profile.level);
+
         if (willBeChecked) {
           soundFx.playMissionComplete();
           triggerMissionConfetti();
         }
 
         const bestStreak = Math.max(profile.bestStreak, newStreak);
+        const newRyo = willBeChecked
+          ? (profile.ryo || 0) + dailyRyoStipend
+          : Math.max(0, (profile.ryo || 0) - dailyRyoStipend);
 
         set((state) => ({
           profile: {
             ...state.profile,
             currentStreak: newStreak,
             bestStreak,
+            ryo: newRyo,
             activeChallenge: updatedCycle,
           },
         }));
@@ -445,6 +455,7 @@ export const useUserStore = create<UserStoreState>()(
         return {
           success: true,
           isChecked: willBeChecked,
+          ryoEarned: willBeChecked ? dailyRyoStipend : 0,
         };
       },
 
