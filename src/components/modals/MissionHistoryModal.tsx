@@ -41,7 +41,9 @@ export const MissionHistoryModal: React.FC<MissionHistoryModalProps> = ({ isOpen
       const targetUserId = session?.user?.id || profile.id;
       if (targetUserId) {
         const freshProfile = useUserStore.getState().profile;
+        const freshMissions = useHabitStore.getState().missions;
         await syncService.pushUserProfile(freshProfile, targetUserId);
+        await syncService.pushMissions(freshMissions, targetUserId);
       }
     } catch (err) {
       console.warn('Recalibrado localmente.', err);

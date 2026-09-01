@@ -37,6 +37,25 @@ export function getTodayString(): string {
 }
 
 /**
+ * Valida estritamente se uma string é uma data no formato YYYY-MM-DD válida no calendário.
+ */
+export function isValidDateString(dateStr: unknown): boolean {
+  if (typeof dateStr !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return false;
+  }
+  const [year, month, day] = dateStr.split('-').map(Number);
+  if (year < 2020 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) {
+    return false;
+  }
+  const dateObj = new Date(year, month - 1, day);
+  return (
+    dateObj.getFullYear() === year &&
+    dateObj.getMonth() === month - 1 &&
+    dateObj.getDate() === day
+  );
+}
+
+/**
  * Retorna a diferença em dias entre duas strings YYYY-MM-DD.
  */
 export function getDaysDifference(dateA: string, dateB: string): number {

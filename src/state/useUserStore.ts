@@ -237,6 +237,7 @@ export const useUserStore = create<UserStoreState>()(
           equipped
         );
 
+        const oldLevel = profile.level;
         const newTotalXp = Math.max(0, profile.totalXp - finalXp);
         const newLevel = getLevelFromTotalXp(newTotalXp);
         const newRank = getRankIdFromLevel(newLevel);
@@ -246,6 +247,15 @@ export const useUserStore = create<UserStoreState>()(
           [pillarId]: Math.max(0, (profile.pillarXp[pillarId] || 0) - finalXp),
         };
 
+        let lostLevelUpRyo = 0;
+        if (newLevel < oldLevel) {
+          for (let lvl = oldLevel; lvl > newLevel; lvl--) {
+            lostLevelUpRyo += getLevelUpRyoReward(lvl);
+          }
+        }
+
+        const newRyo = Math.max(0, (profile.ryo || 0) - lostLevelUpRyo);
+
         set((state) => ({
           profile: {
             ...state.profile,
@@ -253,6 +263,7 @@ export const useUserStore = create<UserStoreState>()(
             level: newLevel,
             currentRankId: newRank,
             pillarXp: newPillarXp,
+            ryo: newRyo,
           },
         }));
       },
