@@ -29,56 +29,58 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 liquid-glass-nav pb-safe transition-all duration-300">
-      {/* Filete de Brilho Especular Superior (Liquid Glass Sheen) */}
-      <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-shinobi-gold/40 via-white/30 to-transparent pointer-events-none" />
-      
-      {/* Camada sutil de gradiente de profundidade */}
-      <div className="absolute inset-0 bg-gradient-to-b from-white/[0.04] via-transparent to-black/30 pointer-events-none" />
+    <div className="fixed bottom-2.5 sm:bottom-4 inset-x-3 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-lg z-40 pointer-events-none pb-safe">
+      <nav className="pointer-events-auto liquid-glass-nav rounded-2xl sm:rounded-3xl relative overflow-hidden transition-all duration-300">
+        {/* Filete de Brilho Especular Superior (Liquid Glass Sheen) */}
+        <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/50 via-shinobi-gold/30 to-transparent pointer-events-none" />
+        
+        {/* Reflexo interno translúcido fosco */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] via-transparent to-black/20 pointer-events-none" />
 
-      <div className="max-w-md mx-auto grid grid-cols-5 h-16 relative z-10 px-1">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
+        <div className="grid grid-cols-5 h-16 relative z-10 px-1.5 py-1">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
 
-          return (
-            <button
-              key={item.id}
-              onClick={() => onSelectTab(item.id)}
-              className={`group relative flex flex-col items-center justify-center gap-1 transition-all duration-300 touch-manipulation py-1 rounded-xl mx-0.5 my-1.5 ${
-                isActive
-                  ? 'text-shinobi-gold font-bold bg-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)] border border-white/[0.08]'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.03]'
-              }`}
-            >
-              <div className="relative">
-                <Icon
-                  className={`w-5 h-5 transition-all duration-300 ${
-                    isActive
-                      ? 'scale-110 drop-shadow-[0_0_12px_rgba(234,179,8,0.7)] text-shinobi-gold'
-                      : 'group-hover:scale-105 group-hover:text-slate-200'
-                  }`}
-                />
-                {item.id === 'missions' && pendingMissionsCount > 0 && (
-                  <span className="absolute -top-1.5 -right-2.5 bg-gradient-to-r from-rose-600 to-shinobi-crimson text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-lg shadow-rose-950/60 border border-white/20 animate-pulse">
-                    {pendingMissionsCount}
-                  </span>
-                )}
-              </div>
-              <span
-                className={`text-[10px] tracking-tight transition-all duration-200 ${
-                  isActive ? 'text-shinobi-gold font-bold' : 'font-medium'
+            return (
+              <button
+                key={item.id}
+                onClick={() => onSelectTab(item.id)}
+                className={`group relative flex flex-col items-center justify-center gap-1 transition-all duration-300 touch-manipulation rounded-xl sm:rounded-2xl mx-0.5 my-0.5 ${
+                  isActive
+                    ? 'text-shinobi-gold font-bold bg-white/[0.14] shadow-[0_2px_10px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.4)] border border-white/[0.22] backdrop-blur-md'
+                    : 'text-slate-300 hover:text-white hover:bg-white/[0.08]'
                 }`}
               >
-                {item.label}
-              </span>
-              {isActive && (
-                <div className="absolute -bottom-1 w-5 h-0.5 bg-gradient-to-r from-shinobi-gold/40 via-shinobi-gold to-shinobi-gold/40 rounded-full shadow-[0_0_8px_rgba(234,179,8,0.8)]" />
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </nav>
+                <div className="relative">
+                  <Icon
+                    className={`w-5 h-5 transition-all duration-300 ${
+                      isActive
+                        ? 'scale-110 drop-shadow-[0_0_10px_rgba(234,179,8,0.9)] text-shinobi-gold'
+                        : 'group-hover:scale-105 group-hover:text-white'
+                    }`}
+                  />
+                  {item.id === 'missions' && pendingMissionsCount > 0 && (
+                    <span className="absolute -top-1.5 -right-2.5 bg-gradient-to-r from-rose-600 to-shinobi-crimson text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-lg shadow-rose-950/80 border border-white/30 animate-pulse">
+                      {pendingMissionsCount}
+                    </span>
+                  )}
+                </div>
+                <span
+                  className={`text-[10px] tracking-tight transition-all duration-200 ${
+                    isActive ? 'text-shinobi-gold font-bold' : 'font-medium'
+                  }`}
+                >
+                  {item.label}
+                </span>
+                {isActive && (
+                  <div className="absolute bottom-1 w-5 h-0.5 bg-gradient-to-r from-shinobi-gold/40 via-shinobi-gold to-shinobi-gold/40 rounded-full shadow-[0_0_8px_rgba(234,179,8,0.9)]" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+    </div>
   );
 };
