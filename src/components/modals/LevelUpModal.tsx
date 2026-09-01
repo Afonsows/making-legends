@@ -14,8 +14,8 @@ export const LevelUpModal: React.FC = () => {
   const newRankInfo = getRankByLevel(newLevel);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-300">
-      <div className="bg-shinobi-card border-2 border-shinobi-gold w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl p-6 text-center space-y-4 relative animate-in zoom-in-95 duration-300">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3.5 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-300">
+      <div className="bg-shinobi-card border-2 border-shinobi-gold w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl p-6 text-center space-y-4 relative animate-in zoom-in-95 duration-300 relative z-[101]">
         {/* Glow de Fundo */}
         <div className="absolute inset-0 bg-gradient-to-b from-shinobi-gold/10 via-transparent to-transparent pointer-events-none" />
 

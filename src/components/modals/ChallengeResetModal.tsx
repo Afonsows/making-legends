@@ -19,8 +19,8 @@ export const ChallengeResetModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-slate-900 border-2 border-rose-500/70 w-full max-w-lg rounded-3xl overflow-hidden shadow-glow-crimson flex flex-col my-auto">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3.5 sm:p-6 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-slate-900 border-2 border-rose-500/70 w-full max-w-lg rounded-3xl overflow-hidden shadow-glow-crimson flex flex-col my-auto relative z-[101]">
         {/* Top Banner com Destaque */}
         <div className="p-6 bg-gradient-to-b from-rose-950/80 to-slate-950/90 border-b border-rose-500/30 text-center space-y-2">
           <div className="w-16 h-16 rounded-3xl bg-rose-500/20 border-2 border-rose-500 flex items-center justify-center text-rose-400 mx-auto shadow-glow-crimson animate-bounce">

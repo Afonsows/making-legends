@@ -361,6 +361,7 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
 
       {/* Modal de Criação / Edição */}
       <AddMissionModal
+        key={editingMission ? `edit_${editingMission.id}` : 'create_new_mission'}
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);

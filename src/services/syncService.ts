@@ -71,6 +71,11 @@ class SyncService {
         const mappedMissions: Mission[] = missionsData.map((m) => {
           const completedDates: string[] = m.completed_dates || [];
           const isCompletedToday = completedDates.includes(todayStr);
+          const defaultRankRyo = getDefaultRyoReward(m.rank);
+          const ryoReward = (!m.is_custom || !m.ryo_reward || (m.ryo_reward === 25 && m.rank !== 'E'))
+            ? defaultRankRyo
+            : m.ryo_reward;
+
           return {
             id: m.id,
             title: m.title,
@@ -78,7 +83,7 @@ class SyncService {
             pillarId: m.pillar_id,
             rank: m.rank,
             xpReward: m.xp_reward,
-            ryoReward: m.ryo_reward ?? getDefaultRyoReward(m.rank),
+            ryoReward: ryoReward,
             timeOfDay: m.time_of_day,
             isCompletedToday: isCompletedToday,
             completedDates: completedDates,

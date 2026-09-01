@@ -1,4 +1,4 @@
-import { MissionRank, UserRankId } from '../theme/types';
+import { MissionRank, UserRankId, PillarId } from '../theme/types';
 import { Item } from './types';
 import { getRankIdFromLevel } from './xpEngine';
 
@@ -80,7 +80,8 @@ export function calculateRyoGainWithBuffs(
   baseRyo: number,
   streak: number = 0,
   level: number = 1,
-  equippedItems: Item[] = []
+  equippedItems: Item[] = [],
+  pillarId?: PillarId
 ): {
   finalRyo: number;
   bonusRyo: number;
@@ -94,9 +95,14 @@ export function calculateRyoGainWithBuffs(
 
   let itemMultiplier = 0;
   equippedItems.forEach((item) => {
-    if (item.buffType === 'xp_boost_pillar') {
-      itemMultiplier += (item.buffValue * 0.5) / 100;
+    if (item.buffType === 'xp_boost_all') {
+      const buffVal = (item.buffValue * 0.5) / 100;
+      itemMultiplier += buffVal;
       appliedBuffs.push(`${item.name} (+${Math.round(item.buffValue * 0.5)}% Ryō)`);
+    } else if (item.buffType === 'xp_boost_pillar' && pillarId && item.targetPillar === pillarId) {
+      const buffVal = (item.buffValue * 0.5) / 100;
+      itemMultiplier += buffVal;
+      appliedBuffs.push(`${item.name} (+${Math.round(item.buffValue * 0.5)}% ${pillarId.toUpperCase()} Ryō)`);
     }
   });
 
@@ -109,7 +115,7 @@ export function calculateRyoGainWithBuffs(
 
   const totalMultiplier = 1.0 + (streakBonusPct / 100) + (rankBonusPct / 100) + itemMultiplier;
   const finalRyo = Math.max(1, Math.round(baseRyo * totalMultiplier));
-  const bonusRyo = finalRyo - baseRyo;
+  const bonusRyo = Math.max(0, finalRyo - baseRyo);
 
   return {
     finalRyo,

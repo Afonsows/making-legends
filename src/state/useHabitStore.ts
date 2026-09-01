@@ -158,12 +158,15 @@ export const useHabitStore = create<HabitStoreState>()(
         const userStore = useUserStore.getState();
         const equippedItems = userStore.getEquippedItems();
 
-        const baseRyo = mission.ryoReward || getDefaultRyoReward(mission.rank);
+        const baseRyo = (!mission.isCustom || !mission.ryoReward || (mission.ryoReward === 25 && mission.rank !== 'E'))
+          ? getDefaultRyoReward(mission.rank)
+          : mission.ryoReward;
         const { finalRyo } = calculateRyoGainWithBuffs(
           baseRyo,
           userStore.profile.currentStreak,
           userStore.profile.level,
-          equippedItems
+          equippedItems,
+          mission.pillarId
         );
         const ryoAmount = finalRyo;
 
@@ -281,8 +284,14 @@ export const useHabitStore = create<HabitStoreState>()(
         const updated = missions.map((m) => {
           const completedDates = m.completedDates || [];
           const isCompletedToday = completedDates.includes(todayStr);
+          const defaultRankRyo = getDefaultRyoReward(m.rank);
+          const ryoReward = (!m.isCustom || !m.ryoReward || (m.ryoReward === 25 && m.rank !== 'E'))
+            ? defaultRankRyo
+            : m.ryoReward;
+
           return {
             ...m,
+            ryoReward,
             completedDates,
             isCompletedToday,
           };
@@ -295,8 +304,14 @@ export const useHabitStore = create<HabitStoreState>()(
         const todayStr = getTodayString();
         const sanitized = newMissions.map((m) => {
           const completedDates = m.completedDates || [];
+          const defaultRankRyo = getDefaultRyoReward(m.rank);
+          const ryoReward = (!m.isCustom || !m.ryoReward || (m.ryoReward === 25 && m.rank !== 'E'))
+            ? defaultRankRyo
+            : m.ryoReward;
+
           return {
             ...m,
+            ryoReward,
             completedDates,
             isCompletedToday: completedDates.includes(todayStr),
           };
@@ -393,8 +408,14 @@ export const useHabitStore = create<HabitStoreState>()(
           const todayStr = getTodayString();
           state.missions = (state.missions || []).map((m) => {
             const completedDates = m.completedDates || [];
+            const defaultRankRyo = getDefaultRyoReward(m.rank);
+            const ryoReward = (!m.isCustom || !m.ryoReward || (m.ryoReward === 25 && m.rank !== 'E'))
+              ? defaultRankRyo
+              : m.ryoReward;
+
             return {
               ...m,
+              ryoReward,
               completedDates,
               isCompletedToday: completedDates.includes(todayStr),
             };

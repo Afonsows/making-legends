@@ -99,7 +99,7 @@ export const AppContent: React.FC = () => {
       />
 
       {/* Conteúdo Principal da Aba Selecionada */}
-      <main className="flex-1 w-full max-w-4xl mx-auto relative z-10">
+      <main className="flex-1 w-full max-w-4xl mx-auto relative">
         {activeTab === 'missions' && (
           <MissionsView onOpenCard={() => setActiveTab('cards')} />
         )}

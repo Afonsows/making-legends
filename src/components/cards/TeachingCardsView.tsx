@@ -235,8 +235,8 @@ export const TeachingCardsView: React.FC = () => {
 
       {/* Modal de Leitura do Cartão */}
       {activeCardModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-shinobi-card border border-shinobi-gold/60 w-full max-w-md rounded-2xl overflow-hidden shadow-2xl p-6 relative">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3.5 sm:p-6 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-shinobi-card border border-shinobi-gold/60 w-full max-w-md rounded-2xl overflow-hidden shadow-2xl p-6 relative z-[101]">
             <div className="text-center space-y-3">
               <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-shinobi-gold/20 text-shinobi-gold border border-shinobi-gold/40">
                 PERGAMINHO DE ENSINAMENTO #{activeCardModal.unlockedDay}
