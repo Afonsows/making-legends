@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mission, TimeOfDay } from '../../core/types';
 import { PillarId, MissionRank } from '../../theme/types';
 import { useTheme } from '../../theme/ThemeContext';
-import { X, Sparkles, Plus } from 'lucide-react';
+import { X, Sparkles, Plus, Edit3 } from 'lucide-react';
 
 interface AddMissionModalProps {
   isOpen: boolean;
@@ -25,9 +25,26 @@ export const AddMissionModal: React.FC<AddMissionModalProps> = ({
   const [rank, setRank] = useState<MissionRank>(initialData?.rank || 'D');
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>(initialData?.timeOfDay || 'morning');
 
+  // Sincroniza o formulário sempre que o modal abre ou initialData muda
+  useEffect(() => {
+    if (initialData) {
+      setTitle(initialData.title || '');
+      setDescription(initialData.description || '');
+      setPillarId(initialData.pillarId || 'taijutsu');
+      setRank(initialData.rank || 'D');
+      setTimeOfDay(initialData.timeOfDay || 'morning');
+    } else {
+      setTitle('');
+      setDescription('');
+      setPillarId('taijutsu');
+      setRank('D');
+      setTimeOfDay('morning');
+    }
+  }, [initialData, isOpen]);
+
   if (!isOpen) return null;
 
-  const currentRankInfo = theme.missionRanks[rank];
+  const currentRankInfo = theme.missionRanks[rank] || theme.missionRanks.D;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,11 +58,9 @@ export const AddMissionModal: React.FC<AddMissionModalProps> = ({
       xpReward: currentRankInfo.xpReward,
       ryoReward: currentRankInfo.ryoReward,
       timeOfDay,
-      isCustom: true,
+      isCustom: initialData ? (initialData.isCustom ?? true) : true,
     });
 
-    setTitle('');
-    setDescription('');
     onClose();
   };
 
@@ -59,7 +74,7 @@ export const AddMissionModal: React.FC<AddMissionModalProps> = ({
         <div className="flex items-center justify-between p-4 border-b border-shinobi-border bg-shinobi-bg/60">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-shinobi-crimson/20 border border-shinobi-crimson/40 flex items-center justify-center text-shinobi-crimson">
-              <Plus className="w-4 h-4" />
+              {initialData ? <Edit3 className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
             </div>
             <h3 className="font-cinzel font-bold text-slate-100 text-base">
               {initialData ? 'Editar Missão Shinobi' : 'Forjar Nova Missão'}
