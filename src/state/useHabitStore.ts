@@ -260,12 +260,22 @@ export const useHabitStore = create<HabitStoreState>()(
         const mission = missions.find((m) => m.id === id);
         if (!mission) return;
 
-        // Se a missão estava concluída hoje, reverte os ganhos de XP e Ryō
+        // Se a missão estava concluída hoje, reverte os ganhos de XP e Ryō com cálculo exato de bônus
         if (mission.isCompletedToday) {
           const userStore = useUserStore.getState();
-          const ryoAmount = mission.ryoReward || getDefaultRyoReward(mission.rank);
+          const equippedItems = userStore.getEquippedItems();
+          const baseRyo = (!mission.isCustom || !mission.ryoReward || (mission.ryoReward === 25 && mission.rank !== 'E'))
+            ? getDefaultRyoReward(mission.rank)
+            : mission.ryoReward;
+          const { finalRyo } = calculateRyoGainWithBuffs(
+            baseRyo,
+            userStore.profile.currentStreak,
+            userStore.profile.level,
+            equippedItems,
+            mission.pillarId
+          );
           userStore.removeXp(mission.xpReward, mission.pillarId);
-          userStore.removeRyo(ryoAmount);
+          userStore.removeRyo(finalRyo);
         }
 
         const remainingMissions = missions.filter((m) => m.id !== id);
@@ -370,7 +380,8 @@ export const useHabitStore = create<HabitStoreState>()(
           genjutsu: 0,
         };
 
-        // 1. Processa e higieniza estritamente as conclusões ativas (não canceladas) de cada missão
+        // 1. Processa e higieniza estritamente as conclusões de cada missão.
+        //    FONTE DA VERDADE ÚNICA: completedDates (NÃO usa isCompletedToday para evitar flag stale de dia anterior)
         const sanitizedMissions: Mission[] = missions.map((m) => {
           const rankInfo = shinobiTheme.missionRanks[m.rank] || shinobiTheme.missionRanks.D;
           const ryoPerCompletion = (!m.isCustom || !m.ryoReward || (m.ryoReward === 25 && m.rank !== 'E'))
@@ -381,21 +392,18 @@ export const useHabitStore = create<HabitStoreState>()(
             : m.xpReward;
 
           // Filtra estritamente apenas strings que sejam datas ISO válidas no formato YYYY-MM-DD (<= todayStr)
-          // Se a missão não está marcada hoje (m.isCompletedToday === false), todayStr é excluído sem exceção.
+          // Não filtra com base em isCompletedToday — a presença ou ausência de todayStr em completedDates
+          // já reflete corretamente se a missão foi concluída ou cancelada hoje.
           const validDates = (m.completedDates || []).filter(
-            (d) => typeof d === 'string' && isValidDateString(d) && d <= todayStr && (d !== todayStr || m.isCompletedToday)
+            (d) => typeof d === 'string' && isValidDateString(d) && d <= todayStr
           );
 
-          const activeDatesSet = new Set<string>(validDates);
+          // Deduplicação estrita por Set (protege contra duplicatas no array)
+          const uniqueDates = Array.from(new Set<string>(validDates)).sort();
 
-          if (m.isCompletedToday) {
-            activeDatesSet.add(todayStr);
-          } else {
-            activeDatesSet.delete(todayStr);
-          }
-
-          const sortedDates = Array.from(activeDatesSet).sort();
-          const netCompletions = sortedDates.length;
+          // isCompletedToday é derivado exclusivamente das datas limpas — nunca da flag antiga
+          const isTodayCompleted = uniqueDates.includes(todayStr);
+          const netCompletions = uniqueDates.length;
 
           if (netCompletions > 0) {
             const missionXp = xpPerCompletion * netCompletions;
@@ -410,32 +418,56 @@ export const useHabitStore = create<HabitStoreState>()(
             ...m,
             ryoReward: ryoPerCompletion,
             xpReward: xpPerCompletion,
-            isCompletedToday: activeDatesSet.has(todayStr),
-            completedDates: sortedDates,
+            isCompletedToday: isTodayCompleted,
+            completedDates: uniqueDates,
           };
         });
 
         // 2. Adiciona estipêndios apenas de dias com Check-in de Presença confirmado (checked === true)
+        let totalCheckInRyo = 0;
         const allCycles = [activeChallenge, ...challengeHistory].filter(Boolean);
         allCycles.forEach((cycle) => {
           if (cycle?.checkIns) {
             Object.values(cycle.checkIns).forEach((checkIn) => {
               if (checkIn && checkIn.checked) {
                 const checkInBonus = getDailyCheckInRyoBonus(1, 1);
-                totalCalculatedRyo += checkInBonus;
+                totalCheckInRyo += checkInBonus;
               }
             });
           }
         });
+        totalCalculatedRyo += totalCheckInRyo;
 
         // 3. Calcula o Nível e Rank oficiais exatos
         const newLevel = getLevelFromTotalXp(totalCalculatedXp);
         const newRank = getRankIdFromLevel(newLevel);
 
         // 4. Adiciona as recompensas em Ryō de cada Nível alcançado
+        let totalLevelUpRyo = 0;
         for (let lvl = 2; lvl <= newLevel; lvl++) {
-          totalCalculatedRyo += getLevelUpRyoReward(lvl);
+          totalLevelUpRyo += getLevelUpRyoReward(lvl);
         }
+        totalCalculatedRyo += totalLevelUpRyo;
+
+        // Log de auditoria detalhado para depuração
+        console.log('[Recalibração] Auditoria completa:', {
+          missões: sanitizedMissions.map((m) => ({
+            titulo: m.title,
+            rank: m.rank,
+            xpPorConclusao: m.xpReward,
+            ryoPorConclusao: m.ryoReward,
+            datasValidas: m.completedDates,
+            conclusoes: m.completedDates.length,
+            concluidoHoje: m.isCompletedToday,
+          })),
+          xpTotal: totalCalculatedXp,
+          ryoMissoes: totalCalculatedRyo - totalCheckInRyo - totalLevelUpRyo,
+          ryoCheckIns: totalCheckInRyo,
+          ryoLevelUps: totalLevelUpRyo,
+          ryoTotal: totalCalculatedRyo,
+          nivel: newLevel,
+          rank: newRank,
+        });
 
         const syncLog: MissionLogEntry = {
           id: `log_sync_${Date.now()}`,
