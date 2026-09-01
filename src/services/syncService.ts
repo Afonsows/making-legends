@@ -72,9 +72,9 @@ class SyncService {
           const completedDates: string[] = m.completed_dates || [];
           const isCompletedToday = completedDates.includes(todayStr);
           const defaultRankRyo = getDefaultRyoReward(m.rank);
-          const ryoReward = (!m.is_custom || !m.ryo_reward || (m.ryo_reward === 25 && m.rank !== 'E'))
-            ? defaultRankRyo
-            : m.ryo_reward;
+          const ryoReward = (m.ryo_reward !== undefined && m.ryo_reward !== null && m.ryo_reward > 0)
+            ? m.ryo_reward
+            : defaultRankRyo;
 
           return {
             id: m.id,

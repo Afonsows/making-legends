@@ -158,9 +158,9 @@ export const useHabitStore = create<HabitStoreState>()(
         const userStore = useUserStore.getState();
         const equippedItems = userStore.getEquippedItems();
 
-        const baseRyo = (!mission.isCustom || !mission.ryoReward || (mission.ryoReward === 25 && mission.rank !== 'E'))
-          ? getDefaultRyoReward(mission.rank)
-          : mission.ryoReward;
+        const baseRyo = (mission.ryoReward !== undefined && mission.ryoReward !== null && mission.ryoReward > 0)
+          ? mission.ryoReward
+          : getDefaultRyoReward(mission.rank);
         const { finalRyo } = calculateRyoGainWithBuffs(
           baseRyo,
           userStore.profile.currentStreak,
@@ -264,9 +264,9 @@ export const useHabitStore = create<HabitStoreState>()(
         if (mission.isCompletedToday) {
           const userStore = useUserStore.getState();
           const equippedItems = userStore.getEquippedItems();
-          const baseRyo = (!mission.isCustom || !mission.ryoReward || (mission.ryoReward === 25 && mission.rank !== 'E'))
-            ? getDefaultRyoReward(mission.rank)
-            : mission.ryoReward;
+          const baseRyo = (mission.ryoReward !== undefined && mission.ryoReward !== null && mission.ryoReward > 0)
+            ? mission.ryoReward
+            : getDefaultRyoReward(mission.rank);
           const { finalRyo } = calculateRyoGainWithBuffs(
             baseRyo,
             userStore.profile.currentStreak,
@@ -297,9 +297,9 @@ export const useHabitStore = create<HabitStoreState>()(
           );
           const isCompletedToday = validDates.includes(todayStr);
           const defaultRankRyo = getDefaultRyoReward(m.rank);
-          const ryoReward = (!m.isCustom || !m.ryoReward || (m.ryoReward === 25 && m.rank !== 'E'))
-            ? defaultRankRyo
-            : m.ryoReward;
+          const ryoReward = (m.ryoReward !== undefined && m.ryoReward !== null && m.ryoReward > 0)
+            ? m.ryoReward
+            : defaultRankRyo;
 
           return {
             ...m,
@@ -319,9 +319,9 @@ export const useHabitStore = create<HabitStoreState>()(
             (d) => typeof d === 'string' && isValidDateString(d) && d <= todayStr
           );
           const defaultRankRyo = getDefaultRyoReward(m.rank);
-          const ryoReward = (!m.isCustom || !m.ryoReward || (m.ryoReward === 25 && m.rank !== 'E'))
-            ? defaultRankRyo
-            : m.ryoReward;
+          const ryoReward = (m.ryoReward !== undefined && m.ryoReward !== null && m.ryoReward > 0)
+            ? m.ryoReward
+            : defaultRankRyo;
 
           return {
             ...m,
@@ -366,8 +366,6 @@ export const useHabitStore = create<HabitStoreState>()(
       recalibrateFromMissions: () => {
         const { missions } = get();
         const userStore = useUserStore.getState();
-        const activeChallenge = userStore.profile.activeChallenge;
-        const challengeHistory = userStore.profile.challengeHistory || [];
         const todayStr = getTodayString();
 
         let totalCalculatedXp = 0;
@@ -384,16 +382,14 @@ export const useHabitStore = create<HabitStoreState>()(
         //    FONTE DA VERDADE ÚNICA: completedDates (NÃO usa isCompletedToday para evitar flag stale de dia anterior)
         const sanitizedMissions: Mission[] = missions.map((m) => {
           const rankInfo = shinobiTheme.missionRanks[m.rank] || shinobiTheme.missionRanks.D;
-          const ryoPerCompletion = (!m.isCustom || !m.ryoReward || (m.ryoReward === 25 && m.rank !== 'E'))
-            ? (rankInfo.ryoReward || getDefaultRyoReward(m.rank))
-            : m.ryoReward;
-          const xpPerCompletion = (!m.isCustom || !m.xpReward)
-            ? rankInfo.xpReward
-            : m.xpReward;
+          const ryoPerCompletion = (m.ryoReward !== undefined && m.ryoReward !== null && m.ryoReward > 0)
+            ? m.ryoReward
+            : (rankInfo.ryoReward || getDefaultRyoReward(m.rank));
+          const xpPerCompletion = (m.xpReward !== undefined && m.xpReward !== null && m.xpReward > 0)
+            ? m.xpReward
+            : rankInfo.xpReward;
 
           // Filtra estritamente apenas strings que sejam datas ISO válidas no formato YYYY-MM-DD (<= todayStr)
-          // Não filtra com base em isCompletedToday — a presença ou ausência de todayStr em completedDates
-          // já reflete corretamente se a missão foi concluída ou cancelada hoje.
           const validDates = (m.completedDates || []).filter(
             (d) => typeof d === 'string' && isValidDateString(d) && d <= todayStr
           );
@@ -401,7 +397,7 @@ export const useHabitStore = create<HabitStoreState>()(
           // Deduplicação estrita por Set (protege contra duplicatas no array)
           const uniqueDates = Array.from(new Set<string>(validDates)).sort();
 
-          // isCompletedToday é derivado exclusivamente das datas limpas — nunca da flag antiga
+          // isCompletedToday é derivado exclusivamente das datas limpas
           const isTodayCompleted = uniqueDates.includes(todayStr);
           const netCompletions = uniqueDates.length;
 
@@ -423,34 +419,12 @@ export const useHabitStore = create<HabitStoreState>()(
           };
         });
 
-        // 2. Adiciona estipêndios apenas de dias com Check-in de Presença confirmado (checked === true)
-        let totalCheckInRyo = 0;
-        const allCycles = [activeChallenge, ...challengeHistory].filter(Boolean);
-        allCycles.forEach((cycle) => {
-          if (cycle?.checkIns) {
-            Object.values(cycle.checkIns).forEach((checkIn) => {
-              if (checkIn && checkIn.checked) {
-                const checkInBonus = getDailyCheckInRyoBonus(1, 1);
-                totalCheckInRyo += checkInBonus;
-              }
-            });
-          }
-        });
-        totalCalculatedRyo += totalCheckInRyo;
-
-        // 3. Calcula o Nível e Rank oficiais exatos
+        // 2. Calcula o Nível e Rank oficiais exatos baseados no XP acumulado
         const newLevel = getLevelFromTotalXp(totalCalculatedXp);
         const newRank = getRankIdFromLevel(newLevel);
 
-        // 4. Adiciona as recompensas em Ryō de cada Nível alcançado
-        let totalLevelUpRyo = 0;
-        for (let lvl = 2; lvl <= newLevel; lvl++) {
-          totalLevelUpRyo += getLevelUpRyoReward(lvl);
-        }
-        totalCalculatedRyo += totalLevelUpRyo;
-
         // Log de auditoria detalhado para depuração
-        console.log('[Recalibração] Auditoria completa:', {
+        console.log('[Recalibração] Auditoria completa de saldo:', {
           missões: sanitizedMissions.map((m) => ({
             titulo: m.title,
             rank: m.rank,
@@ -459,11 +433,9 @@ export const useHabitStore = create<HabitStoreState>()(
             datasValidas: m.completedDates,
             conclusoes: m.completedDates.length,
             concluidoHoje: m.isCompletedToday,
+            subtotalRyo: (m.ryoReward || 0) * m.completedDates.length,
           })),
           xpTotal: totalCalculatedXp,
-          ryoMissoes: totalCalculatedRyo - totalCheckInRyo - totalLevelUpRyo,
-          ryoCheckIns: totalCheckInRyo,
-          ryoLevelUps: totalLevelUpRyo,
           ryoTotal: totalCalculatedRyo,
           nivel: newLevel,
           rank: newRank,
@@ -507,9 +479,9 @@ export const useHabitStore = create<HabitStoreState>()(
               (d) => typeof d === 'string' && isValidDateString(d) && d <= todayStr
             );
             const defaultRankRyo = getDefaultRyoReward(m.rank);
-            const ryoReward = (!m.isCustom || !m.ryoReward || (m.ryoReward === 25 && m.rank !== 'E'))
-              ? defaultRankRyo
-              : m.ryoReward;
+            const ryoReward = (m.ryoReward !== undefined && m.ryoReward !== null && m.ryoReward > 0)
+              ? m.ryoReward
+              : defaultRankRyo;
 
             return {
               ...m,
