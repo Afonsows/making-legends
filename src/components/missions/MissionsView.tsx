@@ -158,23 +158,24 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+        <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-center">
           <button
             onClick={() => setIsHistoryModalOpen(true)}
-            className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-amber-300 border-2 border-amber-500/60 text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-1.5"
-            title="Ver histórico de missões e sincronizar XP/Ryō"
+            className="p-2.5 bg-slate-800 hover:bg-slate-700 text-amber-300 border-2 border-amber-500/60 rounded-xl transition-all shadow-md flex items-center justify-center"
+            title="Histórico & Sincronizar"
+            aria-label="Histórico & Sincronizar"
           >
             <History className="w-4 h-4 text-amber-400" />
-            <span>Histórico & Sincronizar</span>
           </button>
 
           {onOpenCard && (
             <button
               onClick={onOpenCard}
-              className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 border-2 border-cyan-500/50 text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-1.5"
+              className="p-2.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 border-2 border-cyan-500/50 rounded-xl transition-all shadow-md flex items-center justify-center"
+              title="Ensinamento Shinobi"
+              aria-label="Ensinamento Shinobi"
             >
               <Compass className="w-4 h-4 text-cyan-400" />
-              <span>Ensinamento</span>
             </button>
           )}
 
@@ -183,10 +184,11 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
               setEditingMission(null);
               setIsModalOpen(true);
             }}
-            className="px-4 py-2.5 bg-gradient-to-r from-shinobi-crimson to-rose-600 text-white text-xs font-bold rounded-xl shadow-glow-crimson hover:opacity-95 transition-all flex items-center gap-1.5 ml-auto sm:ml-0"
+            className="p-2.5 bg-gradient-to-r from-shinobi-crimson to-rose-600 text-white rounded-xl shadow-glow-crimson hover:opacity-95 transition-all flex items-center justify-center"
+            title="Nova Missão"
+            aria-label="Nova Missão"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
-            <span>Nova Missão</span>
           </button>
         </div>
       </div>
