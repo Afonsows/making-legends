@@ -3,7 +3,8 @@ import { ChallengeHabit } from '../../core/types';
 import { 
   getRecent7Days, 
   calculateHabitStreaks, 
-  generate6MonthHeatmap 
+  generateChallengeDays,
+  ChallengeGridDay 
 } from '../../state/useChallengeStore';
 import { 
   Flame, 
@@ -18,23 +19,38 @@ import {
 
 interface ChallengeHabitCardProps {
   habit: ChallengeHabit;
+  targetDays?: number;
+  startDate?: string;
   onToggleDay: (dateStr: string) => void;
   onDelete: () => void;
 }
 
 export const ChallengeHabitCard: React.FC<ChallengeHabitCardProps> = ({
   habit,
+  targetDays = 66,
+  startDate,
   onToggleDay,
   onDelete,
 }) => {
   const [showHistory, setShowHistory] = useState(true);
-  const [hoveredDate, setHoveredDate] = useState<string | null>(null);
 
   const streaks = calculateHabitStreaks(habit.completedDates);
   const recent7Days = getRecent7Days(habit.completedDates);
-  const heatmapWeeks = generate6MonthHeatmap(habit.completedDates);
+  const challengeDays = generateChallengeDays(targetDays, startDate, habit.completedDates);
+
+  const completedCount = challengeDays.filter((d) => d.isCompleted).length;
+  const progressPercent = Math.min(100, Math.round((completedCount / targetDays) * 100));
 
   const accentColor = habit.color || '#10b981';
+
+  // Define a quantidade de colunas responsivas dependendo da duração do desafio
+  const getGridColsClass = (total: number) => {
+    if (total <= 21) return 'grid-cols-7';
+    if (total <= 42) return 'grid-cols-7 sm:grid-cols-14';
+    if (total <= 66) return 'grid-cols-11 sm:grid-cols-11 md:grid-cols-22';
+    if (total <= 90) return 'grid-cols-10 sm:grid-cols-15 md:grid-cols-30';
+    return 'grid-cols-10 sm:grid-cols-15 md:grid-cols-25';
+  };
 
   return (
     <div className="liquid-glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 relative overflow-hidden transition-all duration-300 group shadow-xl">
@@ -141,13 +157,16 @@ export const ChallengeHabitCard: React.FC<ChallengeHabitCardProps> = ({
         </div>
       </div>
 
-      {/* Seção Inferior: Matriz de Calor de Consistência dos Últimos 6 Meses */}
+      {/* Seção Inferior: Matriz de Consistência do Desafio (Exato número total de dias proposto) */}
       {showHistory && (
         <div className="mt-5 pt-4 border-t border-slate-800/80 relative z-10 space-y-3 animate-in fade-in duration-300">
           <div className="flex items-center justify-between text-xs text-slate-400">
-            <div className="flex items-center gap-1.5 font-mono font-bold text-[11px] text-slate-300">
-              <Calendar className="w-3.5 h-3.5 text-shinobi-gold" />
-              <span>CONSISTÊNCIA NOS ÚLTIMOS 6 MESES</span>
+            <div className="flex items-center gap-2 font-mono font-bold text-xs sm:text-sm text-slate-200">
+              <Calendar className="w-4 h-4 text-shinobi-gold" />
+              <span>CONSISTÊNCIA DO DESAFIO</span>
+              <span className="px-2 py-0.5 rounded-full bg-shinobi-gold/20 text-shinobi-gold border border-shinobi-gold/40 text-xs font-mono font-bold">
+                {completedCount}/{targetDays}
+              </span>
             </div>
 
             <button
@@ -161,43 +180,59 @@ export const ChallengeHabitCard: React.FC<ChallengeHabitCardProps> = ({
             </button>
           </div>
 
-          {/* Matriz de Quadradinhos (26 semanas x 7 dias) */}
+          {/* Matriz dos Quadrinhos Correspondentes ao Total do Desafio (ex: 66 quadrinhos para 66 dias) */}
           <div className="overflow-x-auto pb-2 pt-1 -mx-1 px-1">
-            <div className="flex items-center gap-1 min-w-[540px]">
-              {heatmapWeeks.map((week, wIdx) => (
-                <div key={`w_${wIdx}`} className="flex flex-col gap-1">
-                  {week.map((day) => (
-                    <div
-                      key={`h_${day.date}`}
-                      onMouseEnter={() => setHoveredDate(day.date)}
-                      onMouseLeave={() => setHoveredDate(null)}
-                      onClick={() => !day.isInFuture && onToggleDay(day.date)}
-                      title={`${day.date}: ${day.isCompleted ? 'Concluído ✓' : day.isInFuture ? 'Futuro' : 'Não realizado'}`}
-                      className={`w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-[3px] transition-all cursor-pointer ${
-                        day.isCompleted
-                          ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)] hover:scale-125 hover:z-20'
-                          : day.isToday
-                          ? 'bg-amber-950/80 border border-shinobi-gold hover:scale-125'
-                          : day.isInFuture
-                          ? 'bg-slate-900/30 border border-slate-900 cursor-not-allowed'
-                          : 'bg-slate-900/80 border border-slate-800/80 hover:border-slate-600 hover:bg-slate-800'
-                      }`}
-                    />
-                  ))}
-                </div>
+            <div className={`grid ${getGridColsClass(targetDays)} gap-1.5 min-w-[320px]`}>
+              {challengeDays.map((day: ChallengeGridDay) => (
+                <button
+                  key={`cd_${day.dayNumber}_${day.date}`}
+                  type="button"
+                  onClick={() => !day.isInFuture && onToggleDay(day.date)}
+                  disabled={day.isInFuture}
+                  title={`Dia ${day.dayNumber} (${day.date}): ${
+                    day.isCompleted
+                      ? 'Concluído ✓ (Clique para desmarcar)'
+                      : day.isToday
+                      ? 'Dia de Hoje (Pendente - Clique para marcar)'
+                      : day.isPast
+                      ? 'Dia Passado (Pendente - Clique para marcar)'
+                      : 'Dia Futuro'
+                  }`}
+                  className={`h-7 rounded-lg font-mono text-[10px] font-bold flex items-center justify-center transition-all select-none ${
+                    day.isCompleted
+                      ? 'bg-emerald-500 text-slate-950 border border-emerald-300 shadow-[0_0_8px_rgba(16,185,129,0.7)] font-extrabold hover:scale-110 z-10'
+                      : day.isToday
+                      ? 'bg-amber-950/70 border-2 border-shinobi-gold text-shinobi-gold hover:bg-shinobi-gold/20 hover:scale-110 shadow-glow-gold/30 animate-pulse cursor-pointer'
+                      : day.isPast
+                      ? 'bg-slate-900/90 border border-slate-800 text-slate-400 hover:border-slate-600 hover:bg-slate-800 hover:text-slate-200 cursor-pointer'
+                      : 'bg-slate-950/50 border border-slate-900 text-slate-700 opacity-50 cursor-not-allowed'
+                  }`}
+                >
+                  {day.isCompleted ? (
+                    <span className="text-[11px] font-black">✓</span>
+                  ) : (
+                    <span>{day.dayNumber}</span>
+                  )}
+                </button>
               ))}
             </div>
           </div>
 
-          {/* Legenda do Heatmap */}
-          <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono pt-1">
-            <span>{habit.completedDates.length} dias concluídos no histórico</span>
-            <div className="flex items-center gap-2">
+          {/* Legenda e Resumo */}
+          <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono pt-1 flex-wrap gap-2">
+            <span className="font-semibold text-slate-300">
+              {completedCount} de {targetDays} dias cumpridos neste desafio ({progressPercent}%)
+            </span>
+
+            <div className="flex items-center gap-3">
               <span className="flex items-center gap-1">
-                <span className="w-2.5 h-2.5 rounded-[2px] bg-slate-900 border border-slate-800 inline-block" /> Vazio
+                <span className="w-2.5 h-2.5 rounded-[3px] bg-slate-900 border border-slate-800 inline-block" /> Vazio
               </span>
               <span className="flex items-center gap-1">
-                <span className="w-2.5 h-2.5 rounded-[2px] bg-emerald-500 inline-block" /> Concluído
+                <span className="w-2.5 h-2.5 rounded-[3px] bg-amber-950 border border-shinobi-gold inline-block" /> Hoje
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded-[3px] bg-emerald-500 inline-block" /> Concluído
               </span>
             </div>
           </div>

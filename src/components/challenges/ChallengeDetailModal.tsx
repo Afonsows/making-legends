@@ -307,6 +307,8 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
                 <ChallengeHabitCard
                   key={habit.id}
                   habit={habit}
+                  targetDays={effectiveChallenge.targetDays}
+                  startDate={effectiveChallenge.startDate}
                   onToggleDay={(dateStr) => toggleHabitDay(effectiveChallenge.id, habit.id, dateStr)}
                   onDelete={() => handleDeleteHabit(habit.id, habit.title)}
                 />

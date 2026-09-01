@@ -24,6 +24,56 @@ export interface HeatmapDay {
   dayOfWeek: number; // 0 (Dom) a 6 (Sáb)
 }
 
+export interface ChallengeGridDay {
+  dayNumber: number; // 1 .. targetDays
+  date: string; // YYYY-MM-DD
+  isCompleted: boolean;
+  isToday: boolean;
+  isPast: boolean;
+  isInFuture: boolean;
+}
+
+/**
+ * Gera a lista exata de dias correspondente à duração total do desafio proposto (ex: 66 quadrinhos para 66 dias).
+ */
+export function generateChallengeDays(
+  targetDays: number = 66,
+  startDate?: string,
+  completedDates: string[] = []
+): ChallengeGridDay[] {
+  const result: ChallengeGridDay[] = [];
+  const todayStr = getTodayString();
+  const start = startDate ? new Date(startDate + 'T00:00:00') : new Date();
+
+  const completedSet = new Set(completedDates || []);
+
+  for (let i = 1; i <= targetDays; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + (i - 1));
+
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+
+    const isToday = dateStr === todayStr;
+    const isPast = dateStr < todayStr;
+    const isInFuture = dateStr > todayStr;
+    const isCompleted = completedSet.has(dateStr);
+
+    result.push({
+      dayNumber: i,
+      date: dateStr,
+      isCompleted,
+      isToday,
+      isPast,
+      isInFuture,
+    });
+  }
+
+  return result;
+}
+
 /**
  * Retorna os últimos 7 dias até a data de hoje.
  */
