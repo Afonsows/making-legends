@@ -58,8 +58,6 @@ export const useDuelStore = create<DuelStoreState>()(
           equippedItems
         );
 
-        soundFx.playBossHit();
-
         const { updatedAdversary, isDefeatedNow } = applyDamageToAdversary(adversary, totalDamage);
 
         const newLog: CombatLogEntry = {
