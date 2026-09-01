@@ -5,7 +5,7 @@ import { PillarId, MissionRank } from '../theme/types';
 import { shinobiTheme } from '../theme/shinobi.theme';
 import { getTodayString } from '../core/streakEngine';
 import { getLevelFromTotalXp, getRankIdFromLevel } from '../core/xpEngine';
-import { getDefaultRyoReward, calculateRyoGainWithBuffs } from '../core/ryoEngine';
+import { getDefaultRyoReward, calculateRyoGainWithBuffs, getDailyCheckInRyoBonus, getLevelUpRyoReward } from '../core/ryoEngine';
 import { useUserStore } from './useUserStore';
 import { useDuelStore } from './useDuelStore';
 import { syncService } from '../services/syncService';
@@ -352,6 +352,8 @@ export const useHabitStore = create<HabitStoreState>()(
       recalibrateFromMissions: () => {
         const { missions } = get();
         const userStore = useUserStore.getState();
+        const activeChallenge = userStore.profile.activeChallenge;
+        const todayStr = getTodayString();
 
         let totalCalculatedXp = 0;
         let totalCalculatedRyo = 0;
@@ -363,34 +365,79 @@ export const useHabitStore = create<HabitStoreState>()(
           genjutsu: 0,
         };
 
+        // 1. Processa todas as conclusões históricas de cada missão
         missions.forEach((m) => {
+          const rankInfo = shinobiTheme.missionRanks[m.rank] || shinobiTheme.missionRanks.D;
+          const ryoPerCompletion = (!m.isCustom || !m.ryoReward || (m.ryoReward === 25 && m.rank !== 'E'))
+            ? (rankInfo.ryoReward || getDefaultRyoReward(m.rank))
+            : m.ryoReward;
+          const xpPerCompletion = (!m.isCustom || !m.xpReward)
+            ? rankInfo.xpReward
+            : m.xpReward;
+
+          const distinctDates = new Set<string>(m.completedDates || []);
           if (m.isCompletedToday) {
-            totalCalculatedXp += m.xpReward;
-            totalCalculatedRyo += m.ryoReward || getDefaultRyoReward(m.rank);
-            pillarXpMap[m.pillarId] = (pillarXpMap[m.pillarId] || 0) + m.xpReward;
+            distinctDates.add(todayStr);
           }
+
+          // Se o Dia 1 do Desafio foi marcado/concluído mas completedDates estava vazio, computa o Dia 1
+          if (distinctDates.size === 0 && activeChallenge?.checkIns?.[1]?.checked) {
+            distinctDates.add('dia_1_protocolo');
+          }
+
+          const completionCount = Math.max(1, distinctDates.size);
+          // Se nenhuma data foi registrada e não está completa hoje, não conta
+          const finalCount = (distinctDates.size === 0 && !m.isCompletedToday) ? 0 : completionCount;
+
+          const missionXp = xpPerCompletion * finalCount;
+          const missionRyo = ryoPerCompletion * finalCount;
+
+          totalCalculatedXp += missionXp;
+          totalCalculatedRyo += missionRyo;
+          pillarXpMap[m.pillarId] = (pillarXpMap[m.pillarId] || 0) + missionXp;
         });
 
+        // 2. Adiciona os bônus de estipêndio diário dos Check-ins de Presença concluídos
+        if (activeChallenge?.checkIns) {
+          Object.values(activeChallenge.checkIns).forEach((checkIn) => {
+            if (checkIn.checked) {
+              const checkInBonus = getDailyCheckInRyoBonus(checkIn.dayNumber || 1, 1);
+              totalCalculatedRyo += checkInBonus;
+            }
+          });
+        }
+
+        // 3. Calcula o Nível e Rank reais baseados no XP Total acumulado
         const newLevel = getLevelFromTotalXp(totalCalculatedXp);
-        const newRank = getRankIdFromLevel(newLevel);
+
+        // 4. Adiciona as recompensas em Ryō de cada Nível alcançado
+        for (let lvl = 2; lvl <= newLevel; lvl++) {
+          totalCalculatedRyo += getLevelUpRyoReward(lvl);
+        }
+
+        // Garante que o XP e Ryō acumulados reflitam a totalidade do histórico
+        const finalXp = totalCalculatedXp;
+        const finalLevel = getLevelFromTotalXp(finalXp);
+        const finalRank = getRankIdFromLevel(finalLevel);
+        const finalRyo = totalCalculatedRyo;
 
         const syncLog: MissionLogEntry = {
           id: `log_sync_${Date.now()}`,
           missionId: 'recalibrate',
-          missionTitle: 'Recalibração & Sincronização de Ficha',
+          missionTitle: 'Recalibração & Auditoria de Ficha Completa',
           pillarId: 'chakra',
           rank: 'E',
-          xp: totalCalculatedXp,
-          ryo: totalCalculatedRyo,
+          xp: finalXp,
+          ryo: finalRyo,
           action: 'synced',
           createdAt: new Date().toISOString(),
         };
 
         userStore.updateProfile({
-          totalXp: totalCalculatedXp,
-          level: newLevel,
-          currentRankId: newRank,
-          ryo: totalCalculatedRyo,
+          totalXp: finalXp,
+          level: finalLevel,
+          currentRankId: finalRank,
+          ryo: finalRyo,
           pillarXp: pillarXpMap,
         });
 
@@ -398,7 +445,7 @@ export const useHabitStore = create<HabitStoreState>()(
           missionLogs: [syncLog, ...state.missionLogs].slice(0, 100),
         }));
 
-        return { totalXp: totalCalculatedXp, level: newLevel, ryo: totalCalculatedRyo };
+        return { totalXp: finalXp, level: finalLevel, ryo: finalRyo };
       },
     }),
     {

@@ -3,6 +3,7 @@ import { useHabitStore } from '../../state/useHabitStore';
 import { useUserStore } from '../../state/useUserStore';
 import { getLevelProgress } from '../../core/xpEngine';
 import { getDefaultRyoReward } from '../../core/ryoEngine';
+import { getTodayString } from '../../core/streakEngine';
 import { syncService } from '../../services/syncService';
 import { supabase } from '../../services/supabase';
 import { soundFx } from '../../utils/audio';
@@ -52,10 +53,10 @@ export const MissionHistoryModal: React.FC<MissionHistoryModalProps> = ({ isOpen
     }, 4000);
   };
 
+  const todayStr = getTodayString();
   const completedTodayMissions = missions.filter((m) => m.isCompletedToday);
-  const calculatedXp = completedTodayMissions.reduce((acc, m) => acc + m.xpReward, 0);
-  const calculatedRyo = completedTodayMissions.reduce((acc, m) => acc + (m.ryoReward || getDefaultRyoReward(m.rank)), 0);
-  const correspondingLevel = getLevelProgress(calculatedXp).currentLevel;
+  const todayXp = completedTodayMissions.reduce((acc, m) => acc + m.xpReward, 0);
+  const todayRyo = completedTodayMissions.reduce((acc, m) => acc + (m.ryoReward || getDefaultRyoReward(m.rank)), 0);
 
   const filteredLogs = filterAction === 'all' 
     ? missionLogs 
@@ -95,17 +96,17 @@ export const MissionHistoryModal: React.FC<MissionHistoryModalProps> = ({ isOpen
               <div>
                 <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-shinobi-gold" />
-                  Conferência de Missões de Hoje vs Ficha
+                  Auditoria & Recalibração de Ficha
                 </span>
                 <p className="text-[11px] text-slate-400">
-                  Verifique se o seu XP e Ryō batem com o que foi concluído hoje.
+                  Consolida todo o histórico de conclusões acumuladas, check-ins e bônus.
                 </p>
               </div>
 
               <button
                 onClick={handleRecalibrate}
                 className="px-4 py-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-glow-gold transition-all flex items-center gap-1.5 self-start sm:self-auto"
-                title="Recalcular e sincronizar automaticamente XP, Ryō e Nível"
+                title="Recalcular e sincronizar todo o histórico acumulado"
               >
                 <RotateCcw className="w-3.5 h-3.5 stroke-[2.5]" />
                 <span>Sincronizar / Recalibrar Ficha</span>
@@ -119,30 +120,30 @@ export const MissionHistoryModal: React.FC<MissionHistoryModalProps> = ({ isOpen
               </div>
             )}
 
-            {/* Grid dos Números Reais */}
+            {/* Grid dos Números Reais Acumulados */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1 text-center text-xs">
               <div className="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800">
-                <span className="text-slate-400 block text-[10px]">Missões Concluídas</span>
+                <span className="text-slate-400 block text-[10px]">Missões de Hoje</span>
                 <span className="font-bold text-slate-100 font-mono text-sm">
                   {completedTodayMissions.length} / {missions.length}
                 </span>
               </div>
               <div className="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800">
-                <span className="text-slate-400 block text-[10px]">XP Real Calculado</span>
+                <span className="text-slate-400 block text-[10px]">XP Total Acumulado</span>
                 <span className="font-bold text-shinobi-gold font-mono text-sm">
-                  {calculatedXp} XP
+                  {profile.totalXp} XP
                 </span>
               </div>
               <div className="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800">
-                <span className="text-slate-400 block text-[10px]">Ryō Real Calculado</span>
-                <span className="font-bold text-amber-300 font-mono text-sm">
-                  {calculatedRyo} Ryō
-                </span>
-              </div>
-              <div className="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800">
-                <span className="text-slate-400 block text-[10px]">Nível Correspondente</span>
+                <span className="text-slate-400 block text-[10px]">Nível Atual</span>
                 <span className="font-bold text-cyan-400 font-mono text-sm">
-                  Nv. {correspondingLevel}
+                  Nv. {profile.level}
+                </span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800">
+                <span className="text-slate-400 block text-[10px]">Ryō em Carteira</span>
+                <span className="font-bold text-amber-300 font-mono text-sm">
+                  {profile.ryo} Ryō
                 </span>
               </div>
             </div>
