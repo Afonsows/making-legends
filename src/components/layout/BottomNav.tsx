@@ -1,13 +1,14 @@
 import React from 'react';
 import { 
   CheckSquare, 
+  Trophy,
   Swords, 
   User, 
   Wrench, 
   BookOpen
 } from 'lucide-react';
 
-export type TabType = 'missions' | 'duel' | 'status' | 'tools' | 'cards';
+export type TabType = 'missions' | 'challenges' | 'duel' | 'status' | 'tools' | 'cards';
 
 interface BottomNavProps {
   activeTab: TabType;
@@ -22,6 +23,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 }) => {
   const navItems: { id: TabType; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: 'missions', label: 'Missões', icon: CheckSquare },
+    { id: 'challenges', label: 'Desafios', icon: Trophy },
     { id: 'duel', label: 'Duelo', icon: Swords },
     { id: 'status', label: 'Status', icon: User },
     { id: 'tools', label: '7 Ferramentas', icon: Wrench },
@@ -29,7 +31,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   ];
 
   return (
-    <div className="fixed bottom-2.5 sm:bottom-4 inset-x-3 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-lg z-40 pointer-events-none pb-safe">
+    <div className="fixed bottom-2 sm:bottom-4 inset-x-2 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-xl z-40 pointer-events-none pb-safe">
       <nav className="pointer-events-auto liquid-glass-nav rounded-2xl sm:rounded-3xl relative overflow-hidden transition-all duration-300">
         {/* Filete de Brilho Especular Superior (Liquid Glass Sheen) */}
         <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/50 via-shinobi-gold/30 to-transparent pointer-events-none" />
@@ -37,7 +39,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         {/* Reflexo interno translúcido fosco */}
         <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] via-transparent to-black/20 pointer-events-none" />
 
-        <div className="grid grid-cols-5 h-16 relative z-10 px-1.5 py-1">
+        <div className="grid grid-cols-6 h-16 relative z-10 px-1 py-1">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -67,7 +69,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                   )}
                 </div>
                 <span
-                  className={`text-[10px] tracking-tight transition-all duration-200 ${
+                  className={`text-[9px] sm:text-[10px] tracking-tight transition-all duration-200 truncate px-0.5 max-w-full ${
                     isActive ? 'text-shinobi-gold font-bold' : 'font-medium'
                   }`}
                 >

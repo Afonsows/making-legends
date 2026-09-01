@@ -7,6 +7,7 @@ import { syncService } from './services/syncService';
 import { Navbar } from './components/layout/Navbar';
 import { BottomNav, TabType } from './components/layout/BottomNav';
 import { MissionsView } from './components/missions/MissionsView';
+import { ChallengesView } from './components/challenges/ChallengesView';
 import { DuelView } from './components/duel/DuelView';
 import { StatusWindow } from './components/status/StatusWindow';
 import { ToolsHub } from './components/tools/ToolsHub';
@@ -103,6 +104,7 @@ export const AppContent: React.FC = () => {
         {activeTab === 'missions' && (
           <MissionsView onOpenCard={() => setActiveTab('cards')} />
         )}
+        {activeTab === 'challenges' && <ChallengesView />}
         {activeTab === 'duel' && <DuelView />}
         {activeTab === 'status' && <StatusWindow />}
         {activeTab === 'tools' && <ToolsHub />}

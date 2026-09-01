@@ -178,3 +178,30 @@ export interface TrainingLogEntry {
   repsOrMinutes: string;
   rpeIntensity: number; // 1-10
 }
+
+export interface ChallengeHabit {
+  id: string;
+  title: string;
+  description?: string;
+  pillarId?: PillarId;
+  color?: string;
+  completedDates: string[]; // YYYY-MM-DD
+  createdAt: string;
+}
+
+export interface UserChallenge {
+  id: string;
+  title: string;
+  description?: string;
+  category?: string;
+  icon?: string;
+  targetDays: number; // Mínimo 21 dias
+  startDate: string; // YYYY-MM-DD
+  endDate?: string; // YYYY-MM-DD
+  status: 'active' | 'completed' | 'paused' | 'archived';
+  isOfficial66?: boolean; // true para o desafio canônico dos 66 dias
+  habits: ChallengeHabit[];
+  createdAt: string;
+  completedAt?: string;
+}
+
