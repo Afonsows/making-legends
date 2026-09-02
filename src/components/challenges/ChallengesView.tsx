@@ -1,5 +1,5 @@
 import React from 'react';
-import { useChallengeStore, buildSyncedOfficial66Challenge } from '../../state/useChallengeStore';
+import { useChallengeStore, buildSyncedOfficial66Challenge, generateChallengeDays } from '../../state/useChallengeStore';
 import { useUserStore } from '../../state/useUserStore';
 import { useHabitStore } from '../../state/useHabitStore';
 import { evaluateProtocolStatus } from '../../core/streakEngine';
@@ -20,7 +20,8 @@ import {
   ChevronRight,
   Award,
   Zap,
-  Map
+  Map,
+  CheckSquare
 } from 'lucide-react';
 
 export const ChallengesView: React.FC = () => {
@@ -182,17 +183,23 @@ export const ChallengesView: React.FC = () => {
               </span>
             </div>
 
-            <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
-              <span className="text-slate-400 block text-[10px]">Missões Concluídas Hoje</span>
+            <div className="p-2.5 rounded-xl bg-slate-950/80 border border-shinobi-gold/40 shadow-glow-gold/10">
+              <span className="text-slate-400 block text-[10px] flex items-center justify-center gap-1">
+                <CheckSquare className="w-3 h-3 text-emerald-400" />
+                <span>Missões no Desafio</span>
+              </span>
               <span className="font-bold text-emerald-400 font-mono text-sm sm:text-base">
-                {completedTodayMissionsCount} / {missions.length}
+                {missions.reduce((acc, m) => {
+                  const days = generateChallengeDays(66, profile.activeChallenge?.startDate, m.completedDates);
+                  return acc + days.filter((d) => d.isCompleted).length;
+                }, 0)} / {missions.length * 66}
               </span>
             </div>
 
             <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
-              <span className="text-slate-400 block text-[10px]">Presenças Confirmadas</span>
+              <span className="text-slate-400 block text-[10px]">Missões Concluídas Hoje</span>
               <span className="font-bold text-cyan-400 font-mono text-sm sm:text-base">
-                {profile.activeChallenge?.daysCompleted || 0} dias
+                {completedTodayMissionsCount} / {missions.length}
               </span>
             </div>
 

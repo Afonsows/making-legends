@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useChallengeStore, buildSyncedOfficial66Challenge } from '../../state/useChallengeStore';
+import { useChallengeStore, buildSyncedOfficial66Challenge, generateChallengeDays } from '../../state/useChallengeStore';
 import { useUserStore } from '../../state/useUserStore';
 import { useHabitStore } from '../../state/useHabitStore';
 import { evaluateProtocolStatus } from '../../core/streakEngine';
@@ -20,7 +20,8 @@ import {
   Award,
   Layers,
   Zap,
-  Map
+  Map,
+  CheckSquare
 } from 'lucide-react';
 
 interface ChallengeDetailModalProps {
@@ -78,6 +79,16 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
   const completedTodayCount = effectiveChallenge.habits.filter((h) => h.completedDates.includes(todayStr)).length;
   const totalHabits = effectiveChallenge.habits.length;
 
+  // Total de execuções de missões no total do desafio x total de missões do desafio
+  const totalPossibleChallengeMissions = effectiveChallenge.habits.length * effectiveChallenge.targetDays;
+  const totalCompletedChallengeMissions = effectiveChallenge.habits.reduce((acc, habit) => {
+    const habitDays = generateChallengeDays(effectiveChallenge.targetDays, effectiveChallenge.startDate, habit.completedDates);
+    return acc + habitDays.filter((d) => d.isCompleted).length;
+  }, 0);
+  const totalMissionsPercent = totalPossibleChallengeMissions > 0
+    ? Math.round((totalCompletedChallengeMissions / totalPossibleChallengeMissions) * 100)
+    : 0;
+
   const handleCreateNewHabit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newHabitTitle.trim()) return;
@@ -108,13 +119,13 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2.5 sm:p-5 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-slate-900/95 border-2 border-shinobi-gold/60 w-full max-w-4xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh] my-auto relative z-[101]">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2.5 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-slate-900/95 border-2 border-shinobi-gold/60 w-full max-w-5xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh] my-auto relative z-[101]">
         {/* Efeito Sheen Superior */}
         <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/50 via-shinobi-gold/40 to-transparent pointer-events-none" />
 
         {/* Header Centralizado com Informações do Desafio */}
-        <div className="p-4 sm:p-6 border-b border-slate-800 bg-slate-950/90 relative z-10">
+        <div className="p-4 sm:p-5 border-b border-slate-800 bg-slate-950/90 relative z-10">
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-1.5 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
@@ -148,7 +159,7 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
               </h2>
 
               {effectiveChallenge.description && (
-                <p className="text-xs text-slate-400 line-clamp-2 max-w-2xl">
+                <p className="text-xs text-slate-400 line-clamp-1 max-w-2xl">
                   {effectiveChallenge.description}
                 </p>
               )}
@@ -163,7 +174,8 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
           </div>
 
           {/* Barra de Progresso & Métricas do Desafio Sincronizadas */}
-          <div className="mt-4 pt-3 border-t border-slate-800/80 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+          <div className="mt-3.5 pt-3 border-t border-slate-800/80 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+            {/* Indicador 1: Dia Atual */}
             <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
               <span className="text-slate-400 block text-[10px]">Dia Atual</span>
               <span className="font-bold text-shinobi-gold font-mono text-sm sm:text-base">
@@ -171,22 +183,26 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
               </span>
             </div>
 
+            {/* Indicador 2 SOLICITADO: Missões concluídas no total do desafio x total de missões do desafio */}
+            <div className="p-2.5 rounded-xl bg-slate-900/80 border border-shinobi-gold/40 shadow-glow-gold/10">
+              <span className="text-slate-400 block text-[10px] flex items-center justify-center gap-1">
+                <CheckSquare className="w-3 h-3 text-emerald-400" />
+                <span>Missões no Desafio</span>
+              </span>
+              <span className="font-bold text-emerald-400 font-mono text-sm sm:text-base">
+                {totalCompletedChallengeMissions} / {totalPossibleChallengeMissions}
+              </span>
+            </div>
+
+            {/* Indicador 3: Missões Hoje */}
             <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
               <span className="text-slate-400 block text-[10px]">Missões Concluídas Hoje</span>
-              <span className="font-bold text-emerald-400 font-mono text-sm sm:text-base">
+              <span className="font-bold text-cyan-400 font-mono text-sm sm:text-base">
                 {completedTodayCount} / {totalHabits}
               </span>
             </div>
 
-            <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
-              <span className="text-slate-400 block text-[10px]">
-                {isOfficial ? 'Presenças Marcadas' : 'Total de Hábitos'}
-              </span>
-              <span className="font-bold text-cyan-400 font-mono text-sm sm:text-base">
-                {isOfficial ? `${profile.activeChallenge?.daysCompleted || 0} dias` : `${totalHabits} ativos`}
-              </span>
-            </div>
-
+            {/* Indicador 4: Dias Restantes */}
             <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
               <span className="text-slate-400 block text-[10px]">Dias Restantes</span>
               <span className="font-bold text-rose-400 font-mono text-sm sm:text-base">
@@ -196,7 +212,7 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
           </div>
 
           {/* Barra Visual de Dias */}
-          <div className="mt-3 w-full h-2.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+          <div className="mt-2.5 w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
             <div
               className="h-full bg-gradient-to-r from-shinobi-gold via-amber-400 to-emerald-400 transition-all duration-500 rounded-full"
               style={{ width: `${progressPercent}%` }}
@@ -204,13 +220,13 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
           </div>
         </div>
 
-        {/* Lista de Hábitos do Desafio */}
-        <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
+        {/* Lista de Hábitos do Desafio (Exibição em Quadros lado a lado) */}
+        <div className="p-4 sm:p-5 space-y-3.5 overflow-y-auto flex-1">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Layers className="w-4 h-4 text-shinobi-gold" />
-              <h3 className="font-cinzel text-sm sm:text-base font-bold text-slate-100">
-                Acompanhamento Detalhado de Cada Missão ({effectiveChallenge.habits.length})
+              <h3 className="font-cinzel text-xs sm:text-sm font-bold text-slate-100">
+                Missões do Desafio ({effectiveChallenge.habits.length})
               </h3>
             </div>
 
@@ -221,7 +237,7 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
                   onClick={() => {
                     openChallengeMapModal();
                   }}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-shinobi-gold text-xs font-bold rounded-xl border border-shinobi-gold/40 transition-all flex items-center gap-1.5"
+                  className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-shinobi-gold text-xs font-bold rounded-xl border border-shinobi-gold/40 transition-all flex items-center gap-1"
                   title="Ver mapa dos 66 dias"
                 >
                   <Map className="w-3.5 h-3.5" />
@@ -235,7 +251,7 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
                 className="px-3 py-1.5 bg-gradient-to-r from-shinobi-crimson to-rose-600 hover:from-rose-600 hover:to-rose-500 text-white text-xs font-bold rounded-xl shadow-glow-crimson transition-all flex items-center gap-1.5"
               >
                 <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span>Nova Missão / Hábito</span>
+                <span>Nova Missão</span>
               </button>
             </div>
           </div>
@@ -300,9 +316,9 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
             </form>
           )}
 
-          {/* Cards de Hábitos */}
+          {/* Cards de Hábitos em Grid de 2 Colunas para visualização de múltiplos cards lado a lado */}
           {effectiveChallenge.habits.length > 0 ? (
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               {effectiveChallenge.habits.map((habit) => (
                 <ChallengeHabitCard
                   key={habit.id}
