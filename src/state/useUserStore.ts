@@ -9,12 +9,15 @@ import {
   processDayTransition, 
   ensureActiveChallenge, 
   calculateDailyXpProgress, 
-  createNewChallengeCycle 
+  createNewChallengeCycle,
+  getAllChallengePresenceDates,
+  calculateChallengeStreak
 } from '../core/streakEngine';
 import { allGameItems } from '../core/itemsData';
 import { soundFx } from '../utils/audio';
 import { triggerLevelUpConfetti, triggerMissionConfetti } from '../utils/confetti';
 import { useHabitStore } from './useHabitStore';
+import { useChallengeStore } from './useChallengeStore';
 
 const defaultProfile: UserProfile = {
   id: 'user_shinobi_01',
@@ -95,10 +98,11 @@ interface UserStoreState {
   
   // Day checking & streaks
   checkDayTransition: () => void;
+  recalculateStreak: () => { currentStreak: number; bestStreak: number };
   consumeWeeklyShield: () => boolean;
 
   // 66-Day Challenge & Daily Presence Check-in
-  toggleDailyCheckIn: (dayNumber?: number) => { success: boolean; reason?: string; isChecked?: boolean };
+  toggleDailyCheckIn: (dayNumber?: number) => { success: boolean; reason?: string; isChecked?: boolean; ryoEarned?: number };
   startNewChallengeCycle: () => void;
   dismissResetModal: () => void;
   openChallengeHistoryModal: () => void;
@@ -356,16 +360,41 @@ export const useUserStore = create<UserStoreState>()(
       isChallengeHistoryModalOpen: false,
       isChallengeMapModalOpen: false,
 
+      recalculateStreak: () => {
+        const { profile } = get();
+        const customChallenges = useChallengeStore.getState().challenges || [];
+        const presenceDates = getAllChallengePresenceDates(profile, customChallenges);
+        const streakResult = calculateChallengeStreak(presenceDates);
+
+        const newStreak = streakResult.currentStreak;
+        const bestStreak = Math.max(profile.bestStreak || 0, streakResult.bestStreak, newStreak);
+
+        if (profile.currentStreak !== newStreak || profile.bestStreak !== bestStreak) {
+          set((state) => ({
+            profile: {
+              ...state.profile,
+              currentStreak: newStreak,
+              bestStreak,
+            },
+          }));
+        }
+
+        return { currentStreak: newStreak, bestStreak };
+      },
+
       checkDayTransition: () => {
         const { profile } = get();
         const today = getTodayString();
         const missions = useHabitStore.getState().missions;
+        const customChallenges = useChallengeStore.getState().challenges || [];
 
         if (profile.lastActiveDate === today) {
+          // Reconcilia a sequência de presença
+          get().recalculateStreak();
           return;
         }
 
-        const transition = processDayTransition(profile, today, missions);
+        const transition = processDayTransition(profile, today, missions, customChallenges);
 
         if (transition.updatedProfile && Object.keys(transition.updatedProfile).length > 0) {
           set((state) => ({
@@ -417,16 +446,27 @@ export const useUserStore = create<UserStoreState>()(
 
         const willBeChecked = !currentlyChecked;
         const todayStr = getTodayString();
+        const cycleStartDate = activeCycle.startDate || profile.lastActiveDate || todayStr;
+
+        let recordDate = todayStr;
+        if (targetDay === (activeCycle.currentDay || profile.currentProtocolDay || 1)) {
+          recordDate = todayStr;
+        } else {
+          // Se for outro dia do ciclo, deriva a data a partir de startDate
+          const [y, m, d] = cycleStartDate.split('-').map(Number);
+          const computedDate = new Date(y, m - 1, d + (targetDay - 1));
+          recordDate = `${computedDate.getFullYear()}-${String(computedDate.getMonth() + 1).padStart(2, '0')}-${String(computedDate.getDate()).padStart(2, '0')}`;
+        }
 
         const updatedCheckIns = {
           ...activeCycle.checkIns,
           [targetDay]: {
             dayNumber: targetDay,
-            date: todayStr,
+            date: recordDate,
             checked: willBeChecked,
-            xpEarned: xpProgress.currentXp,
+            xpEarned: willBeChecked ? xpProgress.currentXp : 0,
             targetXp: xpProgress.totalTargetXp,
-            checkedAt: new Date().toISOString(),
+            checkedAt: willBeChecked ? new Date().toISOString() : undefined,
           },
         };
 
@@ -440,7 +480,17 @@ export const useUserStore = create<UserStoreState>()(
           checkIns: updatedCheckIns,
         };
 
-        let newStreak = profile.currentStreak;
+        // Recalcula a sequência estritamente a partir das presenças em desafios (com garantia de não-duplicação)
+        const customChallenges = useChallengeStore.getState().challenges || [];
+        const candidateProfile: UserProfile = {
+          ...profile,
+          activeChallenge: updatedCycle,
+        };
+        const presenceDates = getAllChallengePresenceDates(candidateProfile, customChallenges);
+        const streakResult = calculateChallengeStreak(presenceDates, todayStr);
+
+        const newStreak = streakResult.currentStreak;
+        const bestStreak = Math.max(profile.bestStreak || 0, streakResult.bestStreak, newStreak);
         const dailyRyoStipend = getDailyCheckInRyoBonus(newStreak, profile.level);
 
         if (willBeChecked) {
@@ -448,7 +498,6 @@ export const useUserStore = create<UserStoreState>()(
           triggerMissionConfetti();
         }
 
-        const bestStreak = Math.max(profile.bestStreak, newStreak);
         const newRyo = willBeChecked
           ? (profile.ryo || 0) + dailyRyoStipend
           : Math.max(0, (profile.ryo || 0) - dailyRyoStipend);
@@ -490,12 +539,15 @@ export const useUserStore = create<UserStoreState>()(
           profile: {
             ...state.profile,
             currentProtocolDay: 1,
-            currentStreak: 1,
+            currentStreak: 0,
             activeChallenge: newCycle,
             challengeHistory: [archived, ...history],
           },
           activeResetModal: null,
         }));
+
+        // Recalcula o streak a partir das presenças remanescentes
+        get().recalculateStreak();
       },
 
       dismissResetModal: () => {
@@ -520,6 +572,14 @@ export const useUserStore = create<UserStoreState>()(
     }),
     {
       name: 'shinobi_user_store_v1',
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          // Garante a autocorreção do streak com base nas presenças reais salvas
+          setTimeout(() => {
+            state.recalculateStreak?.();
+          }, 0);
+        }
+      },
     }
   )
 );

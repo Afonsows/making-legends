@@ -630,6 +630,7 @@ export const useChallengeStore = create<ChallengeStoreState>()(
             if (willBeCompleted) {
               soundFx.playMissionComplete();
             }
+            useUserStore.getState().recalculateStreak();
             return {
               isCompleted: willBeCompleted,
               currentStreak: streaks.currentStreak,
@@ -697,6 +698,9 @@ export const useChallengeStore = create<ChallengeStoreState>()(
             useUserStore.getState().addRyo(15);
           }
         }
+
+        // Reconcilia a sequência global do usuário a partir de todos os desafios
+        useUserStore.getState().recalculateStreak();
 
         return {
           isCompleted: willBeCompleted,

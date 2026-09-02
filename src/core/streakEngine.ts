@@ -1,4 +1,4 @@
-import { UserProfile, Mission, ProtocolChallengeCycle, DailyCheckInRecord } from './types';
+import { UserProfile, Mission, ProtocolChallengeCycle, DailyCheckInRecord, UserChallenge } from './types';
 
 export interface ProtocolStatus {
   currentDay: number;          // 1 a 66
@@ -234,6 +234,175 @@ export function evaluateProtocolStatus(
 }
 
 /**
+ * Coleta e deduplica todas as datas (YYYY-MM-DD) em que houve presença confirmada
+ * em qualquer desafio (Desafio Oficial dos 66 Dias ou Desafios Personalizados).
+ * 
+ * Regra de negócio:
+ * 1. Múltiplos desafios com presença no mesmo dia NÃO duplicam a data (Set único).
+ * 2. Um dia só se torna contado quando houver presença confirmada em ao menos um desafio.
+ */
+export function getAllChallengePresenceDates(
+  profile: UserProfile,
+  customChallenges: UserChallenge[] = []
+): string[] {
+  const presenceSet = new Set<string>();
+
+  // 1. Presenças no Desafio Oficial Ativo (Ciclo dos 66 Dias)
+  const activeCycle = profile.activeChallenge;
+  if (activeCycle && activeCycle.checkIns) {
+    const cycleStartDate = activeCycle.startDate || profile.lastActiveDate || getTodayString();
+
+    Object.entries(activeCycle.checkIns).forEach(([dayKey, record]) => {
+      if (record && record.checked) {
+        if (record.date && isValidDateString(record.date)) {
+          presenceSet.add(record.date);
+        } else if (isValidDateString(cycleStartDate)) {
+          // Se a data não estava gravada diretamente no record, calcula a partir de startDate + (dayNumber - 1)
+          const dayNum = Number(dayKey) || record.dayNumber || 1;
+          const [y, m, d] = cycleStartDate.split('-').map(Number);
+          const computedDate = new Date(y, m - 1, d + (dayNum - 1));
+          const dateStr = `${computedDate.getFullYear()}-${String(computedDate.getMonth() + 1).padStart(2, '0')}-${String(computedDate.getDate()).padStart(2, '0')}`;
+          if (isValidDateString(dateStr)) {
+            presenceSet.add(dateStr);
+          }
+        }
+      }
+    });
+  }
+
+  // 2. Presenças nos Ciclos Históricos Arquivados do Desafio dos 66 Dias
+  const history = profile.challengeHistory || [];
+  history.forEach((cycle) => {
+    if (cycle && cycle.checkIns) {
+      const cycleStartDate = cycle.startDate;
+      Object.entries(cycle.checkIns).forEach(([dayKey, record]) => {
+        if (record && record.checked) {
+          if (record.date && isValidDateString(record.date)) {
+            presenceSet.add(record.date);
+          } else if (cycleStartDate && isValidDateString(cycleStartDate)) {
+            const dayNum = Number(dayKey) || record.dayNumber || 1;
+            const [y, m, d] = cycleStartDate.split('-').map(Number);
+            const computedDate = new Date(y, m - 1, d + (dayNum - 1));
+            const dateStr = `${computedDate.getFullYear()}-${String(computedDate.getMonth() + 1).padStart(2, '0')}-${String(computedDate.getDate()).padStart(2, '0')}`;
+            if (isValidDateString(dateStr)) {
+              presenceSet.add(dateStr);
+            }
+          }
+        }
+      });
+    }
+  });
+
+  // 3. Presenças em Desafios Personalizados Criados pelo Usuário
+  customChallenges.forEach((challenge) => {
+    // Ignora espelho do oficial para não duplicar com os check-ins oficiais
+    if (challenge.isOfficial66 || challenge.id === 'challenge_official_66') {
+      return;
+    }
+    (challenge.habits || []).forEach((habit) => {
+      (habit.completedDates || []).forEach((dateStr) => {
+        if (isValidDateString(dateStr)) {
+          presenceSet.add(dateStr);
+        }
+      });
+    });
+  });
+
+  return Array.from(presenceSet).sort();
+}
+
+/**
+ * Calcula a sequência (streak) atual e o melhor recorde histórico a partir de uma lista
+ * deduplicada de datas de presença em desafios.
+ * 
+ * Regra de contagem da sequência:
+ * - Se marcou presença hoje: a ofensiva conta hoje e todos os dias consecutivos retroativos.
+ * - Se não marcou presença hoje, mas marcou ontem: a ofensiva mantém o valor ativo de ontem
+ *   (aguardando a marcação de presença do dia atual).
+ * - Se não marcou presença hoje nem ontem: a ofensiva atual é 0.
+ */
+export function calculateChallengeStreak(
+  presenceDates: string[] = [],
+  referenceDate?: string
+): { currentStreak: number; bestStreak: number } {
+  if (!presenceDates || presenceDates.length === 0) {
+    return { currentStreak: 0, bestStreak: 0 };
+  }
+
+  const uniqueDates = Array.from(new Set(presenceDates)).filter(isValidDateString).sort();
+  if (uniqueDates.length === 0) {
+    return { currentStreak: 0, bestStreak: 0 };
+  }
+
+  const todayStr = referenceDate && isValidDateString(referenceDate) ? referenceDate : getTodayString();
+  const [ty, tm, td] = todayStr.split('-').map(Number);
+  const todayDate = new Date(ty, tm - 1, td);
+
+  const yesterdayDate = new Date(ty, tm - 1, td - 1);
+  const yesterdayStr = `${yesterdayDate.getFullYear()}-${String(yesterdayDate.getMonth() + 1).padStart(2, '0')}-${String(yesterdayDate.getDate()).padStart(2, '0')}`;
+
+  // 1. Melhor sequência histórica (Recorde)
+  let bestStreak = 0;
+  let currentRun = 0;
+  let prevDate: Date | null = null;
+
+  for (const dateStr of uniqueDates) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const currDate = new Date(y, m - 1, d);
+
+    if (prevDate) {
+      const diffDays = Math.round((currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays === 1) {
+        currentRun++;
+      } else if (diffDays > 1) {
+        currentRun = 1;
+      }
+    } else {
+      currentRun = 1;
+    }
+
+    if (currentRun > bestStreak) {
+      bestStreak = currentRun;
+    }
+    prevDate = currDate;
+  }
+
+  // 2. Sequência atual
+  let currentStreak = 0;
+  let checkDate: Date | null = null;
+
+  if (uniqueDates.includes(todayStr)) {
+    checkDate = new Date(todayDate);
+  } else if (uniqueDates.includes(yesterdayStr)) {
+    checkDate = new Date(yesterdayDate);
+  } else {
+    return {
+      currentStreak: 0,
+      bestStreak: Math.max(bestStreak, 0),
+    };
+  }
+
+  while (checkDate) {
+    const y = checkDate.getFullYear();
+    const m = String(checkDate.getMonth() + 1).padStart(2, '0');
+    const d = String(checkDate.getDate()).padStart(2, '0');
+    const dStr = `${y}-${m}-${d}`;
+
+    if (uniqueDates.includes(dStr)) {
+      currentStreak++;
+      checkDate.setDate(checkDate.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+
+  return {
+    currentStreak,
+    bestStreak: Math.max(bestStreak, currentStreak),
+  };
+}
+
+/**
  * Processa a passagem de dias e aplica a REGRA CRÍTICA:
  * - Se o usuário faltar 2 dias na mesma semana, o desafio é encerrado imediatamente,
  *   movido para o histórico de desafios e um novo ciclo 1/66 é iniciado!
@@ -242,7 +411,8 @@ export function evaluateProtocolStatus(
 export function processDayTransition(
   profile: UserProfile,
   todayStr: string,
-  missions: Mission[] = []
+  missions: Mission[] = [],
+  customChallenges: UserChallenge[] = []
 ): {
   updatedProfile: Partial<UserProfile>;
   shieldConsumed: boolean;
@@ -270,7 +440,6 @@ export function processDayTransition(
   let resetOccurred = false;
   let archivedCycle: ProtocolChallengeCycle | undefined;
 
-  let newStreak = profile.currentStreak;
   let newShields = profile.weeklyShieldsRemaining;
   let currentProtocolDay = activeCycle.currentDay || profile.currentProtocolDay || 1;
 
@@ -311,7 +480,6 @@ export function processDayTransition(
     // REGRA DE ENCERRAMENTO: 2 faltas na mesma semana encerram o desafio!
     resetOccurred = true;
     streakBroken = true;
-    newStreak = 1;
 
     activeCycle.status = 'failed';
     activeCycle.endDate = todayStr;
@@ -330,15 +498,12 @@ export function processDayTransition(
     // Nenhuma semana com 2 faltas
     if (daysPassed === 1) {
       const yesterdayRecord = activeCycle.checkIns[currentProtocolDay];
-      if (yesterdayRecord?.checked) {
-        newStreak += 1;
-      } else {
+      if (!yesterdayRecord?.checked) {
         // Não marcou ontem, mas é a primeira falta da semana
         if (!profile.isHardModeEnabled && newShields > 0) {
           newShields -= 1;
           shieldConsumed = true;
         } else {
-          newStreak = 1;
           streakBroken = true;
         }
       }
@@ -348,7 +513,6 @@ export function processDayTransition(
       // Passaram múltiplos dias
       currentProtocolDay = Math.min(66, currentProtocolDay + daysPassed);
       activeCycle.currentDay = currentProtocolDay;
-      newStreak = 1;
       streakBroken = true;
     }
 
@@ -364,11 +528,22 @@ export function processDayTransition(
     }
   }
 
-  const bestStreak = Math.max(profile.bestStreak, newStreak);
+  // Calcula a sequência estritamente a partir das presenças confirmadas em desafios
+  const updatedProfileForCalculation: UserProfile = {
+    ...profile,
+    activeChallenge: activeCycle,
+    challengeHistory,
+    currentProtocolDay,
+  };
+  const presenceDates = getAllChallengePresenceDates(updatedProfileForCalculation, customChallenges);
+  const streakResult = calculateChallengeStreak(presenceDates, todayStr);
+
+  const finalStreak = streakResult.currentStreak;
+  const bestStreak = Math.max(profile.bestStreak || 0, streakResult.bestStreak, finalStreak);
 
   return {
     updatedProfile: {
-      currentStreak: newStreak,
+      currentStreak: finalStreak,
       bestStreak,
       currentProtocolDay,
       weeklyShieldsRemaining: newShields,

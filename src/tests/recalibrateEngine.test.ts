@@ -1,7 +1,12 @@
-import { isValidDateString, getTodayString } from '../core/streakEngine';
+import { 
+  isValidDateString, 
+  getTodayString, 
+  getAllChallengePresenceDates, 
+  calculateChallengeStreak 
+} from '../core/streakEngine';
 import { getLevelFromTotalXp, getRankIdFromLevel, getRequiredXpForLevel } from '../core/xpEngine';
 import { getDefaultRyoReward, getLevelUpRyoReward, getDailyCheckInRyoBonus } from '../core/ryoEngine';
-import { Mission, ProtocolChallengeCycle, UserProfile } from '../core/types';
+import { Mission, ProtocolChallengeCycle, UserProfile, UserChallenge } from '../core/types';
 import { shinobiTheme } from '../theme/shinobi.theme';
 
 // Test runner assertion helper
@@ -305,7 +310,221 @@ export function runTests() {
   assert(resDup.sanitizedMissions[0].completedDates.length === 1, 'Deduplicação: 1 data única');
   assert(resDup.ryo === 15, 'Deduplicação: 15 Ryō');
 
-  console.log('\n--- TODOS OS TESTES PASSARAM COM SUCESSO! ---');
+  // =========================================================================
+  // TESTES DE OFENSIVA & PRESENÇAS EM DESAFIOS (STREAK ENGINE)
+  // =========================================================================
+  console.log('\n--- Testando Motor de Ofensiva e Presenças em Desafios (Streak Engine) ---\n');
+
+  const todayStr = '2026-09-01';
+  const yesterdayStr = '2026-08-31';
+  const twoDaysAgoStr = '2026-08-30';
+  const threeDaysAgoStr = '2026-08-29';
+
+  const baseProfile: UserProfile = {
+    id: 'user_01',
+    name: 'Afonso',
+    gender: 'male',
+    ryo: 0,
+    avatarConfig: { silhouette: 'shadow', outfit: 'tunic_dark', headband: 'iron_slate', auraColor: 'chakra' },
+    level: 4,
+    totalXp: 269,
+    currentRankId: 'aspirante',
+    pillarXp: { taijutsu: 0, ninjutsu: 0, chakra: 0, espirito: 0, genjutsu: 0 },
+    currentProtocolDay: 2,
+    currentStreak: 1,
+    bestStreak: 1,
+    weeklyShieldsRemaining: 1,
+    weeklyShieldsMax: 1,
+    lastActiveDate: todayStr,
+    isHardModeEnabled: false,
+    notificationSettings: { morningTime: '07:30', eveningTime: '21:00', enabled: true, soundEnabled: true },
+    subscriptionStatus: 'trial',
+    hasCompletedOnboarding: true,
+    unlockedCards: [],
+    equippedItems: [],
+    inventory: [],
+    activeChallenge: {
+      id: 'cycle_1_123',
+      cycleNumber: 1,
+      startDate: yesterdayStr,
+      status: 'active',
+      currentDay: 2,
+      daysCompleted: 2,
+      checkIns: {
+        1: { dayNumber: 1, date: yesterdayStr, checked: true, xpEarned: 100, targetXp: 100 },
+        2: { dayNumber: 2, date: todayStr, checked: true, xpEarned: 100, targetXp: 100 },
+      },
+      totalXpEarned: 200,
+      createdAt: new Date().toISOString(),
+    },
+    challengeHistory: [],
+    createdAt: new Date().toISOString(),
+  };
+
+  // Test 7: Caso Real do Usuário Afonso — 2 dias no sistema com presença confirmada no Dia 2 e Dia 1
+  console.log('7. Testando Caso Real do Usuário (2 Dias com Presença Confirmada)');
+  const datesUserCase = getAllChallengePresenceDates(baseProfile, []);
+  assert(datesUserCase.length === 2, `Deve conter exatamente 2 datas de presença (obteve ${datesUserCase.length})`);
+  assert(datesUserCase.includes(yesterdayStr) && datesUserCase.includes(todayStr), 'Deve conter ontem e hoje');
+
+  const streakUserCase = calculateChallengeStreak(datesUserCase, todayStr);
+  assert(streakUserCase.currentStreak === 2, `Ofensiva atual deve ser 2 dias (obteve ${streakUserCase.currentStreak})`);
+  assert(streakUserCase.bestStreak === 2, `Recorde deve ser 2 dias (obteve ${streakUserCase.bestStreak})`);
+
+  // Test 8: Entrada no Dia 2 de Manhã (Antes de Marcar Presença no Dia 2)
+  console.log('\n8. Testando Entrada no Dia 2 Antes do Check-in de Hoje');
+  const profileMorningDay2: UserProfile = {
+    ...baseProfile,
+    activeChallenge: {
+      ...baseProfile.activeChallenge!,
+      daysCompleted: 1,
+      checkIns: {
+        1: { dayNumber: 1, date: yesterdayStr, checked: true, xpEarned: 100, targetXp: 100 },
+        2: { dayNumber: 2, date: todayStr, checked: false, xpEarned: 0, targetXp: 100 },
+      },
+    },
+  };
+  const datesMorning = getAllChallengePresenceDates(profileMorningDay2, []);
+  assert(datesMorning.length === 1, 'Deve conter apenas 1 data (ontem)');
+  
+  const streakMorning = calculateChallengeStreak(datesMorning, todayStr);
+  assert(streakMorning.currentStreak === 1, `Ofensiva deve ser mantida em 1 dia aguardando check-in de hoje (obteve ${streakMorning.currentStreak})`);
+
+  // Test 9: Não Duplicação com Múltiplos Desafios no Mesmo Dia
+  console.log('\n9. Testando Não Duplicação com Múltiplos Desafios na Mesma Data');
+  const customChallenge1: UserChallenge = {
+    id: 'custom_21_days',
+    title: 'Desafio de Leitura 21 Dias',
+    targetDays: 21,
+    startDate: yesterdayStr,
+    status: 'active',
+    habits: [
+      {
+        id: 'hab_1',
+        title: 'Leitura 20 min',
+        completedDates: [yesterdayStr, todayStr],
+        createdAt: new Date().toISOString(),
+      },
+    ],
+    createdAt: new Date().toISOString(),
+  };
+
+  const customChallenge2: UserChallenge = {
+    id: 'custom_30_days',
+    title: 'Desafio Calistenia 30 Dias',
+    targetDays: 30,
+    startDate: yesterdayStr,
+    status: 'active',
+    habits: [
+      {
+        id: 'hab_2',
+        title: '50 Flexões',
+        completedDates: [yesterdayStr, todayStr],
+        createdAt: new Date().toISOString(),
+      },
+    ],
+    createdAt: new Date().toISOString(),
+  };
+
+  // 3 Desafios (Oficial 66 + Custom 1 + Custom 2) marcados em ontem e hoje
+  const multiChallengeDates = getAllChallengePresenceDates(baseProfile, [customChallenge1, customChallenge2]);
+  assert(multiChallengeDates.length === 2, `Múltiplos desafios na mesma data NÃO podem duplicar (esperado 2, obteve ${multiChallengeDates.length})`);
+
+  const multiStreak = calculateChallengeStreak(multiChallengeDates, todayStr);
+  assert(multiStreak.currentStreak === 2, `Ofensiva com 3 desafios deve ser 2 dias (obteve ${multiStreak.currentStreak})`);
+
+  // Test 10: Desafios Alternados em Dias Consecutivos (Ofensiva Contínua)
+  console.log('\n10. Testando Desafios Alternados em Dias Consecutivos');
+  const profileAlternating: UserProfile = {
+    ...baseProfile,
+    activeChallenge: {
+      ...baseProfile.activeChallenge!,
+      checkIns: {
+        1: { dayNumber: 1, date: yesterdayStr, checked: true, xpEarned: 100, targetXp: 100 },
+        2: { dayNumber: 2, date: todayStr, checked: false, xpEarned: 0, targetXp: 100 },
+      },
+    },
+  };
+  const customAlternating: UserChallenge = {
+    id: 'custom_alt',
+    title: 'Desafio Alternado',
+    targetDays: 21,
+    startDate: threeDaysAgoStr,
+    status: 'active',
+    habits: [
+      {
+        id: 'hab_alt',
+        title: 'Meditação',
+        completedDates: [threeDaysAgoStr, twoDaysAgoStr, todayStr],
+        createdAt: new Date().toISOString(),
+      },
+    ],
+    createdAt: new Date().toISOString(),
+  };
+
+  const alternatingDates = getAllChallengePresenceDates(profileAlternating, [customAlternating]);
+  assert(alternatingDates.length === 4, `Deve conter 4 dias consecutivos únicos (obteve ${alternatingDates.length})`);
+
+  const altStreak = calculateChallengeStreak(alternatingDates, todayStr);
+  assert(altStreak.currentStreak === 4, `Ofensiva alternada contínua deve ser 4 dias (obteve ${altStreak.currentStreak})`);
+
+  // Test 11: Quebra de Sequência por Falta (Gaps sem presença)
+  console.log('\n11. Testando Quebra de Sequência por Falta');
+  const brokenDates = [threeDaysAgoStr];
+  const streakBroken = calculateChallengeStreak(brokenDates, todayStr);
+  assert(streakBroken.currentStreak === 0, `Ofensiva quebrada deve ser 0 (obteve ${streakBroken.currentStreak})`);
+  assert(streakBroken.bestStreak === 1, `Melhor ofensiva deve manter recorde de 1 (obteve ${streakBroken.bestStreak})`);
+
+  const resumedDates = [threeDaysAgoStr, todayStr];
+  const streakResumed = calculateChallengeStreak(resumedDates, todayStr);
+  assert(streakResumed.currentStreak === 1, `Nova ofensiva iniciada hoje deve ser 1 (obteve ${streakResumed.currentStreak})`);
+  assert(streakResumed.bestStreak === 1, `Recorde histórico permanece 1 (obteve ${streakResumed.bestStreak})`);
+
+  // Test 12: Desmarcação de Presença
+  console.log('\n12. Testando Desmarcação de Presença');
+  const uncheckDay2Profile: UserProfile = {
+    ...baseProfile,
+    activeChallenge: {
+      ...baseProfile.activeChallenge!,
+      checkIns: {
+        1: { dayNumber: 1, date: yesterdayStr, checked: true, xpEarned: 100, targetXp: 100 },
+        2: { dayNumber: 2, date: todayStr, checked: false, xpEarned: 0, targetXp: 100 },
+      },
+    },
+  };
+  const uncheckDates = getAllChallengePresenceDates(uncheckDay2Profile, []);
+  const uncheckStreak = calculateChallengeStreak(uncheckDates, todayStr);
+  assert(uncheckStreak.currentStreak === 1, `Ao desmarcar o dia 2, ofensiva retorna para 1 (obteve ${uncheckStreak.currentStreak})`);
+
+  // Test 13: Histórico de Desafios Anteriores Arquivados
+  console.log('\n13. Testando Histórico de Desafios Anteriores Arquivados');
+  const pastCycle: ProtocolChallengeCycle = {
+    id: 'cycle_0_archived',
+    cycleNumber: 0,
+    startDate: '2026-08-01',
+    endDate: '2026-08-28',
+    status: 'completed',
+    currentDay: 28,
+    daysCompleted: 28,
+    checkIns: {
+      1: { dayNumber: 1, date: '2026-08-01', checked: true, xpEarned: 100, targetXp: 100 },
+      2: { dayNumber: 2, date: '2026-08-02', checked: true, xpEarned: 100, targetXp: 100 },
+      3: { dayNumber: 3, date: '2026-08-03', checked: true, xpEarned: 100, targetXp: 100 },
+    },
+    totalXpEarned: 300,
+    createdAt: new Date().toISOString(),
+  };
+
+  const profileWithHistory: UserProfile = {
+    ...baseProfile,
+    challengeHistory: [pastCycle],
+  };
+
+  const datesWithHistory = getAllChallengePresenceDates(profileWithHistory, []);
+  assert(datesWithHistory.includes('2026-08-01'), 'Deve incluir presenças do ciclo anterior arquivado');
+  assert(datesWithHistory.includes(todayStr), 'Deve incluir presenças do ciclo atual');
+
+  console.log('\n--- TODOS OS TESTES PASSARAM COM 100% DE SUCESSO! ---');
 }
 
 runTests();
