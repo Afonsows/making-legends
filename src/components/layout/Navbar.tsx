@@ -37,7 +37,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="sticky top-1.5 sm:top-3 z-40 w-full px-2 sm:px-4 pointer-events-none transition-all duration-300">
+    <header className="sticky top-2 sm:top-3.5 z-40 w-full px-3 sm:px-4 pt-1.5 sm:pt-2.5 mb-4 sm:mb-6 pointer-events-none transition-all duration-300">
       <div className="pointer-events-auto max-w-4xl mx-auto liquid-glass-nav rounded-2xl sm:rounded-3xl relative overflow-hidden transition-all duration-300 p-2 sm:p-2.5 sm:px-4">
         {/* Filete de Brilho Especular Superior (Liquid Glass Sheen) */}
         <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/40 via-shinobi-gold/30 to-transparent pointer-events-none" />
