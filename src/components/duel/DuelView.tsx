@@ -13,17 +13,24 @@ import {
   CheckCircle2, 
   User, 
   Sparkles,
-  ChevronRight
+  ChevronRight,
+  PackageOpen,
+  Info
 } from 'lucide-react';
 
-export const DuelView: React.FC = () => {
+interface DuelViewProps {
+  onNavigateToInventory?: () => void;
+}
+
+export const DuelView: React.FC<DuelViewProps> = () => {
   const { 
     adversaries, 
     currentAdversaryIndex, 
     combatLogs, 
     lastDamageDealt,
     selectAdversary,
-    getCurrentAdversary 
+    getCurrentAdversary,
+    isAdversaryUnlocked
   } = useDuelStore();
 
   const { profile } = useUserStore();
@@ -52,29 +59,36 @@ export const DuelView: React.FC = () => {
             <span>Duelo de Treinamento Diário</span>
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Cada missão concluída converte seu XP em dano físico e mental contra o oponente.
+            Cada missão concluída converte seu XP em dano físico e mental contra o oponente ativo.
           </p>
         </div>
 
-        <button
-          onClick={() => setIsAvatarModalOpen(true)}
-          className="px-3.5 py-2 bg-shinobi-card border border-shinobi-border hover:border-shinobi-gold/60 text-slate-200 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5 self-start sm:self-center"
-        >
-          <User className="w-3.5 h-3.5 text-shinobi-gold" />
-          <span>Ajustar Avatar</span>
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-center">
+          <button
+            onClick={() => setIsAvatarModalOpen(true)}
+            className="px-3.5 py-2 bg-shinobi-card border border-shinobi-border hover:border-shinobi-gold/60 text-slate-200 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5"
+          >
+            <User className="w-3.5 h-3.5 text-shinobi-gold" />
+            <span>Ajustar Avatar</span>
+          </button>
+        </div>
       </div>
 
       {/* Card do Chefe Ativo */}
       <BossCard adversary={activeBoss} lastDamage={lastDamageDealt} />
 
-      {/* Seletor dos 30 Adversários */}
+      {/* Seletor dos 30 Adversários com Bloqueio Sequencial */}
       <div className="bg-slate-900 border-2 border-slate-700/80 rounded-3xl p-5 shadow-2xl">
         <div className="flex items-center justify-between mb-3 border-b border-slate-800 pb-2.5">
-          <h3 className="font-cinzel text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
-            <Swords className="w-4 h-4 text-rose-400" />
-            Trilha dos 30 Adversários Shinobi
-          </h3>
+          <div>
+            <h3 className="font-cinzel text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
+              <Swords className="w-4 h-4 text-rose-400" />
+              Trilha dos 30 Adversários Shinobi
+            </h3>
+            <p className="text-[11px] text-slate-400">
+              Progressão linear: derrote o oponente anterior para desbloquear o próximo.
+            </p>
+          </div>
           <span className="text-xs font-mono text-slate-300">
             Nível 1 ao 66
           </span>
@@ -83,18 +97,23 @@ export const DuelView: React.FC = () => {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 max-h-72 overflow-y-auto p-1">
           {adversaries.map((adv, idx) => {
             const isSelected = idx === currentAdversaryIndex;
+            const isUnlocked = isAdversaryUnlocked(idx);
             const weakness = getPillar(adv.pillarWeakness);
 
             return (
               <button
                 key={adv.id}
-                onClick={() => selectAdversary(idx)}
+                disabled={!isUnlocked}
+                onClick={() => isUnlocked && selectAdversary(idx)}
+                title={!isUnlocked ? `Derrote o Adversário #${adv.number - 1} para desbloquear` : undefined}
                 className={`p-3 rounded-2xl border text-left transition-all relative ${
                   isSelected
                     ? 'border-2 border-rose-500 bg-rose-950/40 shadow-glow-crimson scale-[1.02]'
                     : adv.isDefeated
-                    ? 'border-emerald-500/50 bg-emerald-950/20'
-                    : 'border-slate-800 bg-slate-950 hover:border-slate-600'
+                    ? 'border-emerald-500/50 bg-emerald-950/20 hover:border-emerald-400 cursor-pointer'
+                    : isUnlocked
+                    ? 'border-slate-800 bg-slate-950 hover:border-slate-600 cursor-pointer'
+                    : 'border-slate-900 bg-slate-950/40 opacity-40 grayscale cursor-not-allowed'
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -103,6 +122,8 @@ export const DuelView: React.FC = () => {
                   </span>
                   {adv.isDefeated ? (
                     <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  ) : !isUnlocked ? (
+                    <Lock className="w-3.5 h-3.5 text-slate-500" />
                   ) : (
                     <span className="text-[10px] font-mono text-rose-400 font-bold">Nv.{adv.level}</span>
                   )}
@@ -112,7 +133,7 @@ export const DuelView: React.FC = () => {
                   {adv.name}
                 </div>
 
-                <div className="flex items-center gap-1 mt-1 text-[10px] font-semibold" style={{ color: weakness.color }}>
+                <div className="flex items-center gap-1 mt-1 text-[10px] font-semibold" style={{ color: isUnlocked ? weakness.color : '#64748b' }}>
                   <span>{weakness.badgeIcon}</span>
                   <span className="truncate">{weakness.name}</span>
                 </div>

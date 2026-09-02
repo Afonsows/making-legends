@@ -8,7 +8,7 @@ import { useUserStore } from './useUserStore';
 import { soundFx } from '../utils/audio';
 import { triggerBossDefeatedConfetti } from '../utils/confetti';
 
-interface CombatLogEntry {
+export interface CombatLogEntry {
   id: string;
   damage: number;
   message: string;
@@ -17,7 +17,7 @@ interface CombatLogEntry {
   timestamp: string;
 }
 
-interface DuelStoreState {
+export interface DuelStoreState {
   adversaries: Adversary[];
   currentAdversaryIndex: number;
   combatLogs: CombatLogEntry[];
@@ -25,6 +25,8 @@ interface DuelStoreState {
   lastDamageDealt: { amount: number; isCritical: boolean; id: string } | null;
 
   // Actions
+  isAdversaryUnlocked: (index: number) => boolean;
+  reconcileAdversaries: () => void;
   getCurrentAdversary: () => Adversary;
   dealDamageFromMission: (xpAmount: number, pillarId: PillarId, equippedItems: Item[]) => void;
   selectAdversary: (index: number) => void;
@@ -33,102 +35,166 @@ interface DuelStoreState {
   resetAdversariesProgress: () => void;
 }
 
+/**
+ * Higieniza o estado dos adversários garantindo progressão linear consistente.
+ * Se o boss N foi derrotado, todos os bosses anteriores (0..N-1) também são marcados como derrotados.
+ */
+function sanitizeAdversaries(
+  adversaries: Adversary[],
+  currentIndex: number
+): { sanitizedAdversaries: Adversary[]; validIndex: number } {
+  const list = adversaries && adversaries.length === originalAdversaries.length ? adversaries.map(a => ({ ...a })) : originalAdversaries.map(a => ({ ...a }));
+  
+  let maxDefeatedIdx = -1;
+  for (let i = 0; i < list.length; i++) {
+    if (list[i].isDefeated) {
+      maxDefeatedIdx = i;
+    }
+  }
+
+  if (maxDefeatedIdx >= 0) {
+    const userStore = useUserStore.getState();
+    for (let i = 0; i <= maxDefeatedIdx; i++) {
+      list[i] = {
+        ...list[i],
+        currentHp: 0,
+        isDefeated: true,
+      };
+      if (list[i].rewardItem?.id) {
+        userStore.addItemToInventory(list[i].rewardItem.id);
+      }
+    }
+  }
+
+  const firstUndefeated = list.findIndex((a) => !a.isDefeated);
+  const validIndex = firstUndefeated !== -1 ? firstUndefeated : Math.min(list.length - 1, Math.max(0, currentIndex));
+
+  return { sanitizedAdversaries: list, validIndex };
+}
+
 export const useDuelStore = create<DuelStoreState>()(
   persist(
-    (set, get) => ({
-      adversaries: originalAdversaries,
-      currentAdversaryIndex: 0,
-      combatLogs: [],
-      activeVictoryModal: null,
-      lastDamageDealt: null,
+    (set, get) => {
+      const initial = sanitizeAdversaries(originalAdversaries, 0);
 
-      getCurrentAdversary: () => {
-        const { adversaries, currentAdversaryIndex } = get();
-        return adversaries[currentAdversaryIndex] || adversaries[0];
-      },
+      return {
+        adversaries: initial.sanitizedAdversaries,
+        currentAdversaryIndex: initial.validIndex,
+        combatLogs: [],
+        activeVictoryModal: null,
+        lastDamageDealt: null,
 
-      dealDamageFromMission: (xpAmount, pillarId, equippedItems) => {
-        const adversary = get().getCurrentAdversary();
-        if (adversary.isDefeated) return;
+        isAdversaryUnlocked: (index: number) => {
+          if (index <= 0) return true;
+          const { adversaries } = get();
+          return adversaries[index - 1]?.isDefeated === true;
+        },
 
-        const { totalDamage, isCritical, weaknessBonus, message } = calculateDuelDamage(
-          xpAmount,
-          pillarId,
-          adversary,
-          equippedItems
-        );
+        reconcileAdversaries: () => {
+          const { adversaries, currentAdversaryIndex } = get();
+          const { sanitizedAdversaries, validIndex } = sanitizeAdversaries(adversaries, currentAdversaryIndex);
+          set({
+            adversaries: sanitizedAdversaries,
+            currentAdversaryIndex: validIndex,
+          });
+        },
 
-        const { updatedAdversary, isDefeatedNow } = applyDamageToAdversary(adversary, totalDamage);
+        getCurrentAdversary: () => {
+          const { adversaries, currentAdversaryIndex } = get();
+          return adversaries[currentAdversaryIndex] || adversaries[0];
+        },
 
-        const newLog: CombatLogEntry = {
-          id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
-          damage: totalDamage,
-          message,
-          isCritical,
-          isWeakness: weaknessBonus > 0,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        };
+        dealDamageFromMission: (xpAmount, pillarId, equippedItems) => {
+          const adversary = get().getCurrentAdversary();
+          if (adversary.isDefeated) return;
 
-        const updatedList = get().adversaries.map((b, idx) =>
-          idx === get().currentAdversaryIndex ? updatedAdversary : b
-        );
+          const { totalDamage, isCritical, weaknessBonus, message } = calculateDuelDamage(
+            xpAmount,
+            pillarId,
+            adversary,
+            equippedItems
+          );
 
-        set({
-          adversaries: updatedList,
-          combatLogs: [newLog, ...get().combatLogs.slice(0, 15)],
-          lastDamageDealt: {
-            amount: totalDamage,
+          const { updatedAdversary, isDefeatedNow } = applyDamageToAdversary(adversary, totalDamage);
+
+          const newLog: CombatLogEntry = {
+            id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+            damage: totalDamage,
+            message,
             isCritical,
-            id: newLog.id,
-          },
-        });
+            isWeakness: weaknessBonus > 0,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          };
 
-        if (isDefeatedNow) {
-          soundFx.playLevelUp();
-          triggerBossDefeatedConfetti();
-
-          // Adiciona item de recompensa ao inventário do usuário
-          const userStore = useUserStore.getState();
-          userStore.addItemToInventory(updatedAdversary.rewardItem.id);
+          const updatedList = get().adversaries.map((b, idx) =>
+            idx === get().currentAdversaryIndex ? updatedAdversary : b
+          );
 
           set({
-            activeVictoryModal: {
-              defeatedBoss: updatedAdversary,
-              rewardItem: updatedAdversary.rewardItem,
+            adversaries: updatedList,
+            combatLogs: [newLog, ...get().combatLogs.slice(0, 15)],
+            lastDamageDealt: {
+              amount: totalDamage,
+              isCritical,
+              id: newLog.id,
             },
           });
-        }
-      },
 
-      selectAdversary: (index) => {
-        const safeIndex = Math.min(get().adversaries.length - 1, Math.max(0, index));
-        set({ currentAdversaryIndex: safeIndex });
-      },
+          if (isDefeatedNow) {
+            soundFx.playLevelUp();
+            triggerBossDefeatedConfetti();
 
-      closeVictoryModal: () => {
-        set({ activeVictoryModal: null });
-      },
+            // Adiciona item de recompensa ao inventário do usuário
+            const userStore = useUserStore.getState();
+            userStore.addItemToInventory(updatedAdversary.rewardItem.id);
 
-      claimVictoryReward: () => {
-        const { currentAdversaryIndex, adversaries } = get();
-        const nextIndex = Math.min(adversaries.length - 1, currentAdversaryIndex + 1);
-        set({
-          activeVictoryModal: null,
-          currentAdversaryIndex: nextIndex,
-        });
-      },
+            set({
+              activeVictoryModal: {
+                defeatedBoss: updatedAdversary,
+                rewardItem: updatedAdversary.rewardItem,
+              },
+            });
+          }
+        },
 
-      resetAdversariesProgress: () => {
-        set({
-          adversaries: originalAdversaries,
-          currentAdversaryIndex: 0,
-          combatLogs: [],
-          activeVictoryModal: null,
-        });
-      },
-    }),
+        selectAdversary: (index) => {
+          const { adversaries, isAdversaryUnlocked } = get();
+          const safeIndex = Math.min(adversaries.length - 1, Math.max(0, index));
+          if (isAdversaryUnlocked(safeIndex)) {
+            set({ currentAdversaryIndex: safeIndex });
+          }
+        },
+
+        closeVictoryModal: () => {
+          set({ activeVictoryModal: null });
+        },
+
+        claimVictoryReward: () => {
+          const { currentAdversaryIndex, adversaries } = get();
+          const nextIndex = Math.min(adversaries.length - 1, currentAdversaryIndex + 1);
+          set({
+            activeVictoryModal: null,
+            currentAdversaryIndex: nextIndex,
+          });
+        },
+
+        resetAdversariesProgress: () => {
+          set({
+            adversaries: originalAdversaries,
+            currentAdversaryIndex: 0,
+            combatLogs: [],
+            activeVictoryModal: null,
+          });
+        },
+      };
+    },
     {
       name: 'making-legends-duel-store',
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.reconcileAdversaries();
+        }
+      },
     }
   )
 );
