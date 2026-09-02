@@ -143,6 +143,8 @@ export interface TeachingCard {
   concept: string;
   unlockedDay: number;
   rarity: 'common' | 'rare' | 'legendary';
+  kanji?: string;
+  sealName?: string;
 }
 
 export interface NutritionLog {

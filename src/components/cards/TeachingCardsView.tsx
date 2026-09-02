@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { teachingCards } from '../../core/cardsData';
 import { useUserStore } from '../../state/useUserStore';
 import { useTheme } from '../../theme/ThemeContext';
+import { TeachingCard } from '../../core/types';
 import { PillarId } from '../../theme/types';
+import { TeachingCardModal } from './TeachingCardModal';
 import { 
   BookOpen, 
   Sparkles, 
@@ -11,8 +13,12 @@ import {
   Trophy, 
   Users, 
   Medal, 
-  Share2 
+  Share2,
+  Crown,
+  Flame,
+  Zap
 } from 'lucide-react';
+import { soundFx } from '../../utils/audio';
 
 export const TeachingCardsView: React.FC = () => {
   const { profile } = useUserStore();
@@ -20,7 +26,7 @@ export const TeachingCardsView: React.FC = () => {
 
   const [selectedPillar, setSelectedPillar] = useState<PillarId | 'all'>('all');
   const [activeTab, setActiveTab] = useState<'cards' | 'leagues'>('cards');
-  const [activeCardModal, setActiveCardModal] = useState<typeof teachingCards[0] | null>(null);
+  const [activeCardModal, setActiveCardModal] = useState<TeachingCard | null>(null);
 
   const unlockedCount = profile.unlockedCards.length;
   const totalCards = teachingCards.length;
@@ -32,11 +38,11 @@ export const TeachingCardsView: React.FC = () => {
 
   const pillarsList: { id: PillarId | 'all'; label: string }[] = [
     { id: 'all', label: 'Todos' },
-    { id: 'taijutsu', label: 'Corpo' },
-    { id: 'ninjutsu', label: 'Mente' },
-    { id: 'chakra', label: 'Disciplina' },
-    { id: 'espirito', label: 'Confiança' },
-    { id: 'genjutsu', label: 'Foco' },
+    { id: 'taijutsu', label: '🥋 Corpo' },
+    { id: 'ninjutsu', label: '📜 Mente' },
+    { id: 'chakra', label: '⚡ Disciplina' },
+    { id: 'espirito', label: '🛡️ Confiança' },
+    { id: 'genjutsu', label: '👁️ Foco' },
   ];
 
   // Dados mock de Liga Shinobi
@@ -57,7 +63,7 @@ export const TeachingCardsView: React.FC = () => {
             <span>Pergaminhos & Ligas Shinobi</span>
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Cartões de sabedoria colecionáveis e ranking semanal da Temporada 1.
+            Cartões colecionáveis de sabedoria prática e ranking semanal da Temporada 1.
           </p>
         </div>
 
@@ -65,9 +71,9 @@ export const TeachingCardsView: React.FC = () => {
         <div className="flex items-center gap-1 bg-shinobi-bg p-1 rounded-xl border border-shinobi-border self-start sm:self-center">
           <button
             onClick={() => setActiveTab('cards')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'cards'
-                ? 'bg-shinobi-gold text-shinobi-bg shadow-sm'
+                ? 'bg-shinobi-gold text-shinobi-bg shadow-sm font-bold'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -76,9 +82,9 @@ export const TeachingCardsView: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveTab('leagues')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'leagues'
-                ? 'bg-shinobi-gold text-shinobi-bg shadow-sm'
+                ? 'bg-shinobi-gold text-shinobi-bg shadow-sm font-bold'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -92,14 +98,14 @@ export const TeachingCardsView: React.FC = () => {
       {activeTab === 'cards' && (
         <div className="space-y-3">
           {/* Filtro de Pilares */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
             {pillarsList.map((p) => (
               <button
                 key={p.id}
                 onClick={() => setSelectedPillar(p.id)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs whitespace-nowrap transition-all border font-semibold ${
+                className={`px-3 py-1 rounded-xl text-xs whitespace-nowrap transition-all border font-semibold cursor-pointer ${
                   selectedPillar === p.id
-                    ? 'bg-slate-900 border-2 border-shinobi-gold text-shinobi-gold font-bold shadow-glow-gold/20'
+                    ? 'bg-slate-900 border-2 border-shinobi-gold text-shinobi-gold font-bold shadow-glow-gold/20 scale-105'
                     : 'bg-slate-900/90 border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500'
                 }`}
               >
@@ -108,57 +114,101 @@ export const TeachingCardsView: React.FC = () => {
             ))}
           </div>
 
-          {/* Grid de Cartões Colecionáveis */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+          {/* Grid Compacta de Cartões Colecionáveis com Design por Raridade */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-3">
             {filteredCards.map((card) => {
               const isUnlocked = profile.unlockedCards.includes(card.id);
               const pillar = getPillar(card.pillarId);
 
+              // Estilos visuais diferenciados por raridade
+              const rarityCardStyles = {
+                common: isUnlocked
+                  ? 'bg-slate-950/90 border-slate-700 hover:border-slate-500 hover:bg-slate-900'
+                  : 'bg-slate-950/60 border-slate-850 opacity-50 grayscale',
+                rare: isUnlocked
+                  ? 'bg-gradient-to-br from-slate-900 via-slate-950 to-cyan-950/40 border-cyan-500/70 hover:border-cyan-400 shadow-glow-chakra/20 hover:scale-[1.02]'
+                  : 'bg-slate-950/60 border-slate-850 opacity-50 grayscale',
+                legendary: isUnlocked
+                  ? 'bg-gradient-to-br from-slate-900 via-amber-950/40 to-slate-950 border-2 border-shinobi-gold hover:border-amber-300 shadow-glow-gold/30 hover:scale-[1.03]'
+                  : 'bg-slate-950/60 border-slate-850 opacity-50 grayscale',
+              }[card.rarity];
+
+              const rarityBadge = {
+                common: 'text-slate-400 bg-slate-800/60 border-slate-700',
+                rare: 'text-cyan-300 bg-cyan-950/80 border-cyan-500/50 font-bold',
+                legendary: 'text-amber-300 bg-amber-950/80 border-amber-500/70 font-extrabold',
+              }[card.rarity];
+
               return (
                 <div
                   key={card.id}
-                  onClick={() => isUnlocked && setActiveCardModal(card)}
-                  className={`p-4 rounded-2xl border-2 transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between shadow-lg ${
-                    isUnlocked
-                      ? 'bg-slate-900 border-slate-700 hover:border-shinobi-gold/80 hover:shadow-2xl hover:scale-[1.01]'
-                      : 'bg-slate-950/90 border-slate-800 hover:border-slate-700'
-                  }`}
+                  onClick={() => {
+                    if (isUnlocked) {
+                      soundFx.playButtonClick();
+                      setActiveCardModal(card);
+                    }
+                  }}
+                  className={`p-3 sm:p-3.5 rounded-2xl border transition-all relative overflow-hidden flex flex-col justify-between shadow-md group ${
+                    isUnlocked ? 'cursor-pointer' : 'cursor-not-allowed'
+                  } ${rarityCardStyles}`}
                 >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
+                  {/* Detalhe Shinobi de Canto para Lendários */}
+                  {card.rarity === 'legendary' && isUnlocked && (
+                    <div className="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-br from-amber-400 to-shinobi-gold text-slate-950 flex items-center justify-center rounded-bl-xl text-[9px] font-bold shadow">
+                      ★
+                    </div>
+                  )}
+
+                  {/* Kanji Watermark em Cartões Raros e Lendários */}
+                  {isUnlocked && card.kanji && (
+                    <div className="absolute right-1 bottom-1 text-4xl font-serif font-black select-none pointer-events-none opacity-5 group-hover:opacity-15 transition-opacity text-white">
+                      {card.kanji}
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    {/* Linha Superior: Pilar + Status / Dia */}
+                    <div className="flex items-center justify-between gap-1">
                       <span
-                        className="text-[10px] font-mono font-bold px-2 py-0.5 rounded border flex items-center gap-1"
+                        className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border flex items-center gap-1 truncate"
                         style={{
                           color: pillar.color,
                           borderColor: `${pillar.color}40`,
                           backgroundColor: `${pillar.color}15`,
                         }}
                       >
-                        {pillar.badgeIcon} {pillar.name}
+                        <span>{pillar.badgeIcon}</span>
+                        <span className="truncate">{pillar.name}</span>
                       </span>
 
                       {isUnlocked ? (
-                        <span className="text-[10px] font-mono text-shinobi-jade flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3" /> Desbloqueado
-                        </span>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
                       ) : (
-                        <span className="text-[10px] font-mono text-slate-500 flex items-center gap-1">
-                          <Lock className="w-3 h-3" /> Dia {card.unlockedDay}
+                        <span className="text-[9px] font-mono text-slate-500 flex items-center gap-0.5 flex-shrink-0">
+                          <Lock className="w-3 h-3" /> D.{card.unlockedDay}
                         </span>
                       )}
                     </div>
 
-                    <h4 className="font-cinzel text-sm font-bold text-slate-100">
-                      {card.title}
-                    </h4>
-                    <p className="text-xs text-slate-400 mt-1 line-clamp-3">
-                      {isUnlocked ? card.wisdom : 'Sabedoria oculta selada no pergaminho...'}
-                    </p>
+                    {/* TÍTULO PRINCIPAL DO PERGAMINHO */}
+                    <div>
+                      <h4 className="font-cinzel text-xs sm:text-sm font-bold text-slate-100 group-hover:text-shinobi-gold transition-colors line-clamp-2 leading-tight">
+                        {card.title}
+                      </h4>
+                      <p className="text-[10px] text-slate-400 mt-0.5 font-mono truncate">
+                        {card.concept}
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="mt-3 pt-2 border-t border-shinobi-border/60 flex items-center justify-between text-[10px] text-slate-400">
-                    <span className="font-mono">{card.concept}</span>
-                    <span className="text-shinobi-gold capitalize font-semibold">{card.rarity}</span>
+                  {/* Rodapé Compacto */}
+                  <div className="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[9px] font-mono">
+                    <span className={`px-1.5 py-0.2 rounded border uppercase text-[8px] ${rarityBadge}`}>
+                      {card.rarity}
+                    </span>
+                    <span className="text-slate-400">
+                      Dia #{card.unlockedDay}
+                    </span>
                   </div>
                 </div>
               );
@@ -233,43 +283,12 @@ export const TeachingCardsView: React.FC = () => {
         </div>
       )}
 
-      {/* Modal de Leitura do Cartão */}
+      {/* Modal de Leitura e Compartilhamento Instagram do Cartão */}
       {activeCardModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3.5 sm:p-6 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-shinobi-card border border-shinobi-gold/60 w-full max-w-md rounded-2xl overflow-hidden shadow-2xl p-6 relative z-[101]">
-            <div className="text-center space-y-3">
-              <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-shinobi-gold/20 text-shinobi-gold border border-shinobi-gold/40">
-                PERGAMINHO DE ENSINAMENTO #{activeCardModal.unlockedDay}
-              </span>
-
-              <h3 className="font-cinzel text-xl font-bold text-slate-100">
-                {activeCardModal.title}
-              </h3>
-
-              <div className="w-12 h-0.5 bg-shinobi-gold mx-auto" />
-
-              <p className="text-sm text-slate-200 italic leading-relaxed py-2">
-                "{activeCardModal.wisdom}"
-              </p>
-
-              <div className="bg-shinobi-bg p-3.5 rounded-xl border border-shinobi-border text-left">
-                <div className="text-[11px] font-bold text-shinobi-jade font-mono uppercase mb-1">
-                  ⚡ Missão de Aplicação Prática:
-                </div>
-                <div className="text-xs text-slate-300">
-                  {activeCardModal.actionTip}
-                </div>
-              </div>
-
-              <button
-                onClick={() => setActiveCardModal(null)}
-                className="w-full py-2.5 bg-shinobi-gold text-shinobi-bg font-bold text-xs rounded-xl shadow-glow-gold hover:bg-shinobi-goldHover transition-colors mt-4"
-              >
-                Integrar Sabedoria ao Treino
-              </button>
-            </div>
-          </div>
-        </div>
+        <TeachingCardModal
+          card={activeCardModal}
+          onClose={() => setActiveCardModal(null)}
+        />
       )}
     </div>
   );

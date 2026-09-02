@@ -7,6 +7,7 @@ import { getTimeUntilMidnightString } from '../../core/dailyResetEngine';
 import { MissionCard } from './MissionCard';
 import { AddMissionModal } from './AddMissionModal';
 import { DailyCheckInCard } from './DailyCheckInCard';
+import { DailyScrollWidget } from '../cards/DailyScrollWidget';
 import { MissionHistoryModal } from '../modals/MissionHistoryModal';
 import { ChallengeMapModal } from '../modals/ChallengeMapModal';
 import { ChallengeHistoryModal } from '../modals/ChallengeHistoryModal';
@@ -144,6 +145,9 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
     <div className="pb-24 pt-3 max-w-4xl mx-auto px-4 space-y-4">
       {/* Card Principal: Presença Diária dos 66 Dias com Validação de 50% de XP */}
       <DailyCheckInCard />
+
+      {/* Widget do Pergaminho de Sabedoria Desbloqueado do Dia */}
+      <DailyScrollWidget />
 
       {/* Cartão de Progresso Diário e Chamada para Ação */}
       <div className="bg-slate-900 border-2 border-slate-700/80 rounded-2xl p-4 shadow-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">

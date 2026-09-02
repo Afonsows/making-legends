@@ -11,6 +11,8 @@ export const teachingCards: TeachingCard[] = [
     concept: 'Condicionamento Físico & Postura',
     unlockedDay: 1,
     rarity: 'common',
+    kanji: '体',
+    sealName: 'Selo da Postura Primordial',
   },
   {
     id: 'card_tai_02',
@@ -21,6 +23,8 @@ export const teachingCards: TeachingCard[] = [
     concept: 'Sobrecarga Progressiva',
     unlockedDay: 8,
     rarity: 'rare',
+    kanji: '剛',
+    sealName: 'Selo da Tensão Invicta',
   },
   {
     id: 'card_tai_03',
@@ -31,6 +35,8 @@ export const teachingCards: TeachingCard[] = [
     concept: 'Recuperação & Higiene do Sono',
     unlockedDay: 18,
     rarity: 'legendary',
+    kanji: '休',
+    sealName: 'Selo da Regeneração Sagrada',
   },
 
   // Ninjutsu (Mente)
@@ -43,6 +49,8 @@ export const teachingCards: TeachingCard[] = [
     concept: 'Leitura Ativa & Retenção',
     unlockedDay: 2,
     rarity: 'common',
+    kanji: '忍',
+    sealName: 'Selo da Absorção Ativa',
   },
   {
     id: 'card_nin_02',
@@ -53,6 +61,8 @@ export const teachingCards: TeachingCard[] = [
     concept: 'Técnica de Feynman',
     unlockedDay: 12,
     rarity: 'rare',
+    kanji: '知',
+    sealName: 'Selo da Clareza Verbal',
   },
   {
     id: 'card_nin_03',
@@ -63,6 +73,8 @@ export const teachingCards: TeachingCard[] = [
     concept: 'Modelos Mentais',
     unlockedDay: 25,
     rarity: 'legendary',
+    kanji: '智',
+    sealName: 'Selo dos Cem Arquivos',
   },
 
   // Controle de Chakra (Disciplina / Consistência)
@@ -75,6 +87,8 @@ export const teachingCards: TeachingCard[] = [
     concept: 'Eliminação de Atrito',
     unlockedDay: 3,
     rarity: 'common',
+    kanji: '気',
+    sealName: 'Selo do Impulso Inicial',
   },
   {
     id: 'card_cha_02',
@@ -85,6 +99,8 @@ export const teachingCards: TeachingCard[] = [
     concept: 'Consistência Não-Linear',
     unlockedDay: 15,
     rarity: 'rare',
+    kanji: '律',
+    sealName: 'Selo do Fluxo Contínuo',
   },
   {
     id: 'card_cha_03',
@@ -95,6 +111,8 @@ export const teachingCards: TeachingCard[] = [
     concept: 'Automatização Neural (UCL)',
     unlockedDay: 33,
     rarity: 'legendary',
+    kanji: '極',
+    sealName: 'Selo da Neuro-Metamorfose',
   },
 
   // Espírito (Confiança & Coragem)
@@ -107,6 +125,8 @@ export const teachingCards: TeachingCard[] = [
     concept: 'Autoiniciativa',
     unlockedDay: 4,
     rarity: 'common',
+    kanji: '志',
+    sealName: 'Selo da Faísca Interior',
   },
   {
     id: 'card_esp_02',
@@ -117,6 +137,8 @@ export const teachingCards: TeachingCard[] = [
     concept: 'Exposição Voluntária',
     unlockedDay: 20,
     rarity: 'rare',
+    kanji: '勇',
+    sealName: 'Selo da Marcha Noturna',
   },
   {
     id: 'card_esp_03',
@@ -127,6 +149,8 @@ export const teachingCards: TeachingCard[] = [
     concept: 'Mudança de Identidade',
     unlockedDay: 40,
     rarity: 'legendary',
+    kanji: '覇',
+    sealName: 'Selo do Soberano Interno',
   },
 
   // Genjutsu (Foco / Concentração)
@@ -139,6 +163,8 @@ export const teachingCards: TeachingCard[] = [
     concept: 'Higiene Digital & Foco',
     unlockedDay: 5,
     rarity: 'common',
+    kanji: '幻',
+    sealName: 'Selo do Silêncio Exterior',
   },
   {
     id: 'card_gen_02',
@@ -149,6 +175,8 @@ export const teachingCards: TeachingCard[] = [
     concept: 'Trabalho Profundo',
     unlockedDay: 22,
     rarity: 'rare',
+    kanji: '鏡',
+    sealName: 'Selo do Santuário Mental',
   },
   {
     id: 'card_gen_03',
@@ -159,5 +187,7 @@ export const teachingCards: TeachingCard[] = [
     concept: 'Mindfulness Tático',
     unlockedDay: 48,
     rarity: 'legendary',
+    kanji: '禅',
+    sealName: 'Selo do Instante Eterno',
   },
 ];
