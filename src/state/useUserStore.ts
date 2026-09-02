@@ -363,7 +363,8 @@ export const useUserStore = create<UserStoreState>()(
       recalculateStreak: () => {
         const { profile } = get();
         const customChallenges = useChallengeStore.getState().challenges || [];
-        const presenceDates = getAllChallengePresenceDates(profile, customChallenges);
+        const missions = useHabitStore.getState().missions || [];
+        const presenceDates = getAllChallengePresenceDates(profile, customChallenges, missions);
         const streakResult = calculateChallengeStreak(presenceDates);
 
         const newStreak = streakResult.currentStreak;
@@ -486,7 +487,7 @@ export const useUserStore = create<UserStoreState>()(
           ...profile,
           activeChallenge: updatedCycle,
         };
-        const presenceDates = getAllChallengePresenceDates(candidateProfile, customChallenges);
+        const presenceDates = getAllChallengePresenceDates(candidateProfile, customChallenges, missions);
         const streakResult = calculateChallengeStreak(presenceDates, todayStr);
 
         const newStreak = streakResult.currentStreak;

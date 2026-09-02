@@ -243,24 +243,39 @@ export function evaluateProtocolStatus(
  */
 export function getAllChallengePresenceDates(
   profile: UserProfile,
-  customChallenges: UserChallenge[] = []
+  customChallenges: UserChallenge[] = [],
+  missions: Mission[] = []
 ): string[] {
   const presenceSet = new Set<string>();
+  const todayStr = getTodayString();
+  const [ty, tm, td] = todayStr.split('-').map(Number);
 
   // 1. Presenças no Desafio Oficial Ativo (Ciclo dos 66 Dias)
   const activeCycle = profile.activeChallenge;
   if (activeCycle && activeCycle.checkIns) {
-    const cycleStartDate = activeCycle.startDate || profile.lastActiveDate || getTodayString();
+    const currentDay = Math.min(66, Math.max(1, activeCycle.currentDay || profile.currentProtocolDay || 1));
 
     Object.entries(activeCycle.checkIns).forEach(([dayKey, record]) => {
       if (record && record.checked) {
-        if (record.date && isValidDateString(record.date)) {
-          presenceSet.add(record.date);
-        } else if (isValidDateString(cycleStartDate)) {
-          // Se a data não estava gravada diretamente no record, calcula a partir de startDate + (dayNumber - 1)
-          const dayNum = Number(dayKey) || record.dayNumber || 1;
-          const [y, m, d] = cycleStartDate.split('-').map(Number);
-          const computedDate = new Date(y, m - 1, d + (dayNum - 1));
+        const dayNum = Number(dayKey) || record.dayNumber || 1;
+
+        // Se a data gravada for válida e no passado/hoje
+        if (record.date && isValidDateString(record.date) && record.date <= todayStr) {
+          // Caso a data gravada no dayNum anterior seja igual à de hoje por bug legado, ajusta para o dia correspondente
+          if (dayNum < currentDay && record.date === todayStr) {
+            const diffDays = currentDay - dayNum;
+            const computedDate = new Date(ty, tm - 1, td - diffDays);
+            const dateStr = `${computedDate.getFullYear()}-${String(computedDate.getMonth() + 1).padStart(2, '0')}-${String(computedDate.getDate()).padStart(2, '0')}`;
+            if (isValidDateString(dateStr)) {
+              presenceSet.add(dateStr);
+            }
+          } else {
+            presenceSet.add(record.date);
+          }
+        } else {
+          // Calcula data relativa a partir do currentDay e todayStr
+          const diffDays = currentDay - dayNum;
+          const computedDate = new Date(ty, tm - 1, td - diffDays);
           const dateStr = `${computedDate.getFullYear()}-${String(computedDate.getMonth() + 1).padStart(2, '0')}-${String(computedDate.getDate()).padStart(2, '0')}`;
           if (isValidDateString(dateStr)) {
             presenceSet.add(dateStr);
@@ -293,7 +308,16 @@ export function getAllChallengePresenceDates(
     }
   });
 
-  // 3. Presenças em Desafios Personalizados Criados pelo Usuário
+  // 3. Presenças nas Missões Diárias do Desafio Oficial (useHabitStore.missions)
+  (missions || []).forEach((mission) => {
+    (mission.completedDates || []).forEach((dateStr) => {
+      if (isValidDateString(dateStr) && dateStr <= todayStr) {
+        presenceSet.add(dateStr);
+      }
+    });
+  });
+
+  // 4. Presenças em Desafios Personalizados Criados pelo Usuário
   customChallenges.forEach((challenge) => {
     // Ignora espelho do oficial para não duplicar com os check-ins oficiais
     if (challenge.isOfficial66 || challenge.id === 'challenge_official_66') {
@@ -301,7 +325,7 @@ export function getAllChallengePresenceDates(
     }
     (challenge.habits || []).forEach((habit) => {
       (habit.completedDates || []).forEach((dateStr) => {
-        if (isValidDateString(dateStr)) {
+        if (isValidDateString(dateStr) && dateStr <= todayStr) {
           presenceSet.add(dateStr);
         }
       });
@@ -535,7 +559,7 @@ export function processDayTransition(
     challengeHistory,
     currentProtocolDay,
   };
-  const presenceDates = getAllChallengePresenceDates(updatedProfileForCalculation, customChallenges);
+  const presenceDates = getAllChallengePresenceDates(updatedProfileForCalculation, customChallenges, missions);
   const streakResult = calculateChallengeStreak(presenceDates, todayStr);
 
   const finalStreak = streakResult.currentStreak;

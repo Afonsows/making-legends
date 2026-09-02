@@ -216,6 +216,8 @@ export const useHabitStore = create<HabitStoreState>()(
           userStore.removeXp(mission.xpReward, mission.pillarId);
           userStore.removeRyo(ryoAmount);
         }
+
+        userStore.recalculateStreak();
       },
 
       addMission: (missionData) => {

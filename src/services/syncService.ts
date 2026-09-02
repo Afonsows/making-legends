@@ -103,6 +103,15 @@ class SyncService {
       }
 
       this.isHydrated = true;
+
+      // Recalcula o streak imediatamente a partir das presenças reais em desafios
+      const streakRes = useUserStore.getState().recalculateStreak();
+      const finalProfile = useUserStore.getState().profile;
+
+      // Se a contagem foi corrigida em relação à nuvem, atualiza o Supabase com o streak real
+      if (profileData && profileData.current_streak !== streakRes.currentStreak) {
+        this.pushUserProfile(finalProfile, userId);
+      }
     } catch (err) {
       console.error('Erro ao sincronizar dados do Supabase:', err);
     } finally {

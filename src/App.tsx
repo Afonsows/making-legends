@@ -35,6 +35,7 @@ export const AppContent: React.FC = () => {
 
   // Inicialização do Motor de Renovação Diária (00:00, Visibilidade, Foco e Intervalo)
   useEffect(() => {
+    useUserStore.getState().recalculateStreak();
     const cleanupDailyEngine = initDailyResetEngine();
     return cleanupDailyEngine;
   }, []);
