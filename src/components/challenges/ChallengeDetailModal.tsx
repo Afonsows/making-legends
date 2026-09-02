@@ -85,9 +85,6 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
     const habitDays = generateChallengeDays(effectiveChallenge.targetDays, effectiveChallenge.startDate, habit.completedDates);
     return acc + habitDays.filter((d) => d.isCompleted).length;
   }, 0);
-  const totalMissionsPercent = totalPossibleChallengeMissions > 0
-    ? Math.round((totalCompletedChallengeMissions / totalPossibleChallengeMissions) * 100)
-    : 0;
 
   const handleCreateNewHabit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,13 +116,15 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2.5 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-slate-900/95 border-2 border-shinobi-gold/60 w-full max-w-5xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh] my-auto relative z-[101]">
-        {/* Efeito Sheen Superior */}
-        <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/50 via-shinobi-gold/40 to-transparent pointer-events-none" />
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2.5 sm:p-4 bg-slate-950/40 backdrop-blur-xl animate-in fade-in duration-300">
+      {/* Modal Card com Design Liquid Glass Fosco */}
+      <div className="liquid-glass-card bg-slate-900/45 backdrop-blur-2xl border border-white/20 w-full max-w-5xl rounded-3xl overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7),inset_0_1px_2px_rgba(255,255,255,0.35)] flex flex-col max-h-[92vh] my-auto relative z-[101]">
+        {/* Efeito Sheen Superior Especular */}
+        <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/60 via-shinobi-gold/50 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.06] via-transparent to-black/30 pointer-events-none" />
 
         {/* Header Centralizado com Informações do Desafio */}
-        <div className="p-4 sm:p-5 border-b border-slate-800 bg-slate-950/90 relative z-10">
+        <div className="p-4 sm:p-5 border-b border-white/10 bg-white/[0.02] backdrop-blur-xl relative z-10">
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-1.5 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
@@ -134,13 +133,13 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
                     ⭐ MAIS POPULAR • FORMAÇÃO DE HÁBITO
                   </span>
                 ) : (
-                  <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 text-[10px] font-mono font-bold">
+                  <span className="px-2.5 py-0.5 rounded-full bg-white/[0.06] text-slate-300 border border-white/10 text-[10px] font-mono font-bold">
                     {effectiveChallenge.category || 'Desafio Pessoal'}
                   </span>
                 )}
 
                 {isOfficial && (
-                  <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-shinobi-gold border border-shinobi-gold/40 text-[10px] font-mono font-bold">
+                  <span className="px-2.5 py-0.5 rounded-full bg-white/[0.06] text-shinobi-gold border border-shinobi-gold/40 text-[10px] font-mono font-bold">
                     Ciclo #{profile.activeChallenge?.cycleNumber || 1} • {protocolStatus.phaseName} (Fase {protocolStatus.phaseIndex})
                   </span>
                 )}
@@ -159,7 +158,7 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
               </h2>
 
               {effectiveChallenge.description && (
-                <p className="text-xs text-slate-400 line-clamp-1 max-w-2xl">
+                <p className="text-xs text-slate-300 line-clamp-1 max-w-2xl">
                   {effectiveChallenge.description}
                 </p>
               )}
@@ -167,24 +166,24 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
 
             <button
               onClick={onClose}
-              className="p-2 text-slate-400 hover:text-slate-100 rounded-xl hover:bg-slate-800 transition-colors flex-shrink-0"
+              className="p-2 text-slate-400 hover:text-slate-100 rounded-xl hover:bg-white/10 transition-colors flex-shrink-0"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Barra de Progresso & Métricas do Desafio Sincronizadas */}
-          <div className="mt-3.5 pt-3 border-t border-slate-800/80 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+          <div className="mt-3.5 pt-3 border-t border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
             {/* Indicador 1: Dia Atual */}
-            <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+            <div className="p-2.5 rounded-2xl bg-slate-950/40 border border-white/10 backdrop-blur-md">
               <span className="text-slate-400 block text-[10px]">Dia Atual</span>
               <span className="font-bold text-shinobi-gold font-mono text-sm sm:text-base">
                 Dia {daysElapsed} / {effectiveChallenge.targetDays} ({progressPercent}%)
               </span>
             </div>
 
-            {/* Indicador 2 SOLICITADO: Missões concluídas no total do desafio x total de missões do desafio */}
-            <div className="p-2.5 rounded-xl bg-slate-900/80 border border-shinobi-gold/40 shadow-glow-gold/10">
+            {/* Indicador 2: Missões concluídas no total do desafio x total de missões do desafio */}
+            <div className="p-2.5 rounded-2xl bg-slate-950/40 border border-shinobi-gold/40 shadow-glow-gold/10 backdrop-blur-md">
               <span className="text-slate-400 block text-[10px] flex items-center justify-center gap-1">
                 <CheckSquare className="w-3 h-3 text-emerald-400" />
                 <span>Missões no Desafio</span>
@@ -195,7 +194,7 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
             </div>
 
             {/* Indicador 3: Missões Hoje */}
-            <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+            <div className="p-2.5 rounded-2xl bg-slate-950/40 border border-white/10 backdrop-blur-md">
               <span className="text-slate-400 block text-[10px]">Missões Concluídas Hoje</span>
               <span className="font-bold text-cyan-400 font-mono text-sm sm:text-base">
                 {completedTodayCount} / {totalHabits}
@@ -203,7 +202,7 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
             </div>
 
             {/* Indicador 4: Dias Restantes */}
-            <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+            <div className="p-2.5 rounded-2xl bg-slate-950/40 border border-white/10 backdrop-blur-md">
               <span className="text-slate-400 block text-[10px]">Dias Restantes</span>
               <span className="font-bold text-rose-400 font-mono text-sm sm:text-base">
                 {Math.max(0, effectiveChallenge.targetDays - daysElapsed)} dias
@@ -212,7 +211,7 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
           </div>
 
           {/* Barra Visual de Dias */}
-          <div className="mt-2.5 w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+          <div className="mt-2.5 w-full h-2 bg-slate-950/60 rounded-full overflow-hidden border border-white/10">
             <div
               className="h-full bg-gradient-to-r from-shinobi-gold via-amber-400 to-emerald-400 transition-all duration-500 rounded-full"
               style={{ width: `${progressPercent}%` }}
@@ -237,7 +236,7 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
                   onClick={() => {
                     openChallengeMapModal();
                   }}
-                  className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-shinobi-gold text-xs font-bold rounded-xl border border-shinobi-gold/40 transition-all flex items-center gap-1"
+                  className="px-2.5 py-1.5 bg-white/[0.06] hover:bg-white/[0.12] text-shinobi-gold text-xs font-bold rounded-xl border border-shinobi-gold/40 transition-all flex items-center gap-1 backdrop-blur-md"
                   title="Ver mapa dos 66 dias"
                 >
                   <Map className="w-3.5 h-3.5" />
@@ -260,7 +259,7 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
           {isAddingHabit && (
             <form
               onSubmit={handleCreateNewHabit}
-              className="p-4 rounded-2xl bg-slate-950 border-2 border-shinobi-gold/60 space-y-3 animate-in fade-in"
+              className="p-4 rounded-2xl bg-slate-950/60 border border-shinobi-gold/60 backdrop-blur-xl space-y-3 animate-in fade-in"
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-shinobi-gold flex items-center gap-1.5">
@@ -283,7 +282,7 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
                     onChange={(e) => setNewHabitTitle(e.target.value)}
                     placeholder="Nome da missão (Ex: Leitura)"
                     required
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-shinobi-gold"
+                    className="w-full bg-slate-900/80 border border-white/15 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-shinobi-gold"
                   />
                 </div>
 
@@ -293,7 +292,7 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
                     value={newHabitDesc}
                     onChange={(e) => setNewHabitDesc(e.target.value)}
                     placeholder="Meta (Ex: Ler 15 min por dia)"
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-shinobi-gold"
+                    className="w-full bg-slate-900/80 border border-white/15 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-shinobi-gold"
                   />
                 </div>
 
@@ -331,11 +330,11 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
               ))}
             </div>
           ) : (
-            <div className="p-8 text-center bg-slate-950/60 rounded-3xl border border-slate-800 text-slate-400 text-xs space-y-2">
+            <div className="p-8 text-center bg-white/[0.03] rounded-3xl border border-white/10 text-slate-400 text-xs space-y-2 backdrop-blur-md">
               <p>Nenhuma missão cadastrada neste desafio ainda.</p>
               <button
                 onClick={() => setIsAddingHabit(true)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-shinobi-gold border border-shinobi-gold/50 rounded-xl font-bold text-xs transition-colors inline-flex items-center gap-1.5"
+                className="px-4 py-2 bg-white/[0.08] hover:bg-white/[0.14] text-shinobi-gold border border-shinobi-gold/50 rounded-xl font-bold text-xs transition-colors inline-flex items-center gap-1.5"
               >
                 <Plus className="w-3.5 h-3.5" /> Adicionar Primeira Missão
               </button>
@@ -344,7 +343,7 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
         </div>
 
         {/* Footer com Ações Globais */}
-        <div className="p-4 sm:p-5 border-t border-slate-800 bg-slate-950 flex items-center justify-between gap-3 flex-wrap">
+        <div className="p-4 sm:p-5 border-t border-white/10 bg-white/[0.02] backdrop-blur-xl flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2">
             {!isOfficial && (
               <button
@@ -361,7 +360,7 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
             <button
               type="button"
               onClick={() => toggleChallengeStatus(effectiveChallenge.id)}
-              className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5"
+              className="px-3 py-2 bg-white/[0.06] hover:bg-white/[0.12] text-slate-300 border border-white/10 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5"
             >
               {effectiveChallenge.status === 'completed' ? (
                 <>

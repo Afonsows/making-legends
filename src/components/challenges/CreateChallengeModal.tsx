@@ -144,13 +144,14 @@ export const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-slate-900/95 border-2 border-shinobi-gold/60 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] my-auto relative z-[101]">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-slate-950/40 backdrop-blur-xl animate-in fade-in duration-300">
+      <div className="liquid-glass-card bg-slate-900/45 backdrop-blur-2xl border border-white/20 w-full max-w-2xl rounded-3xl overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7),inset_0_1px_2px_rgba(255,255,255,0.35)] flex flex-col max-h-[90vh] my-auto relative z-[101]">
         {/* Sheen superior */}
-        <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/50 via-shinobi-gold/40 to-transparent pointer-events-none" />
+        <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/60 via-shinobi-gold/50 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.06] via-transparent to-black/30 pointer-events-none" />
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-800 bg-slate-950/80">
+        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-white/10 bg-white/[0.02] backdrop-blur-xl relative z-10">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-shinobi-gold/20 border border-shinobi-gold/40 flex items-center justify-center text-shinobi-gold">
               <Target className="w-5 h-5" />
@@ -167,7 +168,7 @@ export const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-100 rounded-xl hover:bg-slate-800 transition-colors"
+            className="p-2 text-slate-400 hover:text-slate-100 rounded-xl hover:bg-white/10 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -366,7 +367,7 @@ export const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({
           </div>
 
           {/* Footer com Ações */}
-          <div className="p-4 sm:p-5 border-t border-slate-800 bg-slate-950 -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 flex items-center justify-between gap-3">
+          <div className="p-4 sm:p-5 border-t border-white/10 bg-white/[0.02] backdrop-blur-xl -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 flex items-center justify-between gap-3">
             <button
               type="button"
               onClick={onClose}
