@@ -24,16 +24,21 @@ export const DailyScrollWidget: React.FC<DailyScrollWidgetProps> = ({ onNavigate
 
   // Determina o pergaminho mais relevante:
   // 1. O cartão com unlockedDay mais próximo ou igual ao dia atual do protocolo
-  // 2. Ou o último cartão presente em profile.unlockedCards
+  // 2. Ou o último cartão desbloqueado até o dia atual
   // 3. Ou o primeiro cartão (Dia 1)
-  const currentDay = profile.activeChallenge?.currentDay || profile.currentProtocolDay || 1;
+  const currentDay = Math.min(
+    66,
+    Math.max(1, profile.activeChallenge?.currentDay || profile.currentProtocolDay || 1)
+  );
   
   const dailyCard = 
     teachingCards.find((c) => c.unlockedDay === currentDay) ||
-    teachingCards.filter((c) => profile.unlockedCards.includes(c.id)).pop() ||
+    teachingCards
+      .filter((c) => c.unlockedDay <= currentDay && (profile.unlockedCards || []).includes(c.id))
+      .pop() ||
     teachingCards[0];
 
-  const isUnlocked = profile.unlockedCards.includes(dailyCard.id);
+  const isUnlocked = dailyCard.unlockedDay <= currentDay && (profile.unlockedCards || []).includes(dailyCard.id);
   const pillar = getPillar(dailyCard.pillarId);
 
   const rarityStyles = {

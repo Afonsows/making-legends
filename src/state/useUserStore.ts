@@ -14,10 +14,22 @@ import {
   calculateChallengeStreak
 } from '../core/streakEngine';
 import { allGameItems } from '../core/itemsData';
+import { teachingCards } from '../core/cardsData';
 import { soundFx } from '../utils/audio';
 import { triggerLevelUpConfetti, triggerMissionConfetti } from '../utils/confetti';
 import { useHabitStore } from './useHabitStore';
 import { useChallengeStore } from './useChallengeStore';
+
+/**
+ * Retorna a lista estrita de IDs de pergaminhos desbloqueados com base no dia atual do protocolo.
+ * Nenhum pergaminho com unlockedDay > currentDay pode estar desbloqueado.
+ */
+export function getReconciledUnlockedCards(currentDay: number): string[] {
+  const validDay = Math.min(66, Math.max(1, currentDay));
+  return teachingCards
+    .filter((card) => card.unlockedDay <= validDay)
+    .map((card) => card.id);
+}
 
 const defaultProfile: UserProfile = {
   id: 'user_shinobi_01',
@@ -57,7 +69,7 @@ const defaultProfile: UserProfile = {
   },
   subscriptionStatus: 'trial',
   hasCompletedOnboarding: false,
-  unlockedCards: ['card_tai_01', 'card_nin_01', 'card_cha_01', 'card_esp_01', 'card_gen_01'],
+  unlockedCards: ['card_tai_01'], // Dia 1 apenas
   equippedItems: ['pesos_ferro_negro'],
   inventory: ['pesos_ferro_negro', 'pergaminho_da_sabedoria_antiga'],
   activeChallenge: createNewChallengeCycle(1, getTodayString()),
@@ -346,13 +358,20 @@ export const useUserStore = create<UserStoreState>()(
 
       unlockTeachingCard: (cardId: string) => {
         const { profile } = get();
-        if (!profile.unlockedCards.includes(cardId)) {
-          set((state) => ({
-            profile: {
-              ...state.profile,
-              unlockedCards: [...state.profile.unlockedCards, cardId],
-            },
-          }));
+        const currentDay = Math.min(
+          66,
+          Math.max(1, profile.activeChallenge?.currentDay || profile.currentProtocolDay || 1)
+        );
+        const targetCard = teachingCards.find((c) => c.id === cardId);
+        if (targetCard && targetCard.unlockedDay <= currentDay) {
+          if (!profile.unlockedCards.includes(cardId)) {
+            set((state) => ({
+              profile: {
+                ...state.profile,
+                unlockedCards: [...state.profile.unlockedCards, cardId],
+              },
+            }));
+          }
         }
       },
 
@@ -398,10 +417,24 @@ export const useUserStore = create<UserStoreState>()(
         const transition = processDayTransition(profile, today, missions, customChallenges);
 
         if (transition.updatedProfile && Object.keys(transition.updatedProfile).length > 0) {
+          const newCurrentDay = Math.min(
+            66,
+            Math.max(
+              1,
+              transition.updatedProfile.activeChallenge?.currentDay ||
+                transition.updatedProfile.currentProtocolDay ||
+                profile.activeChallenge?.currentDay ||
+                profile.currentProtocolDay ||
+                1
+            )
+          );
+          const syncedCards = getReconciledUnlockedCards(newCurrentDay);
+
           set((state) => ({
             profile: {
               ...state.profile,
               ...transition.updatedProfile,
+              unlockedCards: syncedCards,
             },
             activeResetModal: transition.resetOccurred && transition.archivedCycle
               ? { cycle: transition.archivedCycle }
@@ -541,6 +574,7 @@ export const useUserStore = create<UserStoreState>()(
             ...state.profile,
             currentProtocolDay: 1,
             currentStreak: 0,
+            unlockedCards: ['card_tai_01'],
             activeChallenge: newCycle,
             challengeHistory: [archived, ...history],
           },
@@ -575,6 +609,25 @@ export const useUserStore = create<UserStoreState>()(
       name: 'shinobi_user_store_v1',
       onRehydrateStorage: () => (state) => {
         if (state) {
+          // Reconcilia os pergaminhos desbloqueados com o dia atual do protocolo
+          const currentDay = Math.min(
+            66,
+            Math.max(
+              1,
+              state.profile.activeChallenge?.currentDay || state.profile.currentProtocolDay || 1
+            )
+          );
+          const reconciled = getReconciledUnlockedCards(currentDay);
+
+          const currentList = state.profile.unlockedCards || [];
+          const currentSet = new Set(currentList);
+          const hasInvalidCards = currentList.some((id) => !reconciled.includes(id));
+          const hasMissingCards = reconciled.some((id) => !currentSet.has(id));
+
+          if (hasInvalidCards || hasMissingCards) {
+            state.updateProfile({ unlockedCards: reconciled });
+          }
+
           // Garante a autocorreção do streak com base nas presenças reais salvas
           setTimeout(() => {
             state.recalculateStreak?.();

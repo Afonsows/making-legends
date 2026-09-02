@@ -28,7 +28,15 @@ export const TeachingCardsView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'cards' | 'leagues'>('cards');
   const [activeCardModal, setActiveCardModal] = useState<TeachingCard | null>(null);
 
-  const unlockedCount = profile.unlockedCards.length;
+  const currentDay = Math.min(
+    66,
+    Math.max(1, profile.activeChallenge?.currentDay || profile.currentProtocolDay || 1)
+  );
+
+  const unlockedCardsList = teachingCards.filter(
+    (card) => card.unlockedDay <= currentDay && (profile.unlockedCards || []).includes(card.id)
+  );
+  const unlockedCount = unlockedCardsList.length;
   const totalCards = teachingCards.length;
 
   const filteredCards = [...teachingCards]
@@ -119,7 +127,7 @@ export const TeachingCardsView: React.FC = () => {
           {/* Grid Compacta de Cartões Colecionáveis com Design Contrastante por Raridade */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-3">
             {filteredCards.map((card) => {
-              const isUnlocked = profile.unlockedCards.includes(card.id);
+              const isUnlocked = card.unlockedDay <= currentDay && (profile.unlockedCards || []).includes(card.id);
               const pillar = getPillar(card.pillarId);
 
               // 1. ESTILOS VISUAIS FORTEMENTE CONTRASTANTES POR RARIDADE
