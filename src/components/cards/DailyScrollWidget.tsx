@@ -111,8 +111,8 @@ export const DailyScrollWidget: React.FC<DailyScrollWidgetProps> = ({ onNavigate
               }}
               className="px-3 py-1.5 bg-shinobi-gold text-slate-950 font-bold text-xs rounded-xl shadow-glow-gold hover:bg-shinobi-goldHover transition-all flex items-center gap-1.5 cursor-pointer"
             >
-              <Share2 className="w-3.5 h-3.5" />
-              <span>Ver & Postar</span>
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Abrir Pergaminho</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>

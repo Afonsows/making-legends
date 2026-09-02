@@ -31,10 +31,12 @@ export const TeachingCardsView: React.FC = () => {
   const unlockedCount = profile.unlockedCards.length;
   const totalCards = teachingCards.length;
 
-  const filteredCards = teachingCards.filter((card) => {
-    if (selectedPillar !== 'all' && card.pillarId !== selectedPillar) return false;
-    return true;
-  });
+  const filteredCards = [...teachingCards]
+    .filter((card) => {
+      if (selectedPillar !== 'all' && card.pillarId !== selectedPillar) return false;
+      return true;
+    })
+    .sort((a, b) => a.unlockedDay - b.unlockedDay);
 
   const pillarsList: { id: PillarId | 'all'; label: string }[] = [
     { id: 'all', label: 'Todos' },
@@ -114,29 +116,53 @@ export const TeachingCardsView: React.FC = () => {
             ))}
           </div>
 
-          {/* Grid Compacta de Cartões Colecionáveis com Design por Raridade */}
+          {/* Grid Compacta de Cartões Colecionáveis com Design Contrastante por Raridade */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-3">
             {filteredCards.map((card) => {
               const isUnlocked = profile.unlockedCards.includes(card.id);
               const pillar = getPillar(card.pillarId);
 
-              // Estilos visuais diferenciados por raridade
-              const rarityCardStyles = {
-                common: isUnlocked
-                  ? 'bg-slate-950/90 border-slate-700 hover:border-slate-500 hover:bg-slate-900'
-                  : 'bg-slate-950/60 border-slate-850 opacity-50 grayscale',
-                rare: isUnlocked
-                  ? 'bg-gradient-to-br from-slate-900 via-slate-950 to-cyan-950/40 border-cyan-500/70 hover:border-cyan-400 shadow-glow-chakra/20 hover:scale-[1.02]'
-                  : 'bg-slate-950/60 border-slate-850 opacity-50 grayscale',
-                legendary: isUnlocked
-                  ? 'bg-gradient-to-br from-slate-900 via-amber-950/40 to-slate-950 border-2 border-shinobi-gold hover:border-amber-300 shadow-glow-gold/30 hover:scale-[1.03]'
-                  : 'bg-slate-950/60 border-slate-850 opacity-50 grayscale',
-              }[card.rarity];
-
-              const rarityBadge = {
-                common: 'text-slate-400 bg-slate-800/60 border-slate-700',
-                rare: 'text-cyan-300 bg-cyan-950/80 border-cyan-500/50 font-bold',
-                legendary: 'text-amber-300 bg-amber-950/80 border-amber-500/70 font-extrabold',
+              // 1. ESTILOS VISUAIS FORTEMENTE CONTRASTANTES POR RARIDADE
+              const rarityTheme = {
+                common: {
+                  container: isUnlocked
+                    ? 'bg-slate-900/90 border border-slate-700/80 hover:border-slate-500 shadow-md'
+                    : 'bg-slate-950/70 border border-slate-850 opacity-40 grayscale',
+                  badge: 'bg-slate-800 text-slate-400 border border-slate-700',
+                  badgeText: 'COMUM',
+                  titleColor: 'text-slate-200 group-hover:text-white',
+                  cornerGlyph: null,
+                  kanjiGlow: 'opacity-5 text-slate-400',
+                  glowEffect: '',
+                  accentTag: '✦ Fundamento',
+                  accentColor: 'text-slate-400',
+                },
+                rare: {
+                  container: isUnlocked
+                    ? 'bg-gradient-to-b from-[#06283d]/90 via-slate-950 to-slate-950 border-2 border-cyan-400/90 shadow-[0_0_18px_rgba(6,182,212,0.35)] hover:border-cyan-300 hover:scale-[1.02]'
+                    : 'bg-slate-950/70 border-2 border-cyan-900/40 opacity-40 grayscale',
+                  badge: 'bg-cyan-950 text-cyan-300 border border-cyan-400 font-bold shadow-[0_0_8px_rgba(6,182,212,0.4)]',
+                  badgeText: '⚡ RARO',
+                  titleColor: 'text-cyan-50 group-hover:text-cyan-300',
+                  cornerGlyph: '⚡',
+                  kanjiGlow: 'opacity-15 text-cyan-400 group-hover:opacity-25',
+                  glowEffect: 'shadow-glow-chakra',
+                  accentTag: '⚡ Fluxo Chakra',
+                  accentColor: 'text-cyan-400',
+                },
+                legendary: {
+                  container: isUnlocked
+                    ? 'bg-gradient-to-b from-[#3a1b02] via-[#1a0e02] to-slate-950 border-2 border-amber-400 shadow-[0_0_26px_rgba(245,158,11,0.55)] hover:border-amber-300 hover:scale-[1.03]'
+                    : 'bg-slate-950/70 border-2 border-amber-900/40 opacity-40 grayscale',
+                  badge: 'bg-gradient-to-r from-amber-500 via-shinobi-gold to-amber-400 text-slate-950 font-black border border-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.7)]',
+                  badgeText: '👑 LENDÁRIO ★★★',
+                  titleColor: 'text-amber-100 group-hover:text-amber-300 font-extrabold',
+                  cornerGlyph: '❖',
+                  kanjiGlow: 'opacity-20 text-amber-400 group-hover:opacity-35',
+                  glowEffect: 'shadow-glow-gold',
+                  accentTag: '👑 Mestria Sannin',
+                  accentColor: 'text-amber-400',
+                },
               }[card.rarity];
 
               return (
@@ -148,27 +174,49 @@ export const TeachingCardsView: React.FC = () => {
                       setActiveCardModal(card);
                     }
                   }}
-                  className={`p-3 sm:p-3.5 rounded-2xl border transition-all relative overflow-hidden flex flex-col justify-between shadow-md group ${
+                  className={`p-3 rounded-2xl transition-all relative overflow-hidden flex flex-col justify-between group ${
                     isUnlocked ? 'cursor-pointer' : 'cursor-not-allowed'
-                  } ${rarityCardStyles}`}
+                  } ${rarityTheme.container}`}
                 >
-                  {/* Detalhe Shinobi de Canto para Lendários */}
-                  {card.rarity === 'legendary' && isUnlocked && (
-                    <div className="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-br from-amber-400 to-shinobi-gold text-slate-950 flex items-center justify-center rounded-bl-xl text-[9px] font-bold shadow">
-                      ★
-                    </div>
+                  {/* Cantoneiras Estilizadas para Lendários e Raros */}
+                  {rarityTheme.cornerGlyph && isUnlocked && (
+                    <>
+                      <span className="absolute top-1.5 left-1.5 text-[8px] opacity-60 font-mono select-none" style={{ color: card.rarity === 'legendary' ? '#f59e0b' : '#06b6d4' }}>
+                        {rarityTheme.cornerGlyph}
+                      </span>
+                      <span className="absolute top-1.5 right-1.5 text-[8px] opacity-60 font-mono select-none" style={{ color: card.rarity === 'legendary' ? '#f59e0b' : '#06b6d4' }}>
+                        {rarityTheme.cornerGlyph}
+                      </span>
+                    </>
                   )}
 
-                  {/* Kanji Watermark em Cartões Raros e Lendários */}
-                  {isUnlocked && card.kanji && (
-                    <div className="absolute right-1 bottom-1 text-4xl font-serif font-black select-none pointer-events-none opacity-5 group-hover:opacity-15 transition-opacity text-white">
+                  {/* Kanji Watermark visível */}
+                  {card.kanji && (
+                    <div className={`absolute right-1 bottom-1 text-5xl font-serif font-black select-none pointer-events-none transition-opacity ${rarityTheme.kanjiGlow}`}>
                       {card.kanji}
                     </div>
                   )}
 
-                  <div className="space-y-2">
-                    {/* Linha Superior: Pilar + Status / Dia */}
+                  <div className="space-y-2 relative z-10">
+                    {/* Linha 1: Badge de Raridade Destacado + Selo de Desbloqueio/Dia */}
                     <div className="flex items-center justify-between gap-1">
+                      <span className={`text-[8px] font-mono tracking-wider px-1.5 py-0.5 rounded uppercase ${rarityTheme.badge}`}>
+                        {rarityTheme.badgeText}
+                      </span>
+
+                      {isUnlocked ? (
+                        <span className="text-[9px] font-mono font-bold text-emerald-400 flex items-center gap-0.5">
+                          <CheckCircle2 className="w-3 h-3" /> Dia #{card.unlockedDay}
+                        </span>
+                      ) : (
+                        <span className="text-[9px] font-mono text-slate-500 flex items-center gap-0.5">
+                          <Lock className="w-3 h-3" /> Dia #{card.unlockedDay}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Linha 2: Badge do Pilar */}
+                    <div className="flex items-center gap-1">
                       <span
                         className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border flex items-center gap-1 truncate"
                         style={{
@@ -180,19 +228,11 @@ export const TeachingCardsView: React.FC = () => {
                         <span>{pillar.badgeIcon}</span>
                         <span className="truncate">{pillar.name}</span>
                       </span>
-
-                      {isUnlocked ? (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
-                      ) : (
-                        <span className="text-[9px] font-mono text-slate-500 flex items-center gap-0.5 flex-shrink-0">
-                          <Lock className="w-3 h-3" /> D.{card.unlockedDay}
-                        </span>
-                      )}
                     </div>
 
-                    {/* TÍTULO PRINCIPAL DO PERGAMINHO */}
-                    <div>
-                      <h4 className="font-cinzel text-xs sm:text-sm font-bold text-slate-100 group-hover:text-shinobi-gold transition-colors line-clamp-2 leading-tight">
+                    {/* TÍTULO DO PERGAMINHO (HERO PRINCIPAL DO CARD) */}
+                    <div className="pt-0.5">
+                      <h4 className={`font-cinzel text-xs sm:text-sm font-bold leading-tight line-clamp-2 transition-colors ${rarityTheme.titleColor}`}>
                         {card.title}
                       </h4>
                       <p className="text-[10px] text-slate-400 mt-0.5 font-mono truncate">
@@ -201,13 +241,13 @@ export const TeachingCardsView: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Rodapé Compacto */}
-                  <div className="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[9px] font-mono">
-                    <span className={`px-1.5 py-0.2 rounded border uppercase text-[8px] ${rarityBadge}`}>
-                      {card.rarity}
+                  {/* Rodapé Compacto com Sub-rótulo */}
+                  <div className="mt-2.5 pt-2 border-t border-white/10 flex items-center justify-between text-[9px] font-mono relative z-10">
+                    <span className={`font-semibold ${rarityTheme.accentColor}`}>
+                      {rarityTheme.accentTag}
                     </span>
                     <span className="text-slate-400">
-                      Dia #{card.unlockedDay}
+                      {isUnlocked ? 'Ver Card ➔' : 'Bloqueado'}
                     </span>
                   </div>
                 </div>

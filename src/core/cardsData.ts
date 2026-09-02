@@ -1,7 +1,7 @@
 import { TeachingCard } from './types';
 
 export const teachingCards: TeachingCard[] = [
-  // Taijutsu (Corpo)
+  // Dia 1: Taijutsu (Corpo) - Comum
   {
     id: 'card_tai_01',
     title: 'A Lâmina é o Próprio Corpo',
@@ -14,6 +14,64 @@ export const teachingCards: TeachingCard[] = [
     kanji: '体',
     sealName: 'Selo da Postura Primordial',
   },
+
+  // Dia 2: Ninjutsu (Mente) - Comum
+  {
+    id: 'card_nin_01',
+    title: 'A Mente que Tudo Absorve',
+    pillarId: 'ninjutsu',
+    wisdom: 'Dez páginas lidas com atenção profunda superam cem horas de consumo passivo. O conhecimento aplicado é o verdadeiro jutsu.',
+    actionTip: 'Leia pelo menos 15 minutos de um livro instrutivo e anote 1 insight acionável.',
+    concept: 'Leitura Ativa & Retenção',
+    unlockedDay: 2,
+    rarity: 'common',
+    kanji: '忍',
+    sealName: 'Selo da Absorção Ativa',
+  },
+
+  // Dia 3: Chakra (Disciplina) - Comum
+  {
+    id: 'card_cha_01',
+    title: 'A Regra dos Dois Minutos',
+    pillarId: 'chakra',
+    wisdom: 'O início de um hábito é a parte mais pesada. Reduza o atrito inicial para que seu chakra comece a fluir naturalmente.',
+    actionTip: 'Execute o primeiro passo da sua tarefa mais difícil em menos de 120 segundos.',
+    concept: 'Eliminação de Atrito',
+    unlockedDay: 3,
+    rarity: 'common',
+    kanji: '気',
+    sealName: 'Selo do Impulso Inicial',
+  },
+
+  // Dia 4: Espírito (Confiança) - Comum
+  {
+    id: 'card_esp_01',
+    title: 'Ação Precede a Motivação',
+    pillarId: 'espirito',
+    wisdom: 'O novato espera a vontade surgir para agir. O veterano age para que o fogo do espírito se acenda durante a marcha.',
+    actionTip: 'Não espere estar inspirado. Comece mesmo com 1% de energia.',
+    concept: 'Autoiniciativa',
+    unlockedDay: 4,
+    rarity: 'common',
+    kanji: '志',
+    sealName: 'Selo da Faísca Interior',
+  },
+
+  // Dia 5: Genjutsu (Foco) - Comum
+  {
+    id: 'card_gen_01',
+    title: 'O Escudo Contra as Ilusões',
+    pillarId: 'genjutsu',
+    wisdom: 'O mundo moderno lança genjutsus contínuos: notificações, feeds infinitos e distrações passageiras. Silencie o ruído.',
+    actionTip: 'Coloque o smartphone em outro cômodo durante sua próxima sessão de 25 minutos.',
+    concept: 'Higiene Digital & Foco',
+    unlockedDay: 5,
+    rarity: 'common',
+    kanji: '幻',
+    sealName: 'Selo do Silêncio Exterior',
+  },
+
+  // Dia 8: Taijutsu (Corpo) - Raro
   {
     id: 'card_tai_02',
     title: 'Resistência Sob Tensão',
@@ -26,6 +84,36 @@ export const teachingCards: TeachingCard[] = [
     kanji: '剛',
     sealName: 'Selo da Tensão Invicta',
   },
+
+  // Dia 12: Ninjutsu (Mente) - Raro
+  {
+    id: 'card_nin_02',
+    title: 'O Princípio da Síntese',
+    pillarId: 'ninjutsu',
+    wisdom: 'Se você não consegue explicar um conceito com palavras simples a um aspirante, você ainda não o domina por completo.',
+    actionTip: 'Explique para si mesmo em voz alta o que você aprendeu hoje.',
+    concept: 'Técnica de Feynman',
+    unlockedDay: 12,
+    rarity: 'rare',
+    kanji: '知',
+    sealName: 'Selo da Clareza Verbal',
+  },
+
+  // Dia 15: Chakra (Disciplina) - Raro
+  {
+    id: 'card_cha_02',
+    title: 'A Regra da Não-Interrupção',
+    pillarId: 'chakra',
+    wisdom: 'Nunca falhe dois dias seguidos. Um dia perdido é um acidente biológico; dois dias seguidos é o início de um novo hábito negativo.',
+    actionTip: 'Se o dia estiver caótico, cumpra ao menos a versão mínima (Rank E) de cada missão.',
+    concept: 'Consistência Não-Linear',
+    unlockedDay: 15,
+    rarity: 'rare',
+    kanji: '律',
+    sealName: 'Selo do Fluxo Contínuo',
+  },
+
+  // Dia 18: Taijutsu (Corpo) - Lendário
   {
     id: 'card_tai_03',
     title: 'O Sono dos Mestres',
@@ -39,31 +127,35 @@ export const teachingCards: TeachingCard[] = [
     sealName: 'Selo da Regeneração Sagrada',
   },
 
-  // Ninjutsu (Mente)
+  // Dia 20: Espírito (Confiança) - Raro
   {
-    id: 'card_nin_01',
-    title: 'A Mente que Tudo Absorve',
-    pillarId: 'ninjutsu',
-    wisdom: 'Dez páginas lidas com atenção profunda superam cem horas de consumo passivo. O conhecimento aplicado é o verdadeiro jutsu.',
-    actionTip: 'Leia pelo menos 15 minutos de um livro instrutivo e anote 1 insight acionável.',
-    concept: 'Leitura Ativa & Retenção',
-    unlockedDay: 2,
-    rarity: 'common',
-    kanji: '忍',
-    sealName: 'Selo da Absorção Ativa',
-  },
-  {
-    id: 'card_nin_02',
-    title: 'O Princípio da Síntese',
-    pillarId: 'ninjutsu',
-    wisdom: 'Se você não consegue explicar um conceito com palavras simples a um aspirante, você ainda não o domina por completo.',
-    actionTip: 'Explique para si mesmo em voz alta o que você aprendeu hoje.',
-    concept: 'Técnica de Feynman',
-    unlockedDay: 12,
+    id: 'card_esp_02',
+    title: 'O Desconforto como Bússola',
+    pillarId: 'espirito',
+    wisdom: 'Onde há desconforto voluntário e produtivo, é exatamente onde você deve avançar. Ali reside a sua próxima evolução.',
+    actionTip: 'Faça aquela ligação ou tarefa desconfortável que você está adiando.',
+    concept: 'Exposição Voluntária',
+    unlockedDay: 20,
     rarity: 'rare',
-    kanji: '知',
-    sealName: 'Selo da Clareza Verbal',
+    kanji: '勇',
+    sealName: 'Selo da Marcha Noturna',
   },
+
+  // Dia 22: Genjutsu (Foco) - Raro
+  {
+    id: 'card_gen_02',
+    title: 'O Estado de Vácuo (Deep Work)',
+    pillarId: 'genjutsu',
+    wisdom: '90 minutos de foco monástico e indivisível geram mais impacto do que 8 horas de multitarefa fragmentada.',
+    actionTip: 'Bloqueie uma janela matinal de 45 minutos para seu projeto mais importante.',
+    concept: 'Trabalho Profundo',
+    unlockedDay: 22,
+    rarity: 'rare',
+    kanji: '鏡',
+    sealName: 'Selo do Santuário Mental',
+  },
+
+  // Dia 25: Ninjutsu (Mente) - Lendário
   {
     id: 'card_nin_03',
     title: 'A Biblioteca Mental',
@@ -77,31 +169,7 @@ export const teachingCards: TeachingCard[] = [
     sealName: 'Selo dos Cem Arquivos',
   },
 
-  // Controle de Chakra (Disciplina / Consistência)
-  {
-    id: 'card_cha_01',
-    title: 'A Regra dos Dois Minutos',
-    pillarId: 'chakra',
-    wisdom: 'O início de um hábito é a parte mais pesada. Reduza o atrito inicial para que seu chakra comece a fluir naturalmente.',
-    actionTip: 'Execute o primeiro passo da sua tarefa mais difícil em menos de 120 segundos.',
-    concept: 'Eliminação de Atrito',
-    unlockedDay: 3,
-    rarity: 'common',
-    kanji: '気',
-    sealName: 'Selo do Impulso Inicial',
-  },
-  {
-    id: 'card_cha_02',
-    title: 'A Regra da Não-Interrupção',
-    pillarId: 'chakra',
-    wisdom: 'Nunca falhe dois dias seguidos. Um dia perdido é um acidente biológico; dois dias seguidos é o início de um novo hábito negativo.',
-    actionTip: 'Se o dia estiver caótico, cumpra ao menos a versão mínima (Rank E) de cada missão.',
-    concept: 'Consistência Não-Linear',
-    unlockedDay: 15,
-    rarity: 'rare',
-    kanji: '律',
-    sealName: 'Selo do Fluxo Contínuo',
-  },
+  // Dia 33: Chakra (Disciplina) - Lendário
   {
     id: 'card_cha_03',
     title: 'A Forja dos 66 Dias',
@@ -115,31 +183,7 @@ export const teachingCards: TeachingCard[] = [
     sealName: 'Selo da Neuro-Metamorfose',
   },
 
-  // Espírito (Confiança & Coragem)
-  {
-    id: 'card_esp_01',
-    title: 'Ação Precede a Motivação',
-    pillarId: 'espirito',
-    wisdom: 'O novato espera a vontade surgir para agir. O veterano age para que o fogo do espírito se acenda durante a marcha.',
-    actionTip: 'Não espere estar inspirado. Comece mesmo com 1% de energia.',
-    concept: 'Autoiniciativa',
-    unlockedDay: 4,
-    rarity: 'common',
-    kanji: '志',
-    sealName: 'Selo da Faísca Interior',
-  },
-  {
-    id: 'card_esp_02',
-    title: 'O Desconforto como Bússola',
-    pillarId: 'espirito',
-    wisdom: 'Onde há desconforto voluntário e produtivo, é exatamente onde você deve avançar. Ali reside a sua próxima evolução.',
-    actionTip: 'Faça aquela ligação ou tarefa desconfortável que você está adiando.',
-    concept: 'Exposição Voluntária',
-    unlockedDay: 20,
-    rarity: 'rare',
-    kanji: '勇',
-    sealName: 'Selo da Marcha Noturna',
-  },
+  // Dia 40: Espírito (Confiança) - Lendário
   {
     id: 'card_esp_03',
     title: 'A Identidade Forjada',
@@ -153,31 +197,7 @@ export const teachingCards: TeachingCard[] = [
     sealName: 'Selo do Soberano Interno',
   },
 
-  // Genjutsu (Foco / Concentração)
-  {
-    id: 'card_gen_01',
-    title: 'O Escudo Contra as Ilusões',
-    pillarId: 'genjutsu',
-    wisdom: 'O mundo moderno lança genjutsus contínuos: notificações, feeds infinitos e distrações passageiras. Silencie o ruído.',
-    actionTip: 'Coloque o smartphone em outro cômodo durante sua próxima sessão de 25 minutos.',
-    concept: 'Higiene Digital & Foco',
-    unlockedDay: 5,
-    rarity: 'common',
-    kanji: '幻',
-    sealName: 'Selo do Silêncio Exterior',
-  },
-  {
-    id: 'card_gen_02',
-    title: 'O Estado de Vácuo (Deep Work)',
-    pillarId: 'genjutsu',
-    wisdom: '90 minutos de foco monástico e indivisível geram mais impacto do que 8 horas de multitarefa fragmentada.',
-    actionTip: 'Bloqueie uma janela matinal de 45 minutos para seu projeto mais importante.',
-    concept: 'Trabalho Profundo',
-    unlockedDay: 22,
-    rarity: 'rare',
-    kanji: '鏡',
-    sealName: 'Selo do Santuário Mental',
-  },
+  // Dia 48: Genjutsu (Foco) - Lendário
   {
     id: 'card_gen_03',
     title: 'A Presença Suprema',
