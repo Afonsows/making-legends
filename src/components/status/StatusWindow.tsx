@@ -246,6 +246,16 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
               </div>
             </div>
           </div>
+
+          {/* Insígnia Oficial da Academia Shinobi */}
+          <div className="hidden sm:flex flex-col items-center gap-1.5 shrink-0 p-2.5 rounded-2xl bg-black/40 border border-shinobi-border shadow-inner">
+            <img
+              src="/logo.png"
+              alt="Making Legends"
+              className="w-12 h-12 rounded-xl border border-shinobi-crimson/50 shadow-glow-crimson object-cover"
+            />
+            <span className="text-[9px] font-cinzel font-bold text-slate-300 tracking-wider">MAKING LEGENDS</span>
+          </div>
         </div>
       </div>
 

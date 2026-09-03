@@ -72,19 +72,26 @@ export const ChallengesView: React.FC = () => {
         <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-shinobi-crimson/15 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-          <div className="space-y-1">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-shinobi-gold/20 border border-shinobi-gold/40 text-shinobi-gold text-xs font-mono font-bold">
-              <Trophy className="w-3.5 h-3.5" />
-              <span>SISTEMA DE DESAFIOS & HÁBITOS</span>
+          <div className="flex items-center gap-3.5">
+            <img
+              src="/logo.png"
+              alt="Making Legends"
+              className="w-12 h-12 rounded-2xl border border-shinobi-crimson/50 shadow-glow-crimson object-cover shrink-0 hidden sm:block"
+            />
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-shinobi-gold/20 border border-shinobi-gold/40 text-shinobi-gold text-xs font-mono font-bold">
+                <Trophy className="w-3.5 h-3.5" />
+                <span>SISTEMA DE DESAFIOS & HÁBITOS</span>
+              </div>
+
+              <h1 className="font-cinzel text-xl sm:text-2xl font-bold text-slate-100 flex items-center gap-2">
+                <span>Desafios & Maestria</span>
+              </h1>
+
+              <p className="text-xs text-slate-300 max-w-md">
+                Acompanhamento diário detalhado, matriz de consistência de 6 meses e protocolos de transformação com no mínimo 21 dias.
+              </p>
             </div>
-
-            <h1 className="font-cinzel text-xl sm:text-2xl font-bold text-slate-100 flex items-center gap-2">
-              <span>Desafios & Maestria</span>
-            </h1>
-
-            <p className="text-xs text-slate-300 max-w-md">
-              Acompanhamento diário detalhado, matriz de consistência de 6 meses e protocolos de transformação com no mínimo 21 dias.
-            </p>
           </div>
 
           <button

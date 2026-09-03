@@ -13,8 +13,8 @@ export const IosInstallModal: React.FC<IosInstallModalProps> = ({ isOpen, onClos
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-3.5 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
       <div className="bg-slate-900 border-2 border-slate-700 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl p-6 space-y-4 my-auto relative z-[101]">
         <div className="flex items-center justify-between border-b border-shinobi-border pb-3">
-          <div className="flex items-center gap-2">
-            <Smartphone className="w-5 h-5 text-shinobi-gold" />
+          <div className="flex items-center gap-2.5">
+            <img src="/logo.png" alt="Making Legends" className="w-7 h-7 rounded-lg border border-shinobi-crimson/50 shadow-glow-crimson object-cover" />
             <h3 className="font-cinzel text-base font-bold text-slate-100">
               Instalar no iPhone (iOS Safari)
             </h3>

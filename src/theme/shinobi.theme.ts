@@ -22,7 +22,7 @@ export const shinobiTheme: ThemeConfig = {
       name: 'Taijutsu',
       categoryLabel: 'Corpo',
       description: 'Treino físico, postura, atividade e vigor corporal',
-      color: '#e11d48', // Crimson
+      color: '#FF1341', // Carmesim Neon da Máscara Anbu
       iconName: 'Flame',
       badgeIcon: '🥋'
     },
@@ -40,7 +40,7 @@ export const shinobiTheme: ThemeConfig = {
       name: 'Controle de Chakra',
       categoryLabel: 'Disciplina',
       description: 'Constância, rotina inegociável, cumprimento de prazos',
-      color: '#10b981', // Jade
+      color: '#18F689', // Verde Esmeralda dos Olhos Anbu
       iconName: 'Zap',
       badgeIcon: '⚡'
     },
@@ -86,7 +86,7 @@ export const shinobiTheme: ThemeConfig = {
       minLevel: 12,
       description: 'Liderança pessoal e disciplina comprovada sob pressão.',
       badge: '⚔️',
-      titleColor: '#34d399'
+      titleColor: '#18F689'
     },
     jonin: {
       id: 'jonin',
@@ -102,7 +102,7 @@ export const shinobiTheme: ThemeConfig = {
       minLevel: 35,
       description: 'Guerreiro das sombras. Disciplina silenciosa, sem necessidade de validação externa.',
       badge: '🎭',
-      titleColor: '#f43f5e'
+      titleColor: '#FF1341'
     },
     sannin: {
       id: 'sannin',
@@ -118,7 +118,7 @@ export const shinobiTheme: ThemeConfig = {
       minLevel: 66,
       description: 'O ápice da maestria. A lenda definitiva foi forjada através dos 66 dias.',
       badge: '👑',
-      titleColor: '#e11d48'
+      titleColor: '#FF1341'
     }
   },
   missionRanks: {

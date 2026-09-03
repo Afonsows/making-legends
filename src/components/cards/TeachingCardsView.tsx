@@ -68,13 +68,20 @@ export const TeachingCardsView: React.FC = () => {
     <div className="pb-24 pt-3 max-w-4xl mx-auto px-4 space-y-4">
       {/* Header com Seletor de Aba */}
       <div className="pergaminho-bg rounded-2xl border border-shinobi-border p-4 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h2 className="font-cinzel text-lg sm:text-xl font-bold text-slate-100 flex items-center gap-2">
-            <span>Pergaminhos & Ligas Shinobi</span>
-          </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Cartões colecionáveis de sabedoria prática e ranking semanal da Temporada 1.
-          </p>
+        <div className="flex items-center gap-3">
+          <img
+            src="/logo.png"
+            alt="Making Legends"
+            className="w-10 h-10 rounded-xl border border-shinobi-crimson/40 shadow-glow-crimson object-cover shrink-0 hidden sm:block"
+          />
+          <div>
+            <h2 className="font-cinzel text-lg sm:text-xl font-bold text-slate-100 flex items-center gap-2">
+              <span>Pergaminhos & Ligas Shinobi</span>
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Cartões colecionáveis de sabedoria prática e ranking semanal da Temporada 1.
+            </p>
+          </div>
         </div>
 
         {/* Alternador de Modo */}

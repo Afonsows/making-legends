@@ -9,9 +9,9 @@ interface RadarChartProps {
 export const RadarChart: React.FC<RadarChartProps> = ({ stats, maxStat = 500 }) => {
   // 5 pilares com ângulos calculados para pentágono regular (72 graus cada)
   const pillars: { id: PillarId; label: string; angle: number; color: string }[] = [
-    { id: 'taijutsu', label: 'Taijutsu (Corpo)', angle: -90, color: '#e11d48' },
+    { id: 'taijutsu', label: 'Taijutsu (Corpo)', angle: -90, color: '#FF1341' },
     { id: 'ninjutsu', label: 'Ninjutsu (Mente)', angle: -18, color: '#06b6d4' },
-    { id: 'chakra', label: 'Chakra (Disciplina)', angle: 54, color: '#10b981' },
+    { id: 'chakra', label: 'Chakra (Disciplina)', angle: 54, color: '#18F689' },
     { id: 'espirito', label: 'Espírito (Confiança)', angle: 126, color: '#eab308' },
     { id: 'genjutsu', label: 'Genjutsu (Foco)', angle: 198, color: '#8b5cf6' },
   ];

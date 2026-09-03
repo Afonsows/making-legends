@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Making Legends — Guia Oficial de Identidade Visual</title>
+  <link rel="icon" type="image/png" href="./logo_oficial_making_legends.png" />
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&family=Orbitron:wght@600;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            anbu: {
+              crimson: '#FF1341',
+              crimsonDeep: '#B70C2A',
+              emerald: '#18F689',
+              emeraldCore: '#E8FFF4',
+              obsidian: '#14171E',
+              slate: '#2A313B',
+              titanium: '#34404C',
+              bgDark: '#0A0C12',
+              cardDark: '#121624',
+              cardHover: '#181E30',
+              borderDark: '#232B45',
+              gold: '#EAB308',
+              cyan: '#06B6D4',
+              violet: '#8B5CF6',
+              textMuted: '#94A3B8',
+            }
+          },
+          fontFamily: {
+            cinzel: ['Cinzel', 'serif'],
+            inter: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+            legends: ['Orbitron', 'Cinzel', 'sans-serif'],
+          },
+          boxShadow: {
+            'glow-crimson': '0 0 35px -5px rgba(255, 19, 65, 0.55)',
+            'glow-emerald': '0 0 35px -5px rgba(24, 246, 137, 0.55)',
+            'glow-cyan': '0 0 30px -5px rgba(6, 182, 212, 0.45)',
+            'glow-gold': '0 0 30px -5px rgba(234, 179, 8, 0.45)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #0a0c12;
+      color: #f1f5f9;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+    }
+    .liquid-glass {
+      background-color: rgba(18, 22, 36, 0.72);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.65), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+    }
+    .liquid-glass-nav {
+      background-color: rgba(10, 12, 18, 0.85);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .shimmer-border {
+      position: relative;
+    }
+    .shimmer-border::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 1.5px;
+      background: linear-gradient(90deg, transparent, rgba(255, 19, 65, 0.8), rgba(24, 246, 137, 0.8), transparent);
+    }
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #0a0c12; }
+    ::-webkit-scrollbar-thumb { background: #232b45; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #ff1341; }
+  </style>
+</head>
+<body class="selection:bg-anbu-crimson selection:text-white">
+
+  <!-- Toast de Cópia -->
+  <div id="copyToast" class="fixed bottom-6 right-6 z-50 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-900 border border-anbu-emerald text-emerald-300 shadow-glow-emerald">
+    <svg class="w-5 h-5 text-anbu-emerald" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+    <span id="copyToastText" class="font-mono text-sm font-semibold">Cor copiada!</span>
+  </div>
+
+  <!-- Navbar -->
+  <nav class="sticky top-0 z-40 w-full liquid-glass-nav">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <img src="./logo_oficial_making_legends.png" alt="Logo Oficial Making Legends" class="w-9 h-9 rounded-lg border border-anbu-crimson/50 shadow-[0_0_12px_rgba(255,19,65,0.4)]" />
+        <div>
+          <span class="font-cinzel font-bold text-sm tracking-widest text-slate-100">MAKING LEGENDS</span>
+          <span class="hidden sm:inline-block ml-2 text-[10px] font-mono px-2 py-0.5 rounded bg-anbu-crimson/20 text-anbu-crimson border border-anbu-crimson/30">BRAND BOOK OFICIAL</span>
+        </div>
+      </div>
+
+      <div class="hidden md:flex items-center gap-6 text-xs font-medium tracking-wide">
+        <a href="#logo-oficial" class="text-slate-300 hover:text-anbu-crimson transition-colors">A Logo Oficial</a>
+        <a href="#cores-extraidas" class="text-slate-300 hover:text-anbu-emerald transition-colors">Cores Extraídas</a>
+        <a href="#tipografia" class="text-slate-300 hover:text-anbu-gold transition-colors">Tipografia</a>
+        <a href="#pilares" class="text-slate-300 hover:text-anbu-cyan transition-colors">5 Pilares</a>
+        <a href="#liquid-glass" class="text-slate-300 hover:text-purple-400 transition-colors">Liquid Glass</a>
+        <a href="#diretrizes" class="text-slate-300 hover:text-slate-100 transition-colors">Diretrizes</a>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a href="./GUIA_DE_IDENTIDADE_VISUAL.md" target="_blank" class="text-xs font-mono px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 border border-white/15 text-slate-200 transition-all">
+          Guia Markdown (.md)
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Header -->
+  <header class="relative pt-12 pb-20 overflow-hidden shimmer-border">
+    <div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[650px] bg-anbu-crimson/10 blur-[150px] rounded-full pointer-events-none"></div>
+    <div class="absolute top-1/3 left-1/3 w-[400px] h-[400px] bg-anbu-emerald/10 blur-[130px] rounded-full pointer-events-none"></div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/80 border border-slate-700 text-xs font-mono text-slate-300 mb-6 backdrop-blur-md">
+        <span class="w-2 h-2 rounded-full bg-anbu-emerald animate-ping"></span>
+        <span>IDENTIDADE VISUAL OFICIAL HOMOLOGADA</span>
+      </div>
+      
+      <h1 class="text-4xl sm:text-6xl lg:text-7xl font-cinzel font-black tracking-wider text-slate-100 uppercase mb-4">
+        Guia de <span class="bg-gradient-to-r from-anbu-crimson via-rose-500 to-anbu-gold bg-clip-text text-transparent">Identidade Visual</span>
+      </h1>
+      
+      <p class="max-w-2xl mx-auto text-sm sm:text-base text-slate-400 leading-relaxed font-inter">
+        O manual mestre de design, paleta cromática, tipografia e regras de construção do ecossistema <strong>Making Legends</strong>. Forjado na estética do misticismo disciplinado Shinobi e tecnologia líquida.
+      </p>
+
+      <div class="mt-8 flex flex-wrap items-center justify-center gap-4 text-xs font-mono">
+        <div class="px-3 py-1.5 rounded-lg bg-anbu-cardDark border border-anbu-borderDark flex items-center gap-2">
+          <span class="text-slate-400">Tema:</span>
+          <span class="text-slate-200 font-bold">Shinobi Gamified RPG</span>
+        </div>
+        <div class="px-3 py-1.5 rounded-lg bg-anbu-cardDark border border-anbu-borderDark flex items-center gap-2">
+          <span class="text-slate-400">Protocolo:</span>
+          <span class="text-amber-400 font-bold">66 Dias (UCL / Hábitos)</span>
+        </div>
+        <div class="px-3 py-1.5 rounded-lg bg-anbu-cardDark border border-anbu-borderDark flex items-center gap-2">
+          <span class="text-slate-400">Logo Oficial:</span>
+          <span class="text-anbu-emerald font-bold">Guardião Anbu (Making Legends)</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-24 pb-32">
+
+    <!-- SEÇÃO 1: A LOGO OFICIAL -->
+    <section id="logo-oficial" class="scroll-mt-24">
+      <div class="flex items-center justify-between mb-8 pb-4 border-b border-slate-800">
+        <div>
+          <span class="text-xs font-mono text-anbu-crimson uppercase tracking-widest">Símbolo Supremo</span>
+          <h2 class="text-2xl sm:text-3xl font-cinzel font-bold text-slate-100">1. A Logo Oficial do Making Legends</h2>
+        </div>
+        <a href="./logo_oficial_making_legends.png" download class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-anbu-crimson text-white text-xs font-bold shadow-glow-crimson hover:brightness-110 active:scale-95 transition-all">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+          Baixar PNG Oficial
+        </a>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+        <!-- Visualizador da Logo -->
+        <div class="lg:col-span-6 flex flex-col items-center justify-center p-8 rounded-3xl liquid-glass relative group">
+          <div class="absolute inset-0 rounded-3xl bg-gradient-to-tr from-anbu-crimson/10 via-transparent to-anbu-emerald/10 opacity-60 pointer-events-none"></div>
+          
+          <div class="relative w-full max-w-[420px] aspect-square rounded-2xl overflow-hidden border border-slate-700/80 shadow-2xl group-hover:border-anbu-crimson/60 group-hover:shadow-glow-crimson transition-all duration-500">
+            <img src="./logo_oficial_making_legends.png" alt="Making Legends Logo Oficial" class="w-full h-full object-cover" />
+          </div>
+
+          <div class="mt-4 flex items-center justify-between w-full max-w-[420px] text-xs font-mono text-slate-400">
+            <span>Formato: PNG 1024x1024</span>
+            <span class="text-emerald-400 font-semibold">● Versão Master Aprovada</span>
+          </div>
+        </div>
+
+        <!-- Especificações e Anatomia -->
+        <div class="lg:col-span-6 space-y-6">
+          <div class="p-6 rounded-2xl liquid-glass space-y-4">
+            <h3 class="text-lg font-cinzel font-bold text-slate-100 flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-anbu-crimson"></span>
+              Anatomia & Hierarquia da Logo
+            </h3>
+            <p class="text-sm text-slate-300 leading-relaxed font-inter">
+              A logo oficial funde a mística disciplina do guerreiro das sombras com a precisão tecnológica de um sistema moderno de hábitos.
+            </p>
+
+            <ul class="space-y-3 text-xs sm:text-sm text-slate-300">
+              <li class="flex items-start gap-3">
+                <span class="p-1 rounded bg-anbu-crimson/20 text-anbu-crimson font-mono font-bold mt-0.5">01</span>
+                <div>
+                  <strong class="text-slate-100">A Máscara Anbu Poligonal:</strong> Silhueta de lobo/raposa em placas facetadas de titânio obsidiana, representando disciplina silenciosa e honra.
+                </div>
+              </li>
+              <li class="flex items-start gap-3">
+                <span class="p-1 rounded bg-anbu-crimson/20 text-anbu-crimson font-mono font-bold mt-0.5">02</span>
+                <div>
+                  <strong class="text-slate-100">Kanji Shinobi ('忍') & Marcas Carmesins:</strong> Vermelho neon elétrico vibrante na testa e faces, simbolizando a perseverança inabalável, o calor da ação e o Taijutsu.
+                </div>
+              </li>
+              <li class="flex items-start gap-3">
+                <span class="p-1 rounded bg-anbu-emerald/20 text-anbu-emerald font-mono font-bold mt-0.5">03</span>
+                <div>
+                  <strong class="text-slate-100">Olhos de Foco Esmeralda:</strong> Olhar penetrante em verde jade fluorescente, evocando clareza mental, presença e concentração profunda (<em>Deep Work</em>).
+                </div>
+              </li>
+              <li class="flex items-start gap-3">
+                <span class="p-1 rounded bg-slate-700 text-slate-200 font-mono font-bold mt-0.5">04</span>
+                <div>
+                  <strong class="text-slate-100">Tipografia Superior 'MAKING':</strong> Fonte sans-serif limpa com tracking espaçado refinado (wide tracking), trazendo sofisticação moderna de produto digital.
+                </div>
+              </li>
+              <li class="flex items-start gap-3">
+                <span class="p-1 rounded bg-slate-700 text-slate-200 font-mono font-bold mt-0.5">05</span>
+                <div>
+                  <strong class="text-slate-100">Tipografia Inferior 'LEGENDS':</strong> Fonte display angular bold com cortes futuristas e arestas chanfradas em aço escuro, garantindo impacto memorável de RPG lendário.
+                </div>
+              </li>
+            </ul>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 text-xs font-mono">
+              <span class="text-slate-400 block mb-1">Tamanho Mínimo UI:</span>
+              <strong class="text-slate-100 text-sm">32px x 32px (Ícone)</strong>
+              <span class="text-slate-500 block mt-1">120px para versão com texto</span>
+            </div>
+            <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 text-xs font-mono">
+              <span class="text-slate-400 block mb-1">Área de Proteção:</span>
+              <strong class="text-slate-100 text-sm">Margem Mínima de 25%</strong>
+              <span class="text-slate-500 block mt-1">Livre de elementos externos</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEÇÃO 2: CORES EXTRAÍDAS DA LOGO -->
+    <section id="cores-extraidas" class="scroll-mt-24">
+      <div class="flex items-center justify-between mb-8 pb-4 border-b border-slate-800">
+        <div>
+          <span class="text-xs font-mono text-anbu-emerald uppercase tracking-widest">DNA Cromático Digital</span>
+          <h2 class="text-2xl sm:text-3xl font-cinzel font-bold text-slate-100">2. Cores Extraídas da Logo Oficial</h2>
+        </div>
+        <span class="text-xs font-mono text-slate-400">Clique no card para copiar o código HEX</span>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+
+        <!-- Cor 1: Carmesim Neon -->
+        <div onclick="copyColor('#FF1341', 'Carmesim Neon Shinobi')" class="cursor-pointer group p-5 rounded-2xl liquid-glass hover:border-anbu-crimson/60 hover:shadow-glow-crimson transition-all duration-300">
+          <div class="w-full h-24 rounded-xl bg-[#FF1341] shadow-lg mb-4 flex items-center justify-center relative overflow-hidden group-hover:scale-105 transition-transform">
+            <span class="text-xs font-mono font-bold text-white uppercase bg-black/40 px-2 py-1 rounded backdrop-blur-sm">Copiar HEX</span>
+          </div>
+          <div class="space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-bold text-slate-100">Carmesim Neon</span>
+              <span class="text-xs font-mono text-anbu-crimson font-bold">#FF1341</span>
+            </div>
+            <p class="text-xs text-slate-400 font-mono">RGB: 255, 19, 65</p>
+            <p class="text-[11px] text-slate-400 pt-1 font-inter">Origem: Kanji '忍' da testa e marcas tribais da máscara.</p>
+          </div>
+        </div>
+
+        <!-- Cor 2: Verde Esmeralda -->
+        <div onclick="copyColor('#18F689', 'Verde Esmeralda Chakra')" class="cursor-pointer group p-5 rounded-2xl liquid-glass hover:border-anbu-emerald/60 hover:shadow-glow-emerald transition-all duration-300">
+          <div class="w-full h-24 rounded-xl bg-[#18F689] shadow-lg mb-4 flex items-center justify-center relative overflow-hidden group-hover:scale-105 transition-transform">
+            <span class="text-xs font-mono font-bold text-slate-950 uppercase bg-white/40 px-2 py-1 rounded backdrop-blur-sm">Copiar HEX</span>
+          </div>
+          <div class="space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-bold text-slate-100">Verde Esmeralda</span>
+              <span class="text-xs font-mono text-anbu-emerald font-bold">#18F689</span>
+            </div>
+            <p class="text-xs text-slate-400 font-mono">RGB: 24, 246, 137</p>
+            <p class="text-[11px] text-slate-400 pt-1 font-inter">Origem: Olhos brilhantes da máscara, foco e disciplina.</p>
+          </div>
+        </div>
+
+        <!-- Cor 3: Preto Obsidiana -->
+        <div onclick="copyColor('#14171E', 'Preto Obsidiana Armor')" class="cursor-pointer group p-5 rounded-2xl liquid-glass hover:border-slate-500 transition-all duration-300">
+          <div class="w-full h-24 rounded-xl bg-[#14171E] border border-slate-700/60 shadow-lg mb-4 flex items-center justify-center relative overflow-hidden group-hover:scale-105 transition-transform">
+            <span class="text-xs font-mono font-bold text-slate-300 uppercase bg-black/40 px-2 py-1 rounded backdrop-blur-sm">Copiar HEX</span>
+          </div>
+          <div class="space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-bold text-slate-100">Preto Obsidiana</span>
+              <span class="text-xs font-mono text-slate-400 font-bold">#14171E</span>
+            </div>
+            <p class="text-xs text-slate-400 font-mono">RGB: 20, 23, 30</p>
+            <p class="text-[11px] text-slate-400 pt-1 font-inter">Origem: Placas da armadura da máscara e sombras.</p>
+          </div>
+        </div>
+
+        <!-- Cor 4: Aço Slate Metálico -->
+        <div onclick="copyColor('#2A313B', 'Aço Slate Metálico')" class="cursor-pointer group p-5 rounded-2xl liquid-glass hover:border-slate-500 transition-all duration-300">
+          <div class="w-full h-24 rounded-xl bg-[#2A313B] shadow-lg mb-4 flex items-center justify-center relative overflow-hidden group-hover:scale-105 transition-transform">
+            <span class="text-xs font-mono font-bold text-slate-200 uppercase bg-black/40 px-2 py-1 rounded backdrop-blur-sm">Copiar HEX</span>
+          </div>
+          <div class="space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-bold text-slate-100">Aço Slate Metálico</span>
+              <span class="text-xs font-mono text-slate-400 font-bold">#2A313B</span>
+            </div>
+            <p class="text-xs text-slate-400 font-mono">RGB: 42, 49, 59</p>
+            <p class="text-[11px] text-slate-400 pt-1 font-inter">Origem: Facetas intermediárias e relevo de LEGENDS.</p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Cores Harmonizadas do Sistema -->
+      <div class="mt-10 p-6 rounded-2xl liquid-glass">
+        <h3 class="text-base font-cinzel font-bold text-slate-100 mb-4">Cores Estruturais e de Acento do Sistema</h3>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          
+          <div onclick="copyColor('#0A0C12', 'Fundo Abissal')" class="p-3 rounded-xl bg-slate-950/80 border border-slate-800 cursor-pointer hover:border-slate-600 transition-all text-center">
+            <div class="w-full h-8 rounded bg-[#0A0C12] border border-slate-800 mb-2"></div>
+            <span class="block text-xs font-bold text-slate-200">Abyss Dark</span>
+            <span class="block text-[10px] font-mono text-slate-400">#0A0C12</span>
+          </div>
+
+          <div onclick="copyColor('#121624', 'Superfície de Card')" class="p-3 rounded-xl bg-slate-950/80 border border-slate-800 cursor-pointer hover:border-slate-600 transition-all text-center">
+            <div class="w-full h-8 rounded bg-[#121624] border border-slate-800 mb-2"></div>
+            <span class="block text-xs font-bold text-slate-200">Card Dojo</span>
+            <span class="block text-[10px] font-mono text-slate-400">#121624</span>
+          </div>
+
+          <div onclick="copyColor('#EAB308', 'Ouro Imperial Ryō')" class="p-3 rounded-xl bg-slate-950/80 border border-slate-800 cursor-pointer hover:border-slate-600 transition-all text-center">
+            <div class="w-full h-8 rounded bg-[#EAB308] mb-2"></div>
+            <span class="block text-xs font-bold text-slate-200">Ouro Ryō</span>
+            <span class="block text-[10px] font-mono text-amber-400">#EAB308</span>
+          </div>
+
+          <div onclick="copyColor('#06B6D4', 'Ciano Chakra Ninjutsu')" class="p-3 rounded-xl bg-slate-950/80 border border-slate-800 cursor-pointer hover:border-slate-600 transition-all text-center">
+            <div class="w-full h-8 rounded bg-[#06B6D4] mb-2"></div>
+            <span class="block text-xs font-bold text-slate-200">Chakra Ciano</span>
+            <span class="block text-[10px] font-mono text-cyan-400">#06B6D4</span>
+          </div>
+
+          <div onclick="copyColor('#8B5CF6', 'Violeta Místico Genjutsu')" class="p-3 rounded-xl bg-slate-950/80 border border-slate-800 cursor-pointer hover:border-slate-600 transition-all text-center">
+            <div class="w-full h-8 rounded bg-[#8B5CF6] mb-2"></div>
+            <span class="block text-xs font-bold text-slate-200">Místico Violet</span>
+            <span class="block text-[10px] font-mono text-purple-400">#8B5CF6</span>
+          </div>
+
+          <div onclick="copyColor('#34404C', 'Titanium Cut')" class="p-3 rounded-xl bg-slate-950/80 border border-slate-800 cursor-pointer hover:border-slate-600 transition-all text-center">
+            <div class="w-full h-8 rounded bg-[#34404C] mb-2"></div>
+            <span class="block text-xs font-bold text-slate-200">Titanium Cut</span>
+            <span class="block text-[10px] font-mono text-slate-400">#34404C</span>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- SEÇÃO 3: TIPOGRAFIA -->
+    <section id="tipografia" class="scroll-mt-24">
+      <div class="flex items-center justify-between mb-8 pb-4 border-b border-slate-800">
+        <div>
+          <span class="text-xs font-mono text-anbu-gold uppercase tracking-widest">Sistema Tipográfico</span>
+          <h2 class="text-2xl sm:text-3xl font-cinzel font-bold text-slate-100">3. Tipografia & Hierarquia</h2>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div class="p-6 rounded-2xl liquid-glass space-y-3">
+          <span class="text-xs font-mono text-anbu-gold uppercase">Display Épico</span>
+          <h3 class="text-3xl font-cinzel font-bold text-slate-100">Cinzel</h3>
+          <p class="text-xs text-slate-400 font-inter">Títulos de telas, nomes de chefes lendários, conquistas e cabeçalhos de pergaminhos.</p>
+          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 font-cinzel text-amber-300 text-sm tracking-wider">
+            FORJE SUA PRÓPRIA LENDA
+          </div>
+        </div>
+
+        <div class="p-6 rounded-2xl liquid-glass space-y-3">
+          <span class="text-xs font-mono text-anbu-emerald uppercase">Interface & Leitura</span>
+          <h3 class="text-3xl font-inter font-bold text-slate-100">Inter</h3>
+          <p class="text-xs text-slate-400 font-inter">A fonte de trabalho diária. Máxima legibilidade em telas móveis, missões e diários.</p>
+          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 font-inter text-slate-200 text-sm">
+            Missão Diária: 45 min de Leitura Focada
+          </div>
+        </div>
+
+        <div class="p-6 rounded-2xl liquid-glass space-y-3">
+          <span class="text-xs font-mono text-cyan-400 uppercase">Dados & Métricas</span>
+          <h3 class="text-3xl font-mono font-bold text-slate-100">JetBrains Mono</h3>
+          <p class="text-xs text-slate-400 font-inter">Dedicada a pontuações de XP, moedas Ryō, porcentagens do protocolo 66 e contadores.</p>
+          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 font-mono text-cyan-300 text-sm font-bold">
+            +350 XP • 420 Ryō • 23/66 DIAS
+          </div>
+        </div>
+      </div>
+
+      <!-- Demonstração das Fontes da Logo -->
+      <div class="p-6 rounded-2xl liquid-glass">
+        <h3 class="text-base font-cinzel font-bold text-slate-100 mb-4">Fontes da Logo Oficial Homologada</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="p-4 rounded-xl bg-slate-950/80 border border-slate-800">
+            <span class="text-xs font-mono text-slate-400 block mb-1">Texto Superior da Logo:</span>
+            <div class="text-2xl font-sans tracking-[0.35em] text-slate-300 font-light uppercase my-2">
+              M A K I N G
+            </div>
+            <p class="text-xs text-slate-400 font-inter">Sans-serif moderna, limpa, espaçamento estendido. Transmite elegância e processo contínuo de evolução.</p>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-950/80 border border-slate-800">
+            <span class="text-xs font-mono text-slate-400 block mb-1">Texto Inferior da Logo:</span>
+            <div class="text-3xl font-legends tracking-wider font-extrabold text-slate-200 uppercase my-2">
+              LEGENDS
+            </div>
+            <p class="text-xs text-slate-400 font-inter">Display geométrico, cortes angulares e chanfros de aço. Transmite autoridade, força física e mestria.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEÇÃO 4: 5 PILARES -->
+    <section id="pilares" class="scroll-mt-24">
+      <div class="flex items-center justify-between mb-8 pb-4 border-b border-slate-800">
+        <div>
+          <span class="text-xs font-mono text-anbu-cyan uppercase tracking-widest">Estrutura RPG do Protocolo</span>
+          <h2 class="text-2xl sm:text-3xl font-cinzel font-bold text-slate-100">4. Os 5 Pilares de Hábitos</h2>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div class="p-5 rounded-2xl liquid-glass border-t-2 border-t-[#FF1341] space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xl">🥋</span>
+            <span class="text-[10px] font-mono text-anbu-crimson font-bold uppercase">Corpo & Vigor</span>
+          </div>
+          <h4 class="font-cinzel font-bold text-slate-100 text-lg">Taijutsu</h4>
+          <p class="text-xs text-slate-400 font-inter">Treino físico, postura corporal, hidratação e vigor corporal.</p>
+          <div class="pt-2 text-[11px] font-mono text-rose-400 font-semibold">#FF1341</div>
+        </div>
+
+        <div class="p-5 rounded-2xl liquid-glass border-t-2 border-t-[#06B6D4] space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xl">📜</span>
+            <span class="text-[10px] font-mono text-cyan-400 font-bold uppercase">Mente & Estudo</span>
+          </div>
+          <h4 class="font-cinzel font-bold text-slate-100 text-lg">Ninjutsu</h4>
+          <p class="text-xs text-slate-400 font-inter">Leitura de livros, aprendizado e retenção de conhecimento.</p>
+          <div class="pt-2 text-[11px] font-mono text-cyan-400 font-semibold">#06B6D4</div>
+        </div>
+
+        <div class="p-5 rounded-2xl liquid-glass border-t-2 border-t-[#18F689] space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xl">⚡</span>
+            <span class="text-[10px] font-mono text-anbu-emerald font-bold uppercase">Disciplina</span>
+          </div>
+          <h4 class="font-cinzel font-bold text-slate-100 text-lg">Chakra</h4>
+          <p class="text-xs text-slate-400 font-inter">Rotinas inegociáveis, constância e escudos semanais.</p>
+          <div class="pt-2 text-[11px] font-mono text-emerald-400 font-semibold">#18F689</div>
+        </div>
+
+        <div class="p-5 rounded-2xl liquid-glass border-t-2 border-t-[#EAB308] space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xl">🛡️</span>
+            <span class="text-[10px] font-mono text-amber-400 font-bold uppercase">Confiança</span>
+          </div>
+          <h4 class="font-cinzel font-bold text-slate-100 text-lg">Espírito</h4>
+          <p class="text-xs text-slate-400 font-inter">Resiliência mental, coragem diária e acúmulo de Ryō.</p>
+          <div class="pt-2 text-[11px] font-mono text-amber-400 font-semibold">#EAB308</div>
+        </div>
+
+        <div class="p-5 rounded-2xl liquid-glass border-t-2 border-t-[#8B5CF6] space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xl">👁️</span>
+            <span class="text-[10px] font-mono text-purple-400 font-bold uppercase">Foco & Presença</span>
+          </div>
+          <h4 class="font-cinzel font-bold text-slate-100 text-lg">Genjutsu</h4>
+          <p class="text-xs text-slate-400 font-inter">Deep Work, meditação do chakra e sessões Pomodoro.</p>
+          <div class="pt-2 text-[11px] font-mono text-purple-400 font-semibold">#8B5CF6</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEÇÃO 5: SUPERFÍCIES LIQUID GLASS -->
+    <section id="liquid-glass" class="scroll-mt-24">
+      <div class="flex items-center justify-between mb-8 pb-4 border-b border-slate-800">
+        <div>
+          <span class="text-xs font-mono text-purple-400 uppercase tracking-widest">Linguagem de Vidro Noturno</span>
+          <h2 class="text-2xl sm:text-3xl font-cinzel font-bold text-slate-100">5. Sistema Liquid Glass</h2>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div class="space-y-4">
+          <h3 class="text-sm font-mono text-slate-400 uppercase">Exemplo de Card de Missão (Pendente vs Concluído):</h3>
+          
+          <div class="p-4 rounded-2xl liquid-glass hover:border-anbu-crimson/50 transition-all duration-300 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-rose-950/40 border border-anbu-crimson/40 flex items-center justify-center text-lg">
+                🥋
+              </div>
+              <div>
+                <span class="text-xs font-mono font-bold text-anbu-crimson">Rank A • Taijutsu</span>
+                <h4 class="text-sm font-semibold text-slate-100">Treino de Força (Séries Pesadas)</h4>
+              </div>
+            </div>
+            <button class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono text-slate-300 transition-all">
+              +140 XP
+            </button>
+          </div>
+
+          <div class="p-4 rounded-2xl bg-emerald-950/25 border border-anbu-emerald/40 backdrop-blur-xl transition-all duration-300 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-emerald-950/60 border border-anbu-emerald/60 flex items-center justify-center text-lg text-anbu-emerald">
+                ✓
+              </div>
+              <div>
+                <span class="text-xs font-mono font-bold text-anbu-emerald">Concluída Hoje</span>
+                <h4 class="text-sm font-semibold text-slate-200 line-through opacity-75">Leitura de 30 páginas (Deep Work)</h4>
+              </div>
+            </div>
+            <span class="text-xs font-mono text-emerald-400 font-bold bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-500/30">
+              DOMINADA
+            </span>
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <h3 class="text-sm font-mono text-slate-400 uppercase">Botões Primários & Ações:</h3>
+          
+          <div class="p-6 rounded-2xl liquid-glass space-y-4">
+            <button class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-rose-600 via-anbu-crimson to-rose-700 text-white font-bold text-sm shadow-glow-crimson hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+              <span>⚔️ INICIAR DUELO DO DIA</span>
+            </button>
+
+            <button class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-600 via-anbu-gold to-yellow-500 text-slate-950 font-bold text-sm shadow-glow-gold hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+              <span>🪙 RESGATAR RECOMPENSA DE RYŌ</span>
+            </button>
+
+            <button class="w-full py-3 px-4 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 hover:border-white/20 text-slate-300 hover:text-white font-medium text-sm active:scale-[0.98] transition-all">
+              Configurações do Dojo
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEÇÃO 6: DIRETRIZES -->
+    <section id="diretrizes" class="scroll-mt-24">
+      <div class="flex items-center justify-between mb-8 pb-4 border-b border-slate-800">
+        <div>
+          <span class="text-xs font-mono text-rose-400 uppercase tracking-widest">Normas para Designers & Devs</span>
+          <h2 class="text-2xl sm:text-3xl font-cinzel font-bold text-slate-100">6. Diretrizes & Usos Proibidos</h2>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="p-6 rounded-2xl bg-emerald-950/20 border border-emerald-800/40 space-y-3">
+          <h4 class="font-cinzel font-bold text-emerald-400 text-base flex items-center gap-2">
+            <span>✓</span> O Que Sempre Fazer (Canônico)
+          </h4>
+          <ul class="text-xs text-slate-300 space-y-2 font-inter">
+            <li>• Manter fundo escuro (Dark Mode) em 100% das telas (#0a0c12).</li>
+            <li>• Utilizar a logo oficial com proporção 1:1 e margem de respiro mínima de 25%.</li>
+            <li>• Aplicar safe areas no topo (pt-safe) e base (pb-safe) para mobile.</li>
+            <li>• Associar cada hábito a um dos 5 pilares com sua cor oficial correspondente.</li>
+            <li>• Áreas de toque de no mínimo 44px x 44px para qualquer botão interativo.</li>
+          </ul>
+        </div>
+
+        <div class="p-6 rounded-2xl bg-rose-950/20 border border-rose-800/40 space-y-3">
+          <h4 class="font-cinzel font-bold text-rose-400 text-base flex items-center gap-2">
+            <span>✗</span> O Que Nunca Fazer (Restrições)
+          </h4>
+          <ul class="text-xs text-slate-300 space-y-2 font-inter">
+            <li>• Nunca usar fundo claro; descaracteriza a identidade Shinobi.</li>
+            <li>• Nunca distorcer as proporções da logo ou remover o kanji '忍'.</li>
+            <li>• Nunca utilizar nomes protegidos por direitos autorais externos.</li>
+            <li>• Nunca alterar a cor dos olhos da máscara oficial (sempre o Verde Esmeralda #18F689).</li>
+            <li>• Nunca utilizar fontes não homologadas para títulos ou dados numéricos.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="border-t border-slate-800/80 py-12 bg-slate-950/60 text-center text-xs font-mono text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 space-y-2">
+      <p class="text-slate-400 font-cinzel font-semibold text-sm">MAKING LEGENDS — BRAND IDENTITY BOOK</p>
+      <p>Desenvolvido para os construtores da lenda. Protocolo 66 Dias • Misticismo Shinobi Moderno.</p>
+      <p class="text-[11px] text-slate-600">Arquivo gerado em Setembro de 2026 • Versão 1.0 Oficial Homologada</p>
+    </div>
+  </footer>
+
+  <script>
+    function copyColor(hex, name) {
+      navigator.clipboard.writeText(hex).then(() => {
+        const toast = document.getElementById('copyToast');
+        const toastText = document.getElementById('copyToastText');
+        toastText.textContent = name + ' (' + hex + ') copiado!';
+        toast.classList.remove('translate-y-24', 'opacity-0');
+        toast.classList.add('translate-y-0', 'opacity-100');
+        setTimeout(() => {
+          toast.classList.remove('translate-y-0', 'opacity-100');
+          toast.classList.add('translate-y-24', 'opacity-0');
+        }, 2200);
+      }).catch(err => {
+        console.error('Erro ao copiar:', err);
+      });
+    }
+  </script>
+</body>
+</html>

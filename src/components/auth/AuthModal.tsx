@@ -100,8 +100,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       <div className="bg-slate-900 border-2 border-slate-700 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl p-6 space-y-4 my-auto relative z-[101]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-shinobi-border pb-3">
-          <div className="flex items-center gap-2">
-            <User className="w-5 h-5 text-shinobi-gold" />
+          <div className="flex items-center gap-2.5">
+            <img src="/logo.png" alt="Making Legends" className="w-6 h-6 rounded-md border border-shinobi-crimson/50 shadow-glow-crimson object-cover" />
             <h3 className="font-cinzel text-base font-bold text-slate-100">
               {currentUser ? 'Conta Shinobi Conectada' : 'Salvar Progresso na Nuvem'}
             </h3>

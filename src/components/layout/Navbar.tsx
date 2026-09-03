@@ -50,20 +50,32 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="absolute -top-10 right-12 w-28 h-16 bg-shinobi-crimson/[0.08] blur-xl rounded-full pointer-events-none" />
 
         <div className="relative z-10 flex items-center justify-between gap-2 sm:gap-4">
-          {/* Lado Esquerdo: Identidade Shinobi, Rank & XP */}
-          <button
-            onClick={onOpenStatus}
-            className="group relative flex items-center gap-2 sm:gap-3 p-1 sm:p-1.5 -m-0.5 sm:-m-1 rounded-xl sm:rounded-2xl transition-all duration-300 hover:bg-white/[0.08] hover:shadow-[0_4px_16px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.25)] border border-transparent hover:border-white/15 active:scale-[0.98] min-w-0 text-left cursor-pointer"
-          >
-            {/* Avatar com Aura e Badge de Nível */}
-            <div className="relative shrink-0">
-              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gradient-to-tr from-slate-900 to-slate-800 border-2 border-shinobi-gold/70 flex items-center justify-center text-lg sm:text-xl shadow-[0_0_12px_rgba(234,179,8,0.35)] group-hover:border-shinobi-gold group-hover:scale-105 group-hover:rotate-3 group-hover:shadow-[0_0_18px_rgba(234,179,8,0.6)] transition-all duration-300">
-                {profile.avatarConfig.customEmoji || (profile.gender === 'female' ? '🥷‍♀️' : (rankInfo.badge === '🌱' ? '🥷' : rankInfo.badge))}
-              </div>
-              <span className="absolute -bottom-1 -right-1 bg-gradient-to-r from-rose-600 to-shinobi-crimson text-white text-[9px] sm:text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full border border-slate-950 shadow-md group-hover:scale-110 transition-transform duration-300">
-                {profile.level}
-              </span>
+          {/* Lado Esquerdo: Marca Oficial, Identidade Shinobi, Rank & XP */}
+          <div className="flex items-center gap-2 min-w-0">
+            {/* Insígnia Oficial Making Legends */}
+            <div className="relative shrink-0 hidden min-[360px]:block">
+              <img
+                src="/logo.png"
+                alt="Making Legends"
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl border border-shinobi-crimson/40 shadow-glow-crimson object-cover hover:scale-110 transition-transform duration-300 cursor-pointer"
+                onClick={onOpenStatus}
+                title="Making Legends — Forje sua Lenda"
+              />
             </div>
+
+            <button
+              onClick={onOpenStatus}
+              className="group relative flex items-center gap-2 sm:gap-2.5 p-1 sm:p-1.5 -m-0.5 sm:-m-1 rounded-xl sm:rounded-2xl transition-all duration-300 hover:bg-white/[0.08] hover:shadow-[0_4px_16px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.25)] border border-transparent hover:border-white/15 active:scale-[0.98] min-w-0 text-left cursor-pointer"
+            >
+              {/* Avatar com Aura e Badge de Nível */}
+              <div className="relative shrink-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-slate-900 to-slate-800 border-2 border-shinobi-gold/70 flex items-center justify-center text-base sm:text-lg shadow-[0_0_12px_rgba(234,179,8,0.35)] group-hover:border-shinobi-gold group-hover:scale-105 group-hover:rotate-3 group-hover:shadow-[0_0_18px_rgba(234,179,8,0.6)] transition-all duration-300">
+                  {profile.avatarConfig.customEmoji || (profile.gender === 'female' ? '🥷‍♀️' : (rankInfo.badge === '🌱' ? '🥷' : rankInfo.badge))}
+                </div>
+                <span className="absolute -bottom-1 -right-1 bg-gradient-to-r from-rose-600 to-shinobi-crimson text-white text-[9px] sm:text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full border border-slate-950 shadow-md group-hover:scale-110 transition-transform duration-300">
+                  {profile.level}
+                </span>
+              </div>
 
             {/* Nome, Rank e Barra de XP */}
             <div className="min-w-0">
@@ -90,6 +102,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </div>
           </button>
+        </div>
 
           {/* Lado Direito: Chips da Jornada & Controles Rápidos */}
           <div className="flex flex-col items-end gap-1.5 shrink-0">

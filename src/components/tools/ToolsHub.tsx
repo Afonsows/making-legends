@@ -182,25 +182,35 @@ export const ToolsHub: React.FC = () => {
   };
 
   const toolsList: { id: ActiveTool; name: string; icon: React.ComponentType<{ className?: string }>; color: string; desc: string }[] = [
-    { id: 'nutrition', name: 'Diário de Nutrição', icon: Utensils, color: '#f43f5e', desc: 'Controle de calorias e proteínas do guerreiro' },
+    { id: 'nutrition', name: 'Diário de Nutrição', icon: Utensils, color: '#FF1341', desc: 'Controle de calorias e proteínas do guerreiro' },
     { id: 'pomodoro', name: 'Técnica de Concentração', icon: Timer, color: '#8b5cf6', desc: 'Timer Pomodoro Shinobi de foco profundo' },
     { id: 'books', name: 'Pergaminhos de Conhecimento', icon: BookOpen, color: '#06b6d4', desc: 'Resumos práticos de alta performance' },
-    { id: 'meditation', name: 'Meditação do Chakra', icon: Wind, color: '#10b981', desc: 'Respiração tática 4-4-4-4 e foco zen' },
+    { id: 'meditation', name: 'Meditação do Chakra', icon: Wind, color: '#18F689', desc: 'Respiração tática 4-4-4-4 e foco zen' },
     { id: 'seallock', name: 'Selo de Bloqueio', icon: Lock, color: '#eab308', desc: 'Compromisso de foco e desintoxicação digital' },
-    { id: 'workout', name: 'Registro de Treinamento', icon: Dumbbell, color: '#e11d48', desc: 'Registro de séries e exercícios de Taijutsu' },
+    { id: 'workout', name: 'Registro de Treinamento', icon: Dumbbell, color: '#FF1341', desc: 'Registro de séries e exercícios de Taijutsu' },
     { id: 'body', name: 'Diário do Corpo', icon: Droplet, color: '#38bdf8', desc: 'Rastreador de hidratação e qualidade de sono' },
   ];
 
   return (
     <div className="pb-24 pt-3 max-w-4xl mx-auto px-4 space-y-4">
-      {/* Header do Hub */}
+      {/* Header do Hub com Selo Oficial */}
       <div className="pergaminho-bg rounded-2xl border border-shinobi-border p-4 shadow-xl">
-        <h2 className="font-cinzel text-lg sm:text-xl font-bold text-slate-100 flex items-center gap-2">
-          <span>7 Mini-Ferramentas Shinobi</span>
-        </h2>
-        <p className="text-xs text-slate-400 mt-0.5">
-          Instrumentos práticos de apoio para disciplina, mente, corpo e recuperação.
-        </p>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="font-cinzel text-lg sm:text-xl font-bold text-slate-100 flex items-center gap-2">
+              <span>7 Mini-Ferramentas Shinobi</span>
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Instrumentos práticos de apoio para disciplina, mente, corpo e recuperação.
+            </p>
+          </div>
+          <img
+            src="/logo.png"
+            alt="Making Legends"
+            className="w-10 h-10 rounded-xl border border-shinobi-crimson/40 shadow-glow-crimson object-cover shrink-0 hidden sm:block"
+            title="Making Legends Tools"
+          />
+        </div>
 
         {/* Menu de Seleção das 7 Ferramentas */}
         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 mt-3">

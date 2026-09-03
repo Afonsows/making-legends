@@ -188,8 +188,17 @@ export const OnboardingQuiz: React.FC<OnboardingQuizProps> = ({ onFinishOnboardi
       <ShinobiBackground opacity={1} />
 
       <div className="w-full max-w-xl relative z-10 space-y-6">
-        {/* Header da Academia */}
-        <div className="text-center space-y-2">
+        {/* Header da Academia com Logo Oficial */}
+        <div className="text-center space-y-3 flex flex-col items-center">
+          <div className="relative group">
+            <div className="absolute -inset-1 bg-gradient-to-r from-shinobi-crimson via-shinobi-gold to-shinobi-emerald rounded-2xl blur-md opacity-60 group-hover:opacity-100 transition duration-500 animate-pulse" />
+            <img
+              src="/logo.png"
+              alt="Making Legends"
+              className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl border-2 border-white/20 shadow-2xl object-cover hover:scale-105 transition-transform duration-300"
+            />
+          </div>
+
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-shinobi-card/90 border border-shinobi-gold/40 text-shinobi-gold text-xs font-mono font-bold shadow-glow-gold/20">
             <span>🥷</span> Avaliação de Aptidão da Academia Shinobi
           </div>
