@@ -57,12 +57,14 @@ export interface DailyCheckInRecord {
 export interface ProtocolChallengeCycle {
   id: string;                 // ex: 'cycle_1_1725148800000'
   cycleNumber: number;        // 1, 2, 3...
+  title?: string;             // Nome personalizado do desafio
+  targetDays?: number;        // Duração da jornada (21, 30, 45, 66, 90 etc.)
   startDate: string;          // YYYY-MM-DD
   endDate?: string;           // YYYY-MM-DD
   status: 'active' | 'completed' | 'failed';
-  currentDay: number;         // 1 a 66
+  currentDay: number;         // 1 a targetDays
   daysCompleted: number;      // total de dias marcados com presença
-  checkIns: Record<number, DailyCheckInRecord>; // dia (1..66) -> registro
+  checkIns: Record<number, DailyCheckInRecord>; // dia (1..targetDays) -> registro
   failedWeek?: number;        // semana em que ocorreram as 2 faltas
   failedReason?: string;      // descrição do encerramento
   totalXpEarned: number;      // XP acumulado durante o ciclo

@@ -1,8 +1,9 @@
 import { supabase } from './supabase';
-import { UserProfile, Mission } from '../core/types';
-import { getTodayString } from '../core/streakEngine';
+import { UserProfile, Mission, ProtocolChallengeCycle, UserChallenge } from '../core/types';
+import { getTodayString, reconcileChallengeCycleWithMissions } from '../core/streakEngine';
 import { useUserStore } from '../state/useUserStore';
 import { useHabitStore, getDefaultRyoReward } from '../state/useHabitStore';
+import { useChallengeStore } from '../state/useChallengeStore';
 import { useDuelStore } from '../state/useDuelStore';
 import { useToolStore } from '../state/useToolStore';
 
@@ -27,36 +28,53 @@ class SyncService {
         .single();
 
       if (profileData && !profileErr) {
-        useUserStore.setState((state) => ({
-          profile: {
-            ...state.profile,
-            id: profileData.id,
-            name: profileData.name || state.profile.name,
-            email: profileData.email || state.profile.email,
-            whatsapp: profileData.whatsapp || state.profile.whatsapp,
-            gender: (profileData.gender as 'male' | 'female') || state.profile.gender || 'male',
-            ryo: profileData.ryo !== undefined && profileData.ryo !== null ? profileData.ryo : state.profile.ryo,
-            avatarConfig: {
-              ...state.profile.avatarConfig,
-              ...(profileData.avatar_config || {}),
-              customEmoji: profileData.avatar_config?.customEmoji || (profileData.gender === 'female' ? '🥷‍♀️' : '🥷'),
+        const rawAvatarConfig = (profileData.avatar_config || {}) as Record<string, any>;
+        const pulledActiveChallenge = rawAvatarConfig._activeChallenge as ProtocolChallengeCycle | undefined;
+        const pulledChallengeHistory = rawAvatarConfig._challengeHistory as ProtocolChallengeCycle[] | undefined;
+        const pulledCustomChallenges = rawAvatarConfig._customChallenges as UserChallenge[] | undefined;
+
+        if (pulledCustomChallenges && Array.isArray(pulledCustomChallenges) && pulledCustomChallenges.length > 0) {
+          useChallengeStore.setState({ challenges: pulledCustomChallenges });
+        }
+
+        useUserStore.setState((state) => {
+          const currentActive = pulledActiveChallenge || state.profile.activeChallenge;
+          const currentHist = pulledChallengeHistory || state.profile.challengeHistory;
+
+          return {
+            profile: {
+              ...state.profile,
+              id: profileData.id,
+              name: profileData.name || state.profile.name,
+              email: profileData.email || state.profile.email,
+              whatsapp: profileData.whatsapp || state.profile.whatsapp,
+              gender: (profileData.gender as 'male' | 'female') || state.profile.gender || 'male',
+              ryo: profileData.ryo !== undefined && profileData.ryo !== null ? profileData.ryo : state.profile.ryo,
+              avatarConfig: {
+                ...state.profile.avatarConfig,
+                ...rawAvatarConfig,
+                customEmoji: rawAvatarConfig?.customEmoji || (profileData.gender === 'female' ? '🥷‍♀️' : '🥷'),
+              },
+              level: profileData.level || state.profile.level,
+              totalXp: profileData.total_xp || state.profile.totalXp,
+              currentRankId: profileData.current_rank_id || state.profile.currentRankId,
+              pillarXp: profileData.pillar_xp || state.profile.pillarXp,
+              currentProtocolDay: profileData.current_protocol_day || state.profile.currentProtocolDay,
+              currentStreak: profileData.current_streak || state.profile.currentStreak,
+              bestStreak: profileData.best_streak || state.profile.bestStreak,
+              weeklyShieldsRemaining: profileData.weekly_shields_remaining ?? state.profile.weeklyShieldsRemaining,
+              isHardModeEnabled: profileData.is_hard_mode_enabled ?? state.profile.isHardModeEnabled,
+              subscriptionStatus: profileData.subscription_status || state.profile.subscriptionStatus,
+              hasCompletedOnboarding: profileData.has_completed_onboarding ?? true,
+              unlockedCards: profileData.unlocked_cards || state.profile.unlockedCards,
+              equippedItems: profileData.equipped_items || state.profile.equippedItems,
+              inventory: profileData.inventory || state.profile.inventory,
+              lastActiveDate: profileData.last_active_date || state.profile.lastActiveDate || getTodayString(),
+              activeChallenge: currentActive,
+              challengeHistory: currentHist,
             },
-            level: profileData.level || state.profile.level,
-            totalXp: profileData.total_xp || state.profile.totalXp,
-            currentRankId: profileData.current_rank_id || state.profile.currentRankId,
-            pillarXp: profileData.pillar_xp || state.profile.pillarXp,
-            currentProtocolDay: profileData.current_protocol_day || state.profile.currentProtocolDay,
-            currentStreak: profileData.current_streak || state.profile.currentStreak,
-            bestStreak: profileData.best_streak || state.profile.bestStreak,
-            weeklyShieldsRemaining: profileData.weekly_shields_remaining ?? state.profile.weeklyShieldsRemaining,
-            isHardModeEnabled: profileData.is_hard_mode_enabled ?? state.profile.isHardModeEnabled,
-            subscriptionStatus: profileData.subscription_status || state.profile.subscriptionStatus,
-            hasCompletedOnboarding: profileData.has_completed_onboarding ?? true,
-            unlockedCards: profileData.unlocked_cards || state.profile.unlockedCards,
-            equippedItems: profileData.equipped_items || state.profile.equippedItems,
-            inventory: profileData.inventory || state.profile.inventory,
-          },
-        }));
+          };
+        });
       }
 
       // 2. Puxar Missões
@@ -102,14 +120,35 @@ class SyncService {
         }
       }
 
+      // 3. Auto-reconciliação do Desafio dos 66 Dias: cura imediata de check-ins e proteção contra falso reset
+      const currentProfile = useUserStore.getState().profile;
+      const currentMissions = useHabitStore.getState().missions;
+      const currentChallenges = useChallengeStore.getState().challenges || [];
+
+      const reconciliation = reconcileChallengeCycleWithMissions(currentProfile, currentMissions, currentChallenges);
+      if (reconciliation.reconciledProfile && Object.keys(reconciliation.reconciledProfile).length > 0) {
+        useUserStore.setState((state) => ({
+          profile: {
+            ...state.profile,
+            ...reconciliation.reconciledProfile,
+          },
+          activeResetModal: null, // Descarta qualquer falso modal aberto
+        }));
+      }
+
       this.isHydrated = true;
 
       // Recalcula o streak imediatamente a partir das presenças reais em desafios
       const streakRes = useUserStore.getState().recalculateStreak();
       const finalProfile = useUserStore.getState().profile;
 
-      // Se a contagem foi corrigida em relação à nuvem, atualiza o Supabase com o streak real
-      if (profileData && profileData.current_streak !== streakRes.currentStreak) {
+      // Se a contagem ou desafio foi corrigido em relação à nuvem, atualiza o Supabase
+      if (
+        profileData &&
+        (profileData.current_streak !== streakRes.currentStreak ||
+          profileData.current_protocol_day !== finalProfile.currentProtocolDay ||
+          reconciliation.wasHealed)
+      ) {
         this.pushUserProfile(finalProfile, userId);
       }
     } catch (err) {
@@ -120,11 +159,19 @@ class SyncService {
   }
 
   public async pushUserProfile(profile: UserProfile, userId: string) {
-    if (!this.isHydrated && profile.name === 'Aspirante Shinobi') {
-      return; // Previne sobrescrever perfil na nuvem com dados padrão não hidratados
+    // Blindagem: impede sobrescrever progresso superior da nuvem se o estado local for vazio ou não hidratado
+    if (!this.isHydrated && (profile.name === 'Aspirante Shinobi' || (profile.currentProtocolDay === 1 && profile.activeChallenge?.daysCompleted === 0))) {
+      return;
     }
 
     try {
+      const avatarConfigPayload = {
+        ...profile.avatarConfig,
+        _activeChallenge: profile.activeChallenge,
+        _challengeHistory: profile.challengeHistory,
+        _customChallenges: useChallengeStore.getState().challenges,
+      };
+
       await supabase.from('profiles').upsert({
         id: userId,
         name: profile.name,
@@ -132,7 +179,7 @@ class SyncService {
         whatsapp: profile.whatsapp,
         gender: profile.gender,
         ryo: profile.ryo || 0,
-        avatar_config: profile.avatarConfig,
+        avatar_config: avatarConfigPayload,
         level: profile.level,
         total_xp: profile.totalXp,
         current_rank_id: profile.currentRankId,
@@ -148,6 +195,7 @@ class SyncService {
         unlocked_cards: profile.unlockedCards,
         equipped_items: profile.equippedItems,
         inventory: profile.inventory,
+        last_active_date: profile.lastActiveDate || getTodayString(),
         updated_at: new Date().toISOString(),
       });
     } catch (err) {

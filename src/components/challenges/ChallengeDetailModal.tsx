@@ -43,7 +43,7 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
     toggleChallengeStatus 
   } = useChallengeStore();
 
-  const { profile, openChallengeMapModal } = useUserStore();
+  const { profile, openChallengeMapModal, openStartChallengeModal } = useUserStore();
   const { missions } = useHabitStore();
 
   const [isAddingHabit, setIsAddingHabit] = useState(false);
@@ -138,18 +138,24 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
                   </span>
                 )}
 
-                {isOfficial && (
+                {isOfficial && profile.activeChallenge && (
                   <span className="px-2.5 py-0.5 rounded-full bg-white/[0.06] text-shinobi-gold border border-shinobi-gold/40 text-[10px] font-mono font-bold">
-                    Ciclo #{profile.activeChallenge?.cycleNumber || 1} • {protocolStatus.phaseName} (Fase {protocolStatus.phaseIndex})
+                    Ciclo #{profile.activeChallenge.cycleNumber || 1} • {protocolStatus.phaseName} (Fase {protocolStatus.phaseIndex})
                   </span>
                 )}
 
                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
                   effectiveChallenge.status === 'completed'
                     ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                    : effectiveChallenge.status === 'paused'
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
                     : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40'
                 }`}>
-                  {effectiveChallenge.status === 'completed' ? 'CONCLUÍDO 🏆' : 'EM ANDAMENTO ⚡'}
+                  {effectiveChallenge.status === 'completed'
+                    ? 'CONCLUÍDO 🏆'
+                    : effectiveChallenge.status === 'paused'
+                    ? 'AGUARDANDO INÍCIO ⏳'
+                    : 'EM ANDAMENTO ⚡'}
                 </span>
               </div>
 
@@ -357,23 +363,37 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
               </button>
             )}
 
-            <button
-              type="button"
-              onClick={() => toggleChallengeStatus(effectiveChallenge.id)}
-              className="px-3 py-2 bg-white/[0.06] hover:bg-white/[0.12] text-slate-300 border border-white/10 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5"
-            >
-              {effectiveChallenge.status === 'completed' ? (
-                <>
-                  <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Reabrir Desafio</span>
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Marcar como Concluído</span>
-                </>
-              )}
-            </button>
+            {isOfficial && (!profile.activeChallenge || effectiveChallenge.status === 'paused') ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  openStartChallengeModal();
+                }}
+                className="px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 text-slate-950 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-glow-gold animate-pulse"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span>Personalizar e Iniciar ⚡</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => toggleChallengeStatus(effectiveChallenge.id)}
+                className="px-3 py-2 bg-white/[0.06] hover:bg-white/[0.12] text-slate-300 border border-white/10 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5"
+              >
+                {effectiveChallenge.status === 'completed' ? (
+                  <>
+                    <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Reabrir Desafio</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Marcar como Concluído</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
 
           <button

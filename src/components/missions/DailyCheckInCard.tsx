@@ -29,16 +29,89 @@ export const DailyCheckInCard: React.FC<DailyCheckInCardProps> = ({
   onOpenMap, 
   onOpenHistory 
 }) => {
-  const { profile, toggleDailyCheckIn, openChallengeMapModal, openChallengeHistoryModal } = useUserStore();
+  const { 
+    profile, 
+    toggleDailyCheckIn, 
+    openChallengeMapModal, 
+    openChallengeHistoryModal,
+    openStartChallengeModal
+  } = useUserStore();
   const { missions } = useHabitStore();
 
   const [showTooltip, setShowTooltip] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
 
   const protocolStatus = evaluateProtocolStatus(profile, missions);
-  const { currentDay, isTodayCheckedIn, xpProgress, missedDaysInCurrentWeek } = protocolStatus;
+  const { hasActiveChallenge, currentDay, isTodayCheckedIn, xpProgress, missedDaysInCurrentWeek } = protocolStatus;
   const currentWeek = getChallengeWeekNumber(currentDay);
   const { startDay, endDay } = getWeekDayRange(currentWeek);
+
+  const handleOpenMapClick = onOpenMap || openChallengeMapModal;
+  const handleOpenHistoryClick = onOpenHistory || openChallengeHistoryModal;
+
+  if (!hasActiveChallenge) {
+    const nextCycleNum = (profile.challengeHistory?.length || 0) + 1;
+    return (
+      <div className="pergaminho-bg rounded-2xl border-2 border-shinobi-gold/70 p-4 sm:p-5 shadow-2xl relative overflow-hidden space-y-4">
+        <div className="absolute -top-10 -right-10 w-40 h-40 bg-shinobi-gold/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
+          <div>
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <span className="text-[10px] font-mono uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-shinobi-gold/20 text-shinobi-gold font-bold border border-shinobi-gold/40">
+                SUGESTÃO DE CICLO #{nextCycleNum} • AGUARDANDO INÍCIO
+              </span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                Sem desafio ativo no momento
+              </span>
+            </div>
+
+            <h2 className="font-cinzel text-lg sm:text-xl font-bold text-slate-100 flex items-center gap-2">
+              <Flame className="w-5 h-5 text-shinobi-gold" />
+              <span>Desafio dos 66 Dias — Ciclo #{nextCycleNum}</span>
+            </h2>
+            <p className="text-xs text-slate-300 mt-0.5 max-w-xl">
+              Os desafios agora só começam quando você decidir. Monte suas missões de forma personalizada e dê início apenas quando estiver pronto para o compromisso!
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 self-start sm:self-center">
+            <button
+              onClick={handleOpenHistoryClick}
+              className="px-3 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-amber-300 border border-amber-500/50 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5"
+              title="Ver histórico de desafios anteriores"
+            >
+              <History className="w-3.5 h-3.5" />
+              <span>Histórico</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Card CTA para personalizar e iniciar */}
+        <div className="bg-slate-950/85 border-2 border-shinobi-gold/40 rounded-2xl p-4 sm:p-5 relative shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-200">
+              <Sparkles className="w-4 h-4 text-shinobi-gold" />
+              <span>Pronto para forjar uma nova lenda?</span>
+            </div>
+            <p className="text-xs text-slate-400 max-w-lg">
+              Você pode escolher as missões diárias que deseja forjar, ajustar a duração (21, 30, 66 ou 90 dias) e confirmar o início hoje mesmo.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={openStartChallengeModal}
+            className="px-6 py-3 bg-gradient-to-r from-shinobi-gold via-amber-400 to-emerald-400 hover:opacity-95 text-slate-950 font-extrabold text-xs sm:text-sm rounded-2xl shadow-glow-gold transition-all duration-300 flex items-center justify-center gap-2 flex-shrink-0"
+          >
+            <Flame className="w-4 h-4 stroke-[2.5]" />
+            <span>Personalizar e Iniciar Desafio ⚡</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const handleToggle = () => {
     const result = toggleDailyCheckIn(currentDay);
@@ -54,9 +127,6 @@ export const DailyCheckInCard: React.FC<DailyCheckInCardProps> = ({
       setTimeout(() => setFeedbackMsg(null), 3000);
     }
   };
-
-  const handleOpenMapClick = onOpenMap || openChallengeMapModal;
-  const handleOpenHistoryClick = onOpenHistory || openChallengeHistoryModal;
 
   return (
     <div className="pergaminho-bg rounded-2xl border-2 border-shinobi-gold/60 p-4 sm:p-5 shadow-2xl relative overflow-hidden space-y-4">

@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import { Mission, MissionLogEntry, TimeOfDay } from '../core/types';
 import { PillarId, MissionRank } from '../theme/types';
 import { shinobiTheme } from '../theme/shinobi.theme';
-import { getTodayString, isValidDateString } from '../core/streakEngine';
+import { getTodayString, isValidDateString, calculateDailyXpProgress } from '../core/streakEngine';
 import { getLevelFromTotalXp, getRankIdFromLevel } from '../core/xpEngine';
 import { getDefaultRyoReward, calculateRyoGainWithBuffs, getDailyCheckInRyoBonus, getLevelUpRyoReward } from '../core/ryoEngine';
 import { useUserStore } from './useUserStore';
@@ -212,6 +212,16 @@ export const useHabitStore = create<HabitStoreState>()(
 
           const duelStore = useDuelStore.getState();
           duelStore.dealDamageFromMission(finalXp, mission.pillarId, equippedItems);
+
+          // Auto check-in: ao atingir 50% de XP das missões, confirma automaticamente a presença do dia
+          const currentDay = userStore.profile.activeChallenge?.currentDay || userStore.profile.currentProtocolDay || 1;
+          const isAlreadyChecked = Boolean(userStore.profile.activeChallenge?.checkIns?.[currentDay]?.checked);
+          if (!isAlreadyChecked) {
+            const xpProg = calculateDailyXpProgress(updatedMissions);
+            if (xpProg.isUnlocked) {
+              userStore.toggleDailyCheckIn(currentDay);
+            }
+          }
         } else {
           userStore.removeXp(mission.xpReward, mission.pillarId);
           userStore.removeRyo(ryoAmount);

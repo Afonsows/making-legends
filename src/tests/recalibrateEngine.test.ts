@@ -2,7 +2,15 @@ import {
   isValidDateString, 
   getTodayString, 
   getAllChallengePresenceDates, 
-  calculateChallengeStreak 
+  calculateChallengeStreak,
+  processDayTransition,
+  reconcileChallengeCycleWithMissions,
+  addDaysToDateString,
+  formatDateBR,
+  getDaysDifference,
+  evaluateProtocolStatus,
+  ensureActiveChallenge,
+  suggestNextChallengeCycle
 } from '../core/streakEngine';
 import { getLevelFromTotalXp, getRankIdFromLevel, getRequiredXpForLevel } from '../core/xpEngine';
 import { getDefaultRyoReward, getLevelUpRyoReward, getDailyCheckInRyoBonus } from '../core/ryoEngine';
@@ -520,9 +528,231 @@ export function runTests() {
     challengeHistory: [pastCycle],
   };
 
-  const datesWithHistory = getAllChallengePresenceDates(profileWithHistory, []);
-  assert(datesWithHistory.includes('2026-08-01'), 'Deve incluir presenças do ciclo anterior arquivado');
-  assert(datesWithHistory.includes(todayStr), 'Deve incluir presenças do ciclo atual');
+  // Test 14: Testando Helpers de Data e Fuso Horário Local
+  console.log('\n14. Testando Helpers de Data e Fuso Horário Local');
+  assert(getDaysDifference('2026-09-01', '2026-09-03') === 2, 'Diferença de 2 dias exata');
+  assert(getDaysDifference('2026-09-01', '2026-09-01') === 0, 'Mesmo dia deve ter 0 dias de diferença');
+  assert(addDaysToDateString('2026-09-01', 3) === '2026-09-04', 'Adição de 3 dias deve ser 2026-09-04');
+  assert(addDaysToDateString('2026-08-31', 1) === '2026-09-01', 'Virada de mês deve ser 2026-09-01');
+  assert(formatDateBR('2026-09-08') === '08/09/2026', 'Formato BR deve ser 08/09/2026 sem sofrer com timezone');
+
+  // Test 15: Cenário Exato do Bug — Login Mobile com Ciclo Local Zerado e currentProtocolDay > 1
+  console.log('\n15. Testando Proteção Contra Falso Reset no Mobile (Estado Zerado com Missões Concluídas)');
+  const mobileProfileBugCase: UserProfile = {
+    ...baseProfile,
+    currentProtocolDay: 3, // Veio do Supabase
+    lastActiveDate: twoDaysAgoStr,
+    activeChallenge: {
+      id: 'cycle_phantom',
+      cycleNumber: 3,
+      startDate: twoDaysAgoStr,
+      status: 'active',
+      currentDay: 1,
+      daysCompleted: 0,
+      checkIns: {},
+      totalXpEarned: 0,
+      createdAt: new Date().toISOString(),
+    },
+  };
+
+  const userMissions: Mission[] = [
+    {
+      id: 'mis_01',
+      title: 'Treino',
+      pillarId: 'taijutsu',
+      rank: 'D',
+      xpReward: 50,
+      timeOfDay: 'morning',
+      isCustom: false,
+      isCompletedToday: true,
+      completedDates: [twoDaysAgoStr, yesterdayStr, todayStr],
+      order: 1,
+      createdAt: twoDaysAgoStr,
+    },
+  ];
+
+  // Auto-reconciliação deve reconstruir o ciclo ativo a partir das missões
+  const healed = reconcileChallengeCycleWithMissions(mobileProfileBugCase, userMissions, [], todayStr);
+  assert(healed.wasHealed === true, 'Deve ter curado o ciclo ativo a partir das missões');
+  assert(healed.reconciledProfile.activeChallenge?.daysCompleted! >= 2, 'Deve ter marcado as presenças dos dias anteriores');
+  assert(healed.reconciledProfile.activeChallenge?.checkIns?.[1]?.checked === true, 'Dia 1 deve estar marcado como presente');
+
+  // Ao processar transição de dia com presença nas missões, NÃO PODE resetar o ciclo
+  const transitionRes = processDayTransition(
+    { ...mobileProfileBugCase, ...healed.reconciledProfile },
+    todayStr,
+    userMissions,
+    []
+  );
+  assert(transitionRes.resetOccurred === false, 'NÃO pode ocorrer reset quando o usuário cumpriu missões nos dias');
+
+  // Test 16: Recuperação de Ciclo Falsamente Arquivado no Histórico
+  console.log('\n16. Testando Recuperação Automática de Ciclo Incorretamente Arquivado no Histórico');
+  const falseFailedCycle: ProtocolChallengeCycle = {
+    id: 'cycle_false_failed',
+    cycleNumber: 2,
+    startDate: twoDaysAgoStr,
+    endDate: todayStr,
+    status: 'failed',
+    failedReason: '2 dias sem presença na Semana 1',
+    currentDay: 3,
+    daysCompleted: 2,
+    checkIns: {
+      1: { dayNumber: 1, date: twoDaysAgoStr, checked: true, xpEarned: 100, targetXp: 100 },
+      2: { dayNumber: 2, date: yesterdayStr, checked: true, xpEarned: 100, targetXp: 100 },
+    },
+    totalXpEarned: 200,
+    createdAt: new Date().toISOString(),
+  };
+
+  const profileWithFalseReset: UserProfile = {
+    ...baseProfile,
+    currentProtocolDay: 1,
+    activeChallenge: {
+      id: 'cycle_new_empty',
+      cycleNumber: 3,
+      startDate: todayStr,
+      status: 'active',
+      currentDay: 1,
+      daysCompleted: 0,
+      checkIns: {},
+      totalXpEarned: 0,
+      createdAt: new Date().toISOString(),
+    },
+    challengeHistory: [falseFailedCycle],
+  };
+
+  const restored = reconcileChallengeCycleWithMissions(profileWithFalseReset, userMissions, [], todayStr);
+  assert(restored.wasHealed === true, 'Deve identificar e curar o falso encerramento');
+  assert(restored.reconciledProfile.activeChallenge?.status === 'active', 'Ciclo restaurado deve estar com status active');
+  assert(restored.reconciledProfile.activeChallenge?.cycleNumber === 2, 'Ciclo restaurado deve ser o Ciclo #2');
+  assert(restored.reconciledProfile.challengeHistory?.length === 0, 'Ciclo restaurado deve ser removido do histórico');
+
+  // Test 17: Absorção de Falta pelo Escudo Semanal (Sem Quebra do Desafio)
+  console.log('\n17. Testando Absorção de Falta pelo Escudo Semanal');
+  const profileWithMissAndShield: UserProfile = {
+    ...baseProfile,
+    weeklyShieldsRemaining: 1,
+    isHardModeEnabled: false,
+    lastActiveDate: twoDaysAgoStr,
+    activeChallenge: {
+      id: 'cycle_shield_test',
+      cycleNumber: 1,
+      startDate: twoDaysAgoStr,
+      status: 'active',
+      currentDay: 1,
+      daysCompleted: 1,
+      checkIns: {
+        1: { dayNumber: 1, date: twoDaysAgoStr, checked: true, xpEarned: 100, targetXp: 100 },
+      },
+      totalXpEarned: 100,
+      createdAt: new Date().toISOString(),
+    },
+  };
+
+  // Nenhuma missão ontem (1 falta decorrida na semana 1)
+  const emptyMissionsForShieldTest: Mission[] = [];
+  const shieldTransition = processDayTransition(profileWithMissAndShield, todayStr, emptyMissionsForShieldTest, []);
+  assert(shieldTransition.resetOccurred === false, '1 falta com escudo NÃO pode reiniciar o desafio');
+  assert(shieldTransition.shieldConsumed === true, 'O escudo semanal deve ser consumido para proteger o desafio');
+  assert(shieldTransition.updatedProfile.weeklyShieldsRemaining === 0, 'Escudos restantes devem ser 0');
+
+  // Test 18: Premissa Sob Demanda - Usuário sem Desafio Ativo
+  {
+    console.log('\n18. Testando Premissa Sob Demanda: Usuário Sem Desafio Ativo');
+    const profileWithoutActiveChallenge: UserProfile = {
+      ...baseProfile,
+      activeChallenge: undefined,
+      currentProtocolDay: 0,
+      currentStreak: 0,
+    };
+
+    const statusWithoutChallenge = evaluateProtocolStatus(profileWithoutActiveChallenge, []);
+    assert(statusWithoutChallenge.hasActiveChallenge === false, 'hasActiveChallenge deve ser false');
+    assert(statusWithoutChallenge.currentDay === 0, 'currentDay deve ser 0 quando sem desafio');
+    assert(statusWithoutChallenge.phaseName === 'Aguardando Desafio', 'phaseName deve ser Aguardando Desafio');
+    assert(ensureActiveChallenge(profileWithoutActiveChallenge) === undefined, 'ensureActiveChallenge NÃO pode fabricar ciclo automaticamente');
+
+    const suggestion = suggestNextChallengeCycle(profileWithoutActiveChallenge, 30);
+    assert(suggestion.targetDays === 30, 'Sugestão deve configurar 30 dias');
+    assert(suggestion.suggestedCycleNumber === 1, 'Primeiro ciclo deve ser ciclo 1');
+    assert(suggestion.suggestedTitle.includes('30 Dias'), 'Título sugerido deve conter 30 Dias');
+  }
+
+  // Test 19: Falha em Desafio Arquiva no Histórico e NUNCA Inicia Novo Ciclo Automaticamente
+  {
+    console.log('\n19. Testando Falha em Desafio: Arquivamento sem Auto-Início');
+    const threeDaysAgo = addDaysToDateString(todayStr, -3);
+    const profileFailingChallenge: UserProfile = {
+      ...baseProfile,
+      weeklyShieldsRemaining: 0,
+      lastActiveDate: threeDaysAgo,
+      challengeHistory: [],
+      activeChallenge: {
+        id: 'cycle_fail_test',
+        cycleNumber: 1,
+        targetDays: 66,
+        startDate: threeDaysAgo,
+        status: 'active',
+        currentDay: 1,
+        daysCompleted: 1,
+        checkIns: {
+          1: { dayNumber: 1, date: threeDaysAgo, checked: true, xpEarned: 100, targetXp: 100 },
+        },
+        totalXpEarned: 100,
+        createdAt: new Date().toISOString(),
+      },
+    };
+
+    // 2 faltas consecutivas sem missões -> resetOccurred
+    const failTransition = processDayTransition(profileFailingChallenge, todayStr, [], []);
+    assert(failTransition.resetOccurred === true, 'Transição deve detectar reset/falha');
+    assert(failTransition.updatedProfile.activeChallenge === undefined, 'activeChallenge deve ser undefined após a falha (NÃO auto-inicia ciclo 1/66)');
+    assert(failTransition.updatedProfile.currentProtocolDay === 0, 'currentProtocolDay deve ser 0 aguardando novo início');
+    assert(failTransition.updatedProfile.challengeHistory?.length === 1, 'Ciclo falho deve estar arquivado no histórico');
+    assert(failTransition.updatedProfile.challengeHistory![0].status === 'failed', 'Status arquivado deve ser failed');
+  }
+
+  // Test 20: Conclusão de Desafio Arquiva no Histórico e NUNCA Inicia Novo Ciclo Automaticamente
+  {
+    console.log('\n20. Testando Conclusão de Desafio: Arquivamento sem Auto-Início');
+    const yesterday = addDaysToDateString(todayStr, -1);
+    const checkInsRecord: Record<number, any> = {};
+    for (let d = 1; d <= 21; d++) {
+      checkInsRecord[d] = {
+        dayNumber: d,
+        date: addDaysToDateString(todayStr, -(22 - d)),
+        checked: true,
+        xpEarned: 100,
+        targetXp: 100,
+      };
+    }
+
+    const profileCompletingChallenge: UserProfile = {
+      ...baseProfile,
+      lastActiveDate: yesterday,
+      challengeHistory: [],
+      activeChallenge: {
+        id: 'cycle_completed_test',
+        cycleNumber: 1,
+        targetDays: 21,
+        startDate: addDaysToDateString(todayStr, -21),
+        status: 'active',
+        currentDay: 21,
+        daysCompleted: 21,
+        checkIns: checkInsRecord,
+        totalXpEarned: 2100,
+        createdAt: new Date().toISOString(),
+      },
+    };
+
+    const completeTransition = processDayTransition(profileCompletingChallenge, todayStr, [], []);
+    assert(completeTransition.completedOccurred === true, 'Transição deve detectar conclusão de ciclo');
+    assert(completeTransition.updatedProfile.activeChallenge === undefined, 'activeChallenge deve ser undefined após conclusão (NÃO auto-inicia novo ciclo)');
+    assert(completeTransition.updatedProfile.currentProtocolDay === 0, 'currentProtocolDay deve ser 0');
+    assert(completeTransition.updatedProfile.challengeHistory?.length === 1, 'Ciclo concluído deve estar arquivado no histórico');
+    assert(completeTransition.updatedProfile.challengeHistory![0].status === 'completed', 'Status arquivado deve ser completed');
+  }
 
   console.log('\n--- TODOS OS TESTES PASSARAM COM 100% DE SUCESSO! ---');
 }

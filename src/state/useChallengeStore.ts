@@ -254,17 +254,21 @@ export function buildSyncedOfficial66Challenge(profile: UserProfile, missions: M
   }));
 
   const cycle = profile.activeChallenge;
-  const cycleNumber = cycle?.cycleNumber || 1;
+  const history = profile.challengeHistory || [];
+  const cycleNumber = cycle?.cycleNumber || (history.length + 1);
+  const isActive = Boolean(cycle && cycle.status === 'active');
 
   return {
     id: 'challenge_official_66',
     title: `Desafio 66 Dias — Ciclo #${cycleNumber}`,
-    description: 'O protocolo supremo de neuroplasticidade e formação de hábitos lendários. 100% sincronizado com a tela inicial.',
+    description: isActive
+      ? 'O protocolo supremo de neuroplasticidade e formação de hábitos lendários. 100% sincronizado com a tela inicial.'
+      : 'Sugestão de protocolo: Monte suas missões de forma personalizada e inicie quando estiver pronto.',
     category: 'Neuroplasticidade & Hábitos',
     icon: '⚡',
     targetDays: 66,
-    startDate: cycle?.startDate || profile.lastActiveDate || getTodayString(),
-    status: cycle?.status === 'completed' ? 'completed' : 'active',
+    startDate: cycle?.startDate || getTodayString(),
+    status: isActive ? (cycle?.status === 'completed' ? 'completed' : 'active') : 'paused',
     isOfficial66: true,
     habits,
     createdAt: cycle?.createdAt || profile.createdAt || new Date().toISOString(),
@@ -327,6 +331,10 @@ export const useChallengeStore = create<ChallengeStoreState>()(
       openDetailModal: (challengeId: string) => {
         if (challengeId === 'challenge_official_66') {
           const profile = useUserStore.getState().profile;
+          if (!profile.activeChallenge || profile.activeChallenge.status !== 'active') {
+            useUserStore.getState().openStartChallengeModal();
+            return;
+          }
           const missions = useHabitStore.getState().missions;
           const official = buildSyncedOfficial66Challenge(profile, missions);
           set({

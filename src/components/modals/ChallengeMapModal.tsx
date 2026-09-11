@@ -32,10 +32,49 @@ export const ChallengeMapModal: React.FC<ChallengeMapModalProps> = ({ isOpen, on
   const protocolStatus = evaluateProtocolStatus(profile, missions);
   const { currentDay, activeChallenge, xpProgress } = protocolStatus;
 
+  if (!activeChallenge) {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-3.5 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+        <div className="bg-slate-900 border-2 border-shinobi-gold/60 w-full max-w-md rounded-3xl p-6 shadow-2xl text-center space-y-4">
+          <div className="w-12 h-12 mx-auto rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+            <Map className="w-6 h-6" />
+          </div>
+          <h3 className="font-cinzel font-bold text-slate-100 text-lg">
+            Nenhum Desafio Ativo
+          </h3>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            Você não possui um ciclo de desafio em andamento no momento. Inicie um desafio para acompanhar o mapa de jornada dia a dia.
+          </p>
+          <div className="flex justify-center gap-3 pt-2">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl border border-slate-700 transition-colors"
+            >
+              Fechar
+            </button>
+            <button
+              onClick={() => {
+                onClose();
+                useUserStore.getState().openStartChallengeModal();
+              }}
+              className="px-5 py-2 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 text-xs font-bold rounded-xl shadow-glow-gold transition-all"
+            >
+              Iniciar Desafio ⚡
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const targetDays = activeChallenge.targetDays || 66;
+  const p1 = Math.max(1, Math.floor(targetDays / 3));
+  const p2 = Math.max(p1 + 1, Math.floor((targetDays * 2) / 3));
+
   const phases = [
-    { name: 'Fase 1: Despertar', range: 'Dias 1 a 22', start: 1, end: 22, color: 'text-rose-400', border: 'border-rose-500/40' },
-    { name: 'Fase 2: Forja', range: 'Dias 23 a 44', start: 23, end: 44, color: 'text-amber-400', border: 'border-amber-500/40' },
-    { name: 'Fase 3: Mestria', range: 'Dias 45 a 66', start: 45, end: 66, color: 'text-emerald-400', border: 'border-emerald-500/40' },
+    { name: 'Fase 1: Despertar', range: `Dias 1 a ${p1}`, start: 1, end: p1, color: 'text-rose-400', border: 'border-rose-500/40' },
+    { name: 'Fase 2: Forja', range: `Dias ${p1 + 1} a ${p2}`, start: p1 + 1, end: p2, color: 'text-amber-400', border: 'border-amber-500/40' },
+    { name: 'Fase 3: Mestria', range: `Dias ${p2 + 1} a ${targetDays}`, start: p2 + 1, end: targetDays, color: 'text-emerald-400', border: 'border-emerald-500/40' },
   ];
 
   return (
@@ -49,7 +88,7 @@ export const ChallengeMapModal: React.FC<ChallengeMapModalProps> = ({ isOpen, on
             </div>
             <div>
               <h3 className="font-cinzel font-bold text-slate-100 text-base sm:text-lg flex items-center gap-2">
-                <span>Mapa dos 66 Dias</span>
+                <span>{activeChallenge.title || `Mapa dos ${targetDays} Dias`}</span>
                 <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-shinobi-gold/20 text-shinobi-gold border border-shinobi-gold/40">
                   Ciclo #{activeChallenge.cycleNumber || 1}
                 </span>
@@ -74,7 +113,7 @@ export const ChallengeMapModal: React.FC<ChallengeMapModalProps> = ({ isOpen, on
             <div className="p-2.5 bg-slate-900/80 rounded-xl border border-slate-800">
               <span className="text-slate-400 block text-[10px]">Dia Atual</span>
               <span className="font-bold text-shinobi-gold font-mono text-base">
-                Dia {currentDay} / 66
+                Dia {currentDay} / {targetDays}
               </span>
             </div>
 

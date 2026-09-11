@@ -11,9 +11,11 @@ import {
   ChevronUp, 
   RotateCcw,
   Sparkles,
-  Flame
+  Flame,
+  Zap
 } from 'lucide-react';
 import { ProtocolChallengeCycle } from '../../core/types';
+import { formatDateBR } from '../../core/streakEngine';
 
 interface ChallengeHistoryModalProps {
   isOpen: boolean;
@@ -21,7 +23,7 @@ interface ChallengeHistoryModalProps {
 }
 
 export const ChallengeHistoryModal: React.FC<ChallengeHistoryModalProps> = ({ isOpen, onClose }) => {
-  const { profile, startNewChallengeCycle } = useUserStore();
+  const { profile, openStartChallengeModal, restoreArchivedCycle } = useUserStore();
   const [expandedCycleId, setExpandedCycleId] = useState<string | null>(null);
 
   if (!isOpen) return null;
@@ -33,10 +35,9 @@ export const ChallengeHistoryModal: React.FC<ChallengeHistoryModalProps> = ({ is
     setExpandedCycleId(expandedCycleId === id ? null : id);
   };
 
-  const handleManualRestart = () => {
-    if (window.confirm('Deseja encerrar o ciclo atual, arquivá-lo no histórico e iniciar um novo Desafio dos 66 Dias no Dia 1/66?')) {
-      startNewChallengeCycle();
-    }
+  const handleOpenStartModal = () => {
+    onClose();
+    openStartChallengeModal();
   };
 
   return (
@@ -67,18 +68,18 @@ export const ChallengeHistoryModal: React.FC<ChallengeHistoryModalProps> = ({ is
 
         {/* Content */}
         <div className="p-4 sm:p-6 space-y-5 overflow-y-auto flex-1">
-          {/* Card do Ciclo Ativo Atual */}
-          {activeCycle && (
+          {/* Card do Ciclo Ativo Atual ou Convite para Iniciar */}
+          {activeCycle && activeCycle.status === 'active' ? (
             <div className="pergaminho-bg rounded-2xl border-2 border-shinobi-gold/70 p-4 sm:p-5 shadow-lg space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-shinobi-gold/30 pb-2.5">
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-glow-jade" />
                   <h4 className="font-cinzel font-bold text-slate-100 text-sm sm:text-base">
-                    Ciclo #{activeCycle.cycleNumber || 1} — Em Andamento
+                    {activeCycle.title || 'Desafio dos 66 Dias'} — Ciclo #{activeCycle.cycleNumber || 1}
                   </h4>
                 </div>
                 <span className="text-xs font-mono text-shinobi-gold">
-                  Iniciado em: {new Date(activeCycle.startDate).toLocaleDateString('pt-BR')}
+                  Iniciado em: {formatDateBR(activeCycle.startDate)}
                 </span>
               </div>
 
@@ -86,7 +87,7 @@ export const ChallengeHistoryModal: React.FC<ChallengeHistoryModalProps> = ({ is
                 <div className="p-2 rounded-xl bg-slate-950/80 border border-slate-800">
                   <span className="text-slate-400 block text-[10px]">Dia Atual</span>
                   <span className="font-bold text-shinobi-gold font-mono text-sm">
-                    Dia {activeCycle.currentDay || profile.currentProtocolDay || 1} / 66
+                    Dia {activeCycle.currentDay || profile.currentProtocolDay || 1} / {activeCycle.targetDays || 66}
                   </span>
                 </div>
                 <div className="p-2 rounded-xl bg-slate-950/80 border border-slate-800">
@@ -109,6 +110,25 @@ export const ChallengeHistoryModal: React.FC<ChallengeHistoryModalProps> = ({ is
                 </div>
               </div>
             </div>
+          ) : (
+            <div className="p-4 sm:p-5 rounded-2xl bg-slate-950/80 border-2 border-dashed border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  Nenhum Ciclo em Andamento
+                </span>
+                <p className="text-[11px] text-slate-400">
+                  Você não tem nenhum desafio ativo no momento. Inicie um novo ciclo quando estiver pronto!
+                </p>
+              </div>
+              <button
+                onClick={handleOpenStartModal}
+                className="px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 text-slate-950 text-xs font-bold rounded-xl shadow-glow-gold transition-all flex items-center justify-center gap-1.5 shrink-0"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span>Personalizar e Iniciar ⚡</span>
+              </button>
+            </div>
           )}
 
           {/* Lista de Ciclos Arquivados */}
@@ -120,12 +140,12 @@ export const ChallengeHistoryModal: React.FC<ChallengeHistoryModalProps> = ({ is
               </h4>
 
               <button
-                onClick={handleManualRestart}
+                onClick={handleOpenStartModal}
                 className="text-[11px] font-mono text-amber-400 hover:text-amber-300 flex items-center gap-1 hover:underline"
-                title="Arquivar o ciclo atual e começar um novo ciclo 1/66"
+                title="Personalizar e iniciar um novo desafio"
               >
-                <RotateCcw className="w-3 h-3" />
-                <span>Reiniciar Novo Ciclo 1/66</span>
+                <Zap className="w-3 h-3" />
+                <span>Iniciar Novo Desafio</span>
               </button>
             </div>
 
@@ -164,34 +184,52 @@ export const ChallengeHistoryModal: React.FC<ChallengeHistoryModalProps> = ({ is
                                   ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                                   : 'bg-rose-500/20 text-rose-400 border-rose-500/40'
                               }`}>
-                                {isCompleted ? 'CONCLUÍDO (66/66)' : (cycle.failedReason || 'ENCERRADO (2 Faltas)')}
+                                {isCompleted ? `CONCLUÍDO (${cycle.targetDays || 66}/${cycle.targetDays || 66})` : (cycle.failedReason || 'ENCERRADO')}
                               </span>
                             </div>
 
                             <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-                              {cycle.startDate} até {cycle.endDate || '—'} • {cycle.daysCompleted || 0}/66 presenças • {cycle.totalXpEarned || 0} XP
+                              {formatDateBR(cycle.startDate)} até {cycle.endDate ? formatDateBR(cycle.endDate) : '—'} • {cycle.daysCompleted || 0}/{cycle.targetDays || 66} presenças • {cycle.totalXpEarned || 0} XP
                             </div>
                           </div>
                         </div>
 
-                        <button
-                          onClick={() => toggleExpand(cycle.id)}
-                          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold rounded-xl border border-slate-700 transition-colors flex items-center gap-1.5 self-start sm:self-auto"
-                        >
-                          <span>{isExpanded ? 'Ocultar Detalhes' : 'Ver 66 Dias'}</span>
-                          {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                        </button>
+                        <div className="flex items-center gap-2 self-start sm:self-auto">
+                          {!isCompleted && (
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`Deseja restaurar o Ciclo #${cycle.cycleNumber || 1} como seu desafio ativo atual?`)) {
+                                  restoreArchivedCycle(cycle.id);
+                                  onClose();
+                                }
+                              }}
+                              className="px-3 py-1.5 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 text-xs font-semibold rounded-xl border border-rose-800 transition-colors flex items-center gap-1.5"
+                              title="Restaurar este ciclo como ativo"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                              <span>Restaurar Ciclo</span>
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => toggleExpand(cycle.id)}
+                            className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold rounded-xl border border-slate-700 transition-colors flex items-center gap-1.5"
+                          >
+                            <span>{isExpanded ? 'Ocultar Detalhes' : `Ver ${cycle.targetDays || 66} Dias`}</span>
+                            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
                       </div>
 
-                      {/* Mapa Mini dos 66 Dias Deste Ciclo Específico */}
+                      {/* Mapa Mini dos Dias Deste Ciclo Específico */}
                       {isExpanded && (
                         <div className="mt-4 pt-3 border-t border-slate-800 space-y-2 animate-in fade-in">
                           <span className="text-[11px] text-slate-400 block font-mono">
-                            Mapa de Presença dos 66 Dias do Ciclo #{cycle.cycleNumber}:
+                            Mapa de Presença dos {cycle.targetDays || 66} Dias do Ciclo #{cycle.cycleNumber}:
                           </span>
 
                           <div className="grid grid-cols-6 sm:grid-cols-11 gap-1">
-                            {Array.from({ length: 66 }, (_, i) => {
+                            {Array.from({ length: cycle.targetDays || 66 }, (_, i) => {
                               const dayNum = i + 1;
                               const record = cycle.checkIns?.[dayNum];
                               const isChecked = Boolean(record?.checked);

@@ -5,6 +5,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { RadarChart } from './RadarChart';
 import { getLevelProgress } from '../../core/xpEngine';
 import { getDefaultRyoReward } from '../../core/ryoEngine';
+import { evaluateProtocolStatus } from '../../core/streakEngine';
 import { syncService } from '../../services/syncService';
 import { supabase } from '../../services/supabase';
 import { soundFx } from '../../utils/audio';
@@ -60,10 +61,14 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
     closeChallengeMapModal,
     isChallengeHistoryModalOpen,
     openChallengeHistoryModal,
-    closeChallengeHistoryModal
+    closeChallengeHistoryModal,
+    openStartChallengeModal
   } = useUserStore();
   const { missionLogs, recalibrateFromMissions, missions } = useHabitStore();
   const { getRankByLevel, theme } = useTheme();
+
+  const protocolStatus = evaluateProtocolStatus(profile, missions);
+  const hasActiveChallenge = protocolStatus.hasActiveChallenge;
 
   // Sub-abas do Pergaminho de Status
   const [activeSubTab, setActiveSubTab] = useState<'stats' | 'inventory' | 'profile' | 'history'>('stats');
@@ -331,19 +336,32 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
             {/* Dia do Protocolo */}
             <button
               type="button"
-              onClick={openChallengeMapModal}
+              onClick={hasActiveChallenge ? openChallengeMapModal : openStartChallengeModal}
               className="bg-slate-900 border-2 border-slate-700 hover:border-shinobi-gold p-4 rounded-2xl text-center space-y-1 shadow-xl hover:scale-105 transition-all cursor-pointer group"
-              title="Clique para ver o mapa completo dos 66 dias"
+              title={hasActiveChallenge ? "Clique para ver o mapa completo do desafio" : "Clique para iniciar um desafio"}
             >
               <span className="text-[10px] font-mono font-bold uppercase text-slate-300 group-hover:text-shinobi-gold tracking-wider flex items-center justify-center gap-1">
-                <Map className="w-3 h-3 text-shinobi-gold" /> PROTOCOLO UCL
+                <Map className="w-3 h-3 text-shinobi-gold" /> PROTOCOLO
               </span>
-              <div className="text-2xl font-cinzel font-bold text-shinobi-gold">
-                Dia {profile.activeChallenge?.currentDay || profile.currentProtocolDay || 1}<span className="text-xs font-mono text-slate-400">/66</span>
-              </div>
-              <p className="text-[10px] text-slate-300 group-hover:text-slate-200">
-                {profile.currentProtocolDay <= 22 ? 'Fase 1: Despertar' : profile.currentProtocolDay <= 44 ? 'Fase 2: Forja' : 'Fase 3: Mestria'}
-              </p>
+              {hasActiveChallenge ? (
+                <>
+                  <div className="text-2xl font-cinzel font-bold text-shinobi-gold">
+                    Dia {profile.activeChallenge?.currentDay || 1}<span className="text-xs font-mono text-slate-400">/{profile.activeChallenge?.targetDays || 66}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-300 group-hover:text-slate-200">
+                    {protocolStatus.phaseName}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="text-sm font-cinzel font-bold text-amber-400 py-1">
+                    Sem Desafio Ativo
+                  </div>
+                  <p className="text-[10px] text-amber-400/80 group-hover:text-amber-300">
+                    Toque para Iniciar ⚡
+                  </p>
+                </>
+              )}
             </button>
 
             {/* Sequência Atual */}
@@ -1063,31 +1081,43 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
             </div>
           )}
 
-          {/* Seção dos Desafios de 66 Dias e Ciclos */}
+          {/* Seção dos Desafios e Ciclos */}
           <div className="pergaminho-bg rounded-2xl border-2 border-shinobi-gold/60 p-4 shadow-lg space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h4 className="font-cinzel text-sm font-bold text-slate-100 flex items-center gap-2">
                   <Award className="w-4 h-4 text-shinobi-gold" />
-                  Desafio dos 66 Dias — Ciclo Atual #{profile.activeChallenge?.cycleNumber || 1}
+                  {hasActiveChallenge && profile.activeChallenge
+                    ? `${profile.activeChallenge.title || 'Desafio dos 66 Dias'} — Ciclo Atual #${profile.activeChallenge.cycleNumber || 1}`
+                    : 'Desafio — Nenhum Ciclo em Andamento'}
                 </h4>
                 <p className="text-[11px] text-slate-400">
-                  {profile.challengeHistory?.length || 0} ciclos arquivados no histórico • Regra de no máximo 1 falta/semana
+                  {profile.challengeHistory?.length || 0} ciclos arquivados no histórico • {hasActiveChallenge && profile.activeChallenge ? `Meta de ${profile.activeChallenge.targetDays} dias • Regra de no máximo 1 falta/semana` : 'Aguardando você iniciar um novo desafio personalizado'}
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
-                <button
-                  onClick={openChallengeMapModal}
-                  className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-shinobi-gold border border-shinobi-gold/50 rounded-xl text-xs font-bold transition-all shadow flex items-center gap-1"
-                >
-                  <Map className="w-3.5 h-3.5" />
-                  <span>Mapa 66 Dias</span>
-                </button>
+                {hasActiveChallenge ? (
+                  <button
+                    onClick={openChallengeMapModal}
+                    className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-shinobi-gold border border-shinobi-gold/50 rounded-xl text-xs font-bold transition-all shadow flex items-center gap-1"
+                  >
+                    <Map className="w-3.5 h-3.5" />
+                    <span>Mapa da Jornada</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={openStartChallengeModal}
+                    className="px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 text-xs font-bold rounded-xl shadow-glow-gold transition-all flex items-center gap-1.5 animate-pulse"
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>Iniciar Desafio</span>
+                  </button>
+                )}
 
                 <button
                   onClick={openChallengeHistoryModal}
-                  className="px-3.5 py-1.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 text-xs font-bold rounded-xl shadow-glow-gold transition-all flex items-center gap-1.5"
+                  className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-amber-400 border border-amber-500/40 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
                 >
                   <History className="w-3.5 h-3.5" />
                   <span>Área de Histórico</span>

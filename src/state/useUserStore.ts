@@ -11,7 +11,8 @@ import {
   calculateDailyXpProgress, 
   createNewChallengeCycle,
   getAllChallengePresenceDates,
-  calculateChallengeStreak
+  calculateChallengeStreak,
+  reconcileChallengeCycleWithMissions
 } from '../core/streakEngine';
 import { allGameItems } from '../core/itemsData';
 import { teachingCards } from '../core/cardsData';
@@ -54,9 +55,9 @@ const defaultProfile: UserProfile = {
     espirito: 0,
     genjutsu: 0,
   },
-  currentProtocolDay: 1,
-  currentStreak: 1,
-  bestStreak: 1,
+  currentProtocolDay: 0,
+  currentStreak: 0,
+  bestStreak: 0,
   weeklyShieldsRemaining: 1,
   weeklyShieldsMax: 1,
   lastActiveDate: getTodayString(),
@@ -72,7 +73,7 @@ const defaultProfile: UserProfile = {
   unlockedCards: ['card_tai_01'], // Dia 1 apenas
   equippedItems: ['pesos_ferro_negro'],
   inventory: ['pesos_ferro_negro', 'pergaminho_da_sabedoria_antiga'],
-  activeChallenge: createNewChallengeCycle(1, getTodayString()),
+  activeChallenge: undefined,
   challengeHistory: [],
   createdAt: new Date().toISOString(),
 };
@@ -81,8 +82,10 @@ interface UserStoreState {
   profile: UserProfile;
   activeLevelUpModal: { oldLevel: number; newLevel: number; oldRank: UserRankId; newRank: UserRankId } | null;
   activeResetModal: { cycle: ProtocolChallengeCycle } | null;
+  activeCompletionModal: { cycle: ProtocolChallengeCycle } | null;
   isChallengeHistoryModalOpen: boolean;
   isChallengeMapModalOpen: boolean;
+  isStartChallengeModalOpen: boolean;
   
   // Actions
   updateProfile: (updates: Partial<UserProfile>) => void;
@@ -113,14 +116,20 @@ interface UserStoreState {
   recalculateStreak: () => { currentStreak: number; bestStreak: number };
   consumeWeeklyShield: () => boolean;
 
-  // 66-Day Challenge & Daily Presence Check-in
+  // Challenge Lifecycle & Daily Presence Check-in
   toggleDailyCheckIn: (dayNumber?: number) => { success: boolean; reason?: string; isChecked?: boolean; ryoEarned?: number };
+  startChallenge: (params?: { title?: string; targetDays?: number; startDate?: string; missions?: any[] }) => ProtocolChallengeCycle;
   startNewChallengeCycle: () => void;
+  restoreArchivedCycle: (cycleId: string) => boolean;
+  reconcileChallengeFromMissions: () => void;
   dismissResetModal: () => void;
+  dismissCompletionModal: () => void;
   openChallengeHistoryModal: () => void;
   closeChallengeHistoryModal: () => void;
   openChallengeMapModal: () => void;
   closeChallengeMapModal: () => void;
+  openStartChallengeModal: () => void;
+  closeStartChallengeModal: () => void;
 }
 
 export const useUserStore = create<UserStoreState>()(
@@ -128,6 +137,11 @@ export const useUserStore = create<UserStoreState>()(
     (set, get) => ({
       profile: defaultProfile,
       activeLevelUpModal: null,
+      activeResetModal: null,
+      activeCompletionModal: null,
+      isChallengeHistoryModalOpen: false,
+      isChallengeMapModalOpen: false,
+      isStartChallengeModalOpen: false,
 
       updateProfile: (updates) => {
         set((state) => ({
@@ -184,10 +198,12 @@ export const useUserStore = create<UserStoreState>()(
               customEmoji: gender === 'female' ? '🥷‍♀️' : '🥷',
             },
             hasCompletedOnboarding: true,
-            currentProtocolDay: 1,
-            currentStreak: 1,
+            currentProtocolDay: 0,
+            currentStreak: 0,
+            activeChallenge: undefined,
             lastActiveDate: getTodayString(),
           },
+          isStartChallengeModalOpen: true,
         }));
       },
 
@@ -375,10 +391,6 @@ export const useUserStore = create<UserStoreState>()(
         }
       },
 
-      activeResetModal: null,
-      isChallengeHistoryModalOpen: false,
-      isChallengeMapModalOpen: false,
-
       recalculateStreak: () => {
         const { profile } = get();
         const customChallenges = useChallengeStore.getState().challenges || [];
@@ -408,27 +420,47 @@ export const useUserStore = create<UserStoreState>()(
         const missions = useHabitStore.getState().missions;
         const customChallenges = useChallengeStore.getState().challenges || [];
 
-        if (profile.lastActiveDate === today) {
+        // Reconciliação preventiva: garante que presenças de missões não sejam perdidas
+        const reconciliation = reconcileChallengeCycleWithMissions(profile, missions, customChallenges);
+        let activeProfile = profile;
+        if (reconciliation.reconciledProfile && Object.keys(reconciliation.reconciledProfile).length > 0) {
+          activeProfile = {
+            ...profile,
+            ...reconciliation.reconciledProfile,
+          };
+          set((state) => ({
+            profile: {
+              ...state.profile,
+              ...reconciliation.reconciledProfile,
+            },
+            activeResetModal: null,
+          }));
+        }
+
+        if (activeProfile.lastActiveDate === today) {
           // Reconcilia a sequência de presença
           get().recalculateStreak();
           return;
         }
 
-        const transition = processDayTransition(profile, today, missions, customChallenges);
+        const transition = processDayTransition(activeProfile, today, missions, customChallenges);
 
         if (transition.updatedProfile && Object.keys(transition.updatedProfile).length > 0) {
-          const newCurrentDay = Math.min(
-            66,
-            Math.max(
-              1,
-              transition.updatedProfile.activeChallenge?.currentDay ||
-                transition.updatedProfile.currentProtocolDay ||
-                profile.activeChallenge?.currentDay ||
-                profile.currentProtocolDay ||
-                1
-            )
-          );
-          const syncedCards = getReconciledUnlockedCards(newCurrentDay);
+          const hasActive = Boolean(transition.updatedProfile.activeChallenge && transition.updatedProfile.activeChallenge.status === 'active');
+          const newCurrentDay = hasActive
+            ? Math.min(
+                66,
+                Math.max(
+                  1,
+                  transition.updatedProfile.activeChallenge?.currentDay ||
+                    transition.updatedProfile.currentProtocolDay ||
+                    1
+                )
+              )
+            : 0;
+          const syncedCards = newCurrentDay > 0
+            ? getReconciledUnlockedCards(newCurrentDay)
+            : (activeProfile.unlockedCards || ['card_tai_01']);
 
           set((state) => ({
             profile: {
@@ -439,6 +471,9 @@ export const useUserStore = create<UserStoreState>()(
             activeResetModal: transition.resetOccurred && transition.archivedCycle
               ? { cycle: transition.archivedCycle }
               : state.activeResetModal,
+            activeCompletionModal: transition.completedOccurred && transition.completedCycle
+              ? { cycle: transition.completedCycle }
+              : state.activeCompletionModal,
           }));
         }
       },
@@ -459,10 +494,18 @@ export const useUserStore = create<UserStoreState>()(
 
       toggleDailyCheckIn: (dayNumber?: number) => {
         const { profile } = get();
+        if (!profile.activeChallenge || profile.activeChallenge.status !== 'active') {
+          return {
+            success: false,
+            reason: 'Você não possui nenhum desafio ativo no momento. Personalize e inicie um desafio para marcar presença!',
+            isChecked: false,
+          };
+        }
+
+        const activeCycle = profile.activeChallenge;
         const missions = useHabitStore.getState().missions;
         const xpProgress = calculateDailyXpProgress(missions);
 
-        const activeCycle = ensureActiveChallenge(profile);
         const targetDay = dayNumber !== undefined 
           ? Math.min(66, Math.max(1, dayNumber)) 
           : Math.min(66, Math.max(1, activeCycle.currentDay || profile.currentProtocolDay || 1));
@@ -553,40 +596,139 @@ export const useUserStore = create<UserStoreState>()(
         };
       },
 
-      startNewChallengeCycle: () => {
+      startChallenge: (params) => {
         const { profile } = get();
+        const history = profile.challengeHistory || [];
+        const nextCycleNum = (history.length || 0) + 1;
         const todayStr = getTodayString();
-        const activeCycle = ensureActiveChallenge(profile);
-        const history = [...(profile.challengeHistory || [])];
+        const startDate = params?.startDate || todayStr;
 
-        const archived: ProtocolChallengeCycle = {
-          ...activeCycle,
-          endDate: todayStr,
-          status: activeCycle.daysCompleted >= 50 ? 'completed' : 'failed',
-          failedReason: activeCycle.daysCompleted >= 50 ? 'Concluído com Honra' : 'Reiniciado pelo Usuário',
+        const newCycle: ProtocolChallengeCycle = {
+          id: `cycle_${nextCycleNum}_${Date.now()}`,
+          cycleNumber: nextCycleNum,
+          startDate,
+          status: 'active',
+          currentDay: 1,
+          daysCompleted: 0,
+          checkIns: {},
+          totalXpEarned: 0,
+          createdAt: new Date().toISOString(),
         };
 
-        const nextCycleNum = (activeCycle.cycleNumber || 1) + 1;
-        const newCycle = createNewChallengeCycle(nextCycleNum, todayStr);
+        if (params?.missions && params.missions.length > 0) {
+          useHabitStore.getState().setCustomMissionList(params.missions);
+        }
+
+        const syncedCards = getReconciledUnlockedCards(1);
 
         set((state) => ({
           profile: {
             ...state.profile,
-            currentProtocolDay: 1,
-            currentStreak: 0,
-            unlockedCards: ['card_tai_01'],
             activeChallenge: newCycle,
-            challengeHistory: [archived, ...history],
+            currentProtocolDay: 1,
+            unlockedCards: syncedCards,
+          },
+          activeResetModal: null,
+          activeCompletionModal: null,
+          isStartChallengeModalOpen: false,
+        }));
+
+        soundFx.playLevelUp();
+        triggerLevelUpConfetti();
+        get().recalculateStreak();
+
+        return newCycle;
+      },
+
+      startNewChallengeCycle: () => {
+        const { profile } = get();
+        const todayStr = getTodayString();
+        const history = [...(profile.challengeHistory || [])];
+
+        // Se houver um ciclo ativo sendo reiniciado manualmente, arquiva antes
+        if (profile.activeChallenge && profile.activeChallenge.status === 'active') {
+          const archived: ProtocolChallengeCycle = {
+            ...profile.activeChallenge,
+            endDate: todayStr,
+            status: profile.activeChallenge.daysCompleted >= 50 ? 'completed' : 'failed',
+            failedReason: profile.activeChallenge.daysCompleted >= 50 ? 'Concluído com Honra' : 'Reiniciado pelo Usuário',
+          };
+
+          set((state) => ({
+            profile: {
+              ...state.profile,
+              activeChallenge: undefined,
+              currentProtocolDay: 0,
+              challengeHistory: [archived, ...history],
+            },
+            isStartChallengeModalOpen: true,
+            activeResetModal: null,
+          }));
+        } else {
+          set({ isStartChallengeModalOpen: true, activeResetModal: null });
+        }
+      },
+
+      restoreArchivedCycle: (cycleId: string) => {
+        const { profile } = get();
+        const history = profile.challengeHistory || [];
+        const cycleToRestore = history.find((c) => c.id === cycleId);
+        if (!cycleToRestore) return false;
+
+        const remainingHistory = history.filter((c) => c.id !== cycleId);
+        const restoredCycle: ProtocolChallengeCycle = {
+          ...cycleToRestore,
+          status: 'active',
+          endDate: undefined,
+          failedReason: undefined,
+          failedWeek: undefined,
+        };
+
+        const targetDay = restoredCycle.currentDay || Math.max(1, restoredCycle.daysCompleted);
+        const syncedCards = getReconciledUnlockedCards(targetDay);
+
+        set((state) => ({
+          profile: {
+            ...state.profile,
+            activeChallenge: restoredCycle,
+            challengeHistory: remainingHistory,
+            currentProtocolDay: targetDay,
+            unlockedCards: syncedCards,
           },
           activeResetModal: null,
         }));
 
-        // Recalcula o streak a partir das presenças remanescentes
         get().recalculateStreak();
+        return true;
+      },
+
+      reconcileChallengeFromMissions: () => {
+        const { profile } = get();
+        const missions = useHabitStore.getState().missions;
+        const customChallenges = useChallengeStore.getState().challenges || [];
+
+        const reconciliation = reconcileChallengeCycleWithMissions(profile, missions, customChallenges);
+        if (reconciliation.reconciledProfile && Object.keys(reconciliation.reconciledProfile).length > 0) {
+          const currentDay = reconciliation.reconciledProfile.currentProtocolDay || profile.currentProtocolDay || 1;
+          const syncedCards = getReconciledUnlockedCards(currentDay);
+
+          set((state) => ({
+            profile: {
+              ...state.profile,
+              ...reconciliation.reconciledProfile,
+              unlockedCards: syncedCards,
+            },
+            activeResetModal: null,
+          }));
+        }
       },
 
       dismissResetModal: () => {
         set({ activeResetModal: null });
+      },
+
+      dismissCompletionModal: () => {
+        set({ activeCompletionModal: null });
       },
 
       openChallengeHistoryModal: () => {
@@ -604,11 +746,24 @@ export const useUserStore = create<UserStoreState>()(
       closeChallengeMapModal: () => {
         set({ isChallengeMapModalOpen: false });
       },
+
+      openStartChallengeModal: () => {
+        set({ isStartChallengeModalOpen: true });
+      },
+
+      closeStartChallengeModal: () => {
+        set({ isStartChallengeModalOpen: false });
+      },
     }),
     {
       name: 'shinobi_user_store_v1',
       onRehydrateStorage: () => (state) => {
         if (state) {
+          // Reconcilia e cura o ciclo dos 66 dias a partir das missões
+          setTimeout(() => {
+            state.reconcileChallengeFromMissions?.();
+          }, 0);
+
           // Reconcilia os pergaminhos desbloqueados com o dia atual do protocolo
           const currentDay = Math.min(
             66,

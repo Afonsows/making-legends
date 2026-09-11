@@ -36,7 +36,12 @@ export const ChallengesView: React.FC = () => {
     closeDetailModal 
   } = useChallengeStore();
 
-  const { profile, openChallengeMapModal } = useUserStore();
+  const { 
+    profile, 
+    openChallengeMapModal, 
+    openChallengeHistoryModal, 
+    openStartChallengeModal 
+  } = useUserStore();
   const { missions } = useHabitStore();
 
   const todayStr = getTodayString();
@@ -48,7 +53,7 @@ export const ChallengesView: React.FC = () => {
   // Outros desafios criados pelo usuário
   const customChallenges = challenges.filter((c) => !c.isOfficial66 && c.id !== 'challenge_official_66');
   
-  const activeChallengesCount = 1 + customChallenges.filter((c) => c.status === 'active').length;
+  const activeChallengesCount = (protocolStatus.hasActiveChallenge ? 1 : 0) + customChallenges.filter((c) => c.status === 'active').length;
   const completedChallengesCount = customChallenges.filter((c) => c.status === 'completed').length;
   const totalHabitsCount = missions.length + customChallenges.reduce((acc, c) => acc + (c.habits?.length || 0), 0);
 
@@ -137,109 +142,177 @@ export const ChallengesView: React.FC = () => {
             <span>Desafio Principal de Formação de Hábito</span>
           </h2>
 
-          <button
-            type="button"
-            onClick={openChallengeMapModal}
-            className="text-[11px] font-mono text-shinobi-gold hover:text-amber-300 flex items-center gap-1 transition-colors"
-          >
-            <Map className="w-3.5 h-3.5" />
-            <span>Ver Mapa dos 66 Dias</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={openChallengeHistoryModal}
+              className="text-[11px] font-mono text-amber-300 hover:text-amber-200 flex items-center gap-1 transition-colors"
+            >
+              <Award className="w-3.5 h-3.5" />
+              <span>Histórico de Ciclos</span>
+            </button>
+
+            {protocolStatus.hasActiveChallenge && (
+              <button
+                type="button"
+                onClick={openChallengeMapModal}
+                className="text-[11px] font-mono text-shinobi-gold hover:text-amber-300 flex items-center gap-1 transition-colors"
+              >
+                <Map className="w-3.5 h-3.5" />
+                <span>Mapa 66 Dias</span>
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="pergaminho-bg rounded-3xl border-2 border-shinobi-gold p-5 sm:p-6 relative overflow-hidden shadow-2xl space-y-4">
-          {/* Filete de Brilho Especular */}
-          <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-shinobi-gold via-white to-transparent pointer-events-none" />
+        {protocolStatus.hasActiveChallenge ? (
+          <div className="pergaminho-bg rounded-3xl border-2 border-shinobi-gold p-5 sm:p-6 relative overflow-hidden shadow-2xl space-y-4">
+            {/* Filete de Brilho Especular */}
+            <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-shinobi-gold via-white to-transparent pointer-events-none" />
 
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="bg-gradient-to-r from-amber-500 to-shinobi-gold text-slate-950 font-extrabold text-[10px] px-3 py-0.5 rounded-full shadow-glow-gold/40 animate-pulse">
-                  ⭐ MAIS POPULAR • FORMAÇÃO DE HÁBITO
-                </span>
-                <span className="text-[10px] font-mono font-bold text-shinobi-gold bg-slate-950/80 px-2.5 py-0.5 rounded-full border border-shinobi-gold/40">
-                  Ciclo #{profile.activeChallenge?.cycleNumber || 1} • {protocolStatus.phaseName} (Fase {protocolStatus.phaseIndex})
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="bg-gradient-to-r from-amber-500 to-shinobi-gold text-slate-950 font-extrabold text-[10px] px-3 py-0.5 rounded-full shadow-glow-gold/40 animate-pulse">
+                    ⭐ MAIS POPULAR • FORMAÇÃO DE HÁBITO
+                  </span>
+                  <span className="text-[10px] font-mono font-bold text-shinobi-gold bg-slate-950/80 px-2.5 py-0.5 rounded-full border border-shinobi-gold/40">
+                    Ciclo #{profile.activeChallenge?.cycleNumber || 1} • {protocolStatus.phaseName} (Fase {protocolStatus.phaseIndex})
+                  </span>
+                </div>
+
+                <h3 className="font-cinzel text-lg sm:text-xl font-bold text-slate-100">
+                  {official66.title}
+                </h3>
+
+                <p className="text-xs text-slate-300 max-w-xl">
+                  O protocolo supremo de neuroplasticidade. 100% sincronizado com suas missões diárias e presença.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => openDetailModal('challenge_official_66')}
+                className="px-5 py-2.5 bg-gradient-to-r from-shinobi-gold to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-glow-gold transition-all duration-300 flex items-center gap-1.5 self-start sm:self-center flex-shrink-0"
+              >
+                <span>Abrir Acompanhamento Detalhado</span>
+                <ChevronRight className="w-4 h-4 stroke-[2.5]" />
+              </button>
+            </div>
+
+            {/* Barra de Progresso e Estatísticas Sincronizadas */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs pt-1 relative z-10">
+              <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
+                <span className="text-slate-400 block text-[10px]">Dia Atual</span>
+                <span className="font-bold text-shinobi-gold font-mono text-sm sm:text-base">
+                  Dia {protocolStatus.currentDay} / 66 ({protocolStatus.protocolProgressPercent}%)
                 </span>
               </div>
 
-              <h3 className="font-cinzel text-lg sm:text-xl font-bold text-slate-100">
-                {official66.title}
-              </h3>
+              <div className="p-2.5 rounded-xl bg-slate-950/80 border border-shinobi-gold/40 shadow-glow-gold/10">
+                <span className="text-slate-400 block text-[10px] flex items-center justify-center gap-1">
+                  <CheckSquare className="w-3 h-3 text-emerald-400" />
+                  <span>Missões no Desafio</span>
+                </span>
+                <span className="font-bold text-emerald-400 font-mono text-sm sm:text-base">
+                  {missions.reduce((acc, m) => {
+                    const days = generateChallengeDays(66, profile.activeChallenge?.startDate, m.completedDates);
+                    return acc + days.filter((d) => d.isCompleted).length;
+                  }, 0)} / {missions.length * 66}
+                </span>
+              </div>
 
-              <p className="text-xs text-slate-300 max-w-xl">
-                O protocolo supremo de neuroplasticidade. 100% sincronizado com suas missões diárias e presença.
-              </p>
+              <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
+                <span className="text-slate-400 block text-[10px]">Missões Concluídas Hoje</span>
+                <span className="font-bold text-cyan-400 font-mono text-sm sm:text-base">
+                  {completedTodayMissionsCount} / {missions.length}
+                </span>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
+                <span className="text-slate-400 block text-[10px]">Dias Restantes</span>
+                <span className="font-bold text-rose-400 font-mono text-sm sm:text-base">
+                  {protocolStatus.totalDaysRemaining} dias
+                </span>
+              </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => openDetailModal('challenge_official_66')}
-              className="px-5 py-2.5 bg-gradient-to-r from-shinobi-gold to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-glow-gold transition-all duration-300 flex items-center gap-1.5 self-start sm:self-center flex-shrink-0"
-            >
-              <span>Abrir Acompanhamento Detalhado</span>
-              <ChevronRight className="w-4 h-4 stroke-[2.5]" />
-            </button>
-          </div>
-
-          {/* Barra de Progresso e Estatísticas Sincronizadas */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs pt-1 relative z-10">
-            <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
-              <span className="text-slate-400 block text-[10px]">Dia Atual</span>
-              <span className="font-bold text-shinobi-gold font-mono text-sm sm:text-base">
-                Dia {protocolStatus.currentDay} / 66 ({protocolStatus.protocolProgressPercent}%)
-              </span>
+            {/* Barra Visual */}
+            <div className="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800 relative z-10">
+              <div
+                className="h-full bg-gradient-to-r from-shinobi-gold via-amber-400 to-emerald-400 rounded-full transition-all duration-500"
+                style={{ width: `${protocolStatus.protocolProgressPercent}%` }}
+              />
             </div>
 
-            <div className="p-2.5 rounded-xl bg-slate-950/80 border border-shinobi-gold/40 shadow-glow-gold/10">
-              <span className="text-slate-400 block text-[10px] flex items-center justify-center gap-1">
-                <CheckSquare className="w-3 h-3 text-emerald-400" />
-                <span>Missões no Desafio</span>
-              </span>
-              <span className="font-bold text-emerald-400 font-mono text-sm sm:text-base">
-                {missions.reduce((acc, m) => {
-                  const days = generateChallengeDays(66, profile.activeChallenge?.startDate, m.completedDates);
-                  return acc + days.filter((d) => d.isCompleted).length;
-                }, 0)} / {missions.length * 66}
-              </span>
-            </div>
-
-            <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
-              <span className="text-slate-400 block text-[10px]">Missões Concluídas Hoje</span>
-              <span className="font-bold text-cyan-400 font-mono text-sm sm:text-base">
-                {completedTodayMissionsCount} / {missions.length}
-              </span>
-            </div>
-
-            <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
-              <span className="text-slate-400 block text-[10px]">Dias Restantes</span>
-              <span className="font-bold text-rose-400 font-mono text-sm sm:text-base">
-                {protocolStatus.totalDaysRemaining} dias
-              </span>
+            {/* Prévia dos Hábitos Sincronizados com a Home */}
+            <div className="flex items-center gap-1.5 flex-wrap pt-1 relative z-10">
+              <span className="text-[10px] text-slate-400 font-mono">Missões monitoradas:</span>
+              {missions.map((m) => (
+                <span
+                  key={m.id}
+                  className="px-2.5 py-0.5 rounded-lg bg-slate-950/90 text-slate-300 border border-slate-800 text-[10px] font-semibold flex items-center gap-1"
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${m.isCompletedToday ? 'bg-emerald-400 shadow-glow-jade' : 'bg-slate-500'}`} />
+                  <span>{m.title}</span>
+                </span>
+              ))}
             </div>
           </div>
+        ) : (
+          <div className="pergaminho-bg rounded-3xl border-2 border-shinobi-gold/70 p-5 sm:p-6 relative overflow-hidden shadow-2xl space-y-4">
+            <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-shinobi-gold via-white to-transparent pointer-events-none" />
 
-          {/* Barra Visual */}
-          <div className="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800 relative z-10">
-            <div
-              className="h-full bg-gradient-to-r from-shinobi-gold via-amber-400 to-emerald-400 rounded-full transition-all duration-500"
-              style={{ width: `${protocolStatus.protocolProgressPercent}%` }}
-            />
-          </div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="bg-gradient-to-r from-amber-500 to-shinobi-gold text-slate-950 font-extrabold text-[10px] px-3 py-0.5 rounded-full shadow-glow-gold/40 animate-pulse">
+                    ⭐ SUGESTÃO DE CICLO #{(profile.challengeHistory?.length || 0) + 1}
+                  </span>
+                  <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-950/80 px-2.5 py-0.5 rounded-full border border-slate-700">
+                    Aguardando seu início
+                  </span>
+                </div>
 
-          {/* Prévia dos Hábitos Sincronizados com a Home */}
-          <div className="flex items-center gap-1.5 flex-wrap pt-1 relative z-10">
-            <span className="text-[10px] text-slate-400 font-mono">Missões monitoradas:</span>
-            {missions.map((m) => (
-              <span
-                key={m.id}
-                className="px-2.5 py-0.5 rounded-lg bg-slate-950/90 text-slate-300 border border-slate-800 text-[10px] font-semibold flex items-center gap-1"
+                <h3 className="font-cinzel text-lg sm:text-xl font-bold text-slate-100">
+                  Desafio 66 Dias — Protocolo UCL de Neuroplasticidade
+                </h3>
+
+                <p className="text-xs text-slate-300 max-w-xl leading-relaxed">
+                  Os desafios agora só começam quando você decidir. Monte suas missões de forma personalizada, escolha a duração e dê início quando estiver 100% pronto!
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={openStartChallengeModal}
+                className="px-6 py-3 bg-gradient-to-r from-shinobi-gold via-amber-400 to-emerald-400 hover:opacity-95 text-slate-950 font-extrabold text-xs sm:text-sm rounded-2xl shadow-glow-gold transition-all duration-300 flex items-center gap-2 self-start sm:self-center flex-shrink-0"
               >
-                <span className={`w-1.5 h-1.5 rounded-full ${m.isCompletedToday ? 'bg-emerald-400 shadow-glow-jade' : 'bg-slate-500'}`} />
-                <span>{m.title}</span>
-              </span>
-            ))}
+                <Flame className="w-4 h-4 stroke-[2.5]" />
+                <span>Personalizar e Iniciar Desafio ⚡</span>
+              </button>
+            </div>
+
+            {/* Prévia das missões sugeridas */}
+            <div className="bg-slate-950/80 rounded-2xl p-4 border border-slate-800 space-y-2 relative z-10">
+              <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                <span>Missões sugeridas para acompanhamento ({missions.length}):</span>
+                <span className="text-shinobi-gold font-bold">Totalmente Customizável</span>
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {missions.map((m) => (
+                  <span
+                    key={m.id}
+                    className="px-2.5 py-1 rounded-lg bg-slate-900 text-slate-300 border border-slate-800 text-[10px] font-semibold flex items-center gap-1.5"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-shinobi-gold" />
+                    <span>{m.title}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Seção 2: Outros Desafios Criados pelo Usuário */}

@@ -16,6 +16,8 @@ import { OnboardingQuiz } from './components/onboarding/OnboardingQuiz';
 import { LevelUpModal } from './components/modals/LevelUpModal';
 import { BossVictoryModal } from './components/modals/BossVictoryModal';
 import { ChallengeResetModal } from './components/modals/ChallengeResetModal';
+import { ChallengeCompletionModal } from './components/modals/ChallengeCompletionModal';
+import { StartChallengeModal } from './components/challenges/StartChallengeModal';
 import { IosInstallModal } from './components/pwa/IosInstallModal';
 import { NotificationSettingsModal } from './components/pwa/NotificationSettingsModal';
 import { AuthModal } from './components/auth/AuthModal';
@@ -24,7 +26,7 @@ import { ShinobiBackground } from './components/ui/ShinobiBackground';
 import { initDailyResetEngine } from './core/dailyResetEngine';
 
 export const AppContent: React.FC = () => {
-  const { profile } = useUserStore();
+  const { profile, isStartChallengeModalOpen, closeStartChallengeModal } = useUserStore();
   const { missions } = useHabitStore();
 
   const [activeTab, setActiveTab] = useState<TabType>('missions');
@@ -35,6 +37,7 @@ export const AppContent: React.FC = () => {
 
   // Inicialização do Motor de Renovação Diária (00:00, Visibilidade, Foco e Intervalo)
   useEffect(() => {
+    useUserStore.getState().reconcileChallengeFromMissions();
     useUserStore.getState().recalculateStreak();
     const cleanupDailyEngine = initDailyResetEngine();
     return cleanupDailyEngine;
@@ -123,6 +126,11 @@ export const AppContent: React.FC = () => {
       <LevelUpModal />
       <BossVictoryModal />
       <ChallengeResetModal />
+      <ChallengeCompletionModal />
+      <StartChallengeModal
+        isOpen={isStartChallengeModalOpen}
+        onClose={closeStartChallengeModal}
+      />
       <IosInstallModal
         isOpen={isIosModalOpen}
         onClose={() => setIsIosModalOpen(false)}
