@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Mission } from '../../core/types';
 import { useTheme } from '../../theme/ThemeContext';
 import { getDefaultRyoReward } from '../../core/ryoEngine';
+import { useHabitStore, missionGrantKey } from '../../state/useHabitStore';
+import { useUserStore } from '../../state/useUserStore';
+import { getTodayString } from '../../core/dateUtils';
 import { 
   Check, 
   Sun, 
@@ -54,6 +57,21 @@ export const MissionCard: React.FC<MissionCardProps> = ({
   const pillar = getPillar(mission.pillarId);
   const rankInfo = getMissionRankInfo(mission.rank);
 
+  // Efeito de "puf" de fumaça quando a missão acaba de ser concluída.
+  // O card concluído é montado em outra lista, então usamos o instante da conclusão.
+  const lastCompletion = useHabitStore((s) => s.lastCompletion);
+  const grant = useUserStore((s) => (mission.isCompletedToday ? s.profile.grants?.[missionGrantKey(mission.id, getTodayString())] : undefined));
+  const shownXp = grant ? grant.xp : mission.xpReward;
+  const shownRyo = grant ? grant.ryo : mission.ryoReward || rankInfo.ryoReward || getDefaultRyoReward(mission.rank);
+  const [poofKey, setPoofKey] = useState(() =>
+    lastCompletion?.id === mission.id && Date.now() - lastCompletion.at < 1500 ? 1 : 0
+  );
+  const wasCompleted = useRef(mission.isCompletedToday);
+  useEffect(() => {
+    if (mission.isCompletedToday && !wasCompleted.current) setPoofKey((k) => k + 1);
+    wasCompleted.current = mission.isCompletedToday;
+  }, [mission.isCompletedToday]);
+
   const getTimeIcon = (time: Mission['timeOfDay']) => {
     switch (time) {
       case 'morning':
@@ -95,6 +113,30 @@ export const MissionCard: React.FC<MissionCardProps> = ({
           : 'liquid-glass-card'
       }`}
     >
+      {/* Kanji do pilar em marca d'água */}
+      <div
+        className="absolute -right-2 -bottom-4 font-kanji text-[84px] leading-none select-none pointer-events-none"
+        style={{ color: pillar.color, opacity: mission.isCompletedToday ? 0.05 : 0.07 }}
+      >
+        {pillar.kanji}
+      </div>
+
+      {/* Carimbo de missão cumprida */}
+      {mission.isCompletedToday && (
+        <div
+          key={`stamp_${poofKey}`}
+          className="absolute right-3 bottom-10 z-20 hanko-stamp animate-stamp text-2xl px-1.5 py-1 pointer-events-none"
+          aria-hidden="true"
+        >
+          完
+        </div>
+      )}
+
+      {/* Puf de fumaça (clone se desfazendo) */}
+      {poofKey > 0 && mission.isCompletedToday && (
+        <div key={`poof_${poofKey}`} className="smoke-poof w-24 h-24 left-1/2 top-1/2 -ml-12 -mt-12 z-30" aria-hidden="true" />
+      )}
+
       {/* Camada de Brilho Liquid Glass / Efeito Translúcido e Fosco */}
       <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] via-white/[0.02] to-transparent pointer-events-none transition-opacity duration-300 group-hover:from-white/[0.18] group-hover:via-white/[0.04]" />
 
@@ -248,11 +290,11 @@ export const MissionCard: React.FC<MissionCardProps> = ({
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-mono font-bold text-shinobi-gold flex items-center gap-1 bg-shinobi-gold/15 px-2 py-0.5 rounded-lg border border-shinobi-gold/30">
             <Sparkles className="w-3 h-3" />
-            +{mission.xpReward} XP
+            +{shownXp} XP
           </span>
           <span className="text-[11px] font-mono font-bold text-amber-300 flex items-center gap-1 bg-amber-950/50 px-2 py-0.5 rounded-lg border border-amber-500/40">
             <span>🪙</span>
-            +{mission.ryoReward || rankInfo.ryoReward || getDefaultRyoReward(mission.rank)} Ryō
+            +{shownRyo} Ryō
           </span>
         </div>
 

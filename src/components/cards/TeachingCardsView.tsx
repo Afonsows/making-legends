@@ -5,14 +5,15 @@ import { useTheme } from '../../theme/ThemeContext';
 import { TeachingCard } from '../../core/types';
 import { PillarId } from '../../theme/types';
 import { TeachingCardModal } from './TeachingCardModal';
-import { 
-  BookOpen, 
-  Sparkles, 
-  Lock, 
-  CheckCircle2, 
-  Trophy, 
-  Users, 
-  Medal, 
+import { WeeklyLeague } from './WeeklyLeague';
+import {
+  BookOpen,
+  Sparkles,
+  Lock,
+  CheckCircle2,
+  Trophy,
+  Users,
+  Medal,
   Share2,
   Crown,
   Flame,
@@ -28,14 +29,11 @@ export const TeachingCardsView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'cards' | 'leagues'>('cards');
   const [activeCardModal, setActiveCardModal] = useState<TeachingCard | null>(null);
 
-  const currentDay = Math.min(
-    66,
-    Math.max(1, profile.activeChallenge?.currentDay || profile.currentProtocolDay || 1)
-  );
+  // Pergaminhos são liberados pelos Dias Cumpridos acumulados (nunca se perdem)
+  const completedDays = Object.values(profile.dayLog || {}).filter((d) => d.completed).length;
+  const currentDay = Math.max(1, completedDays);
 
-  const unlockedCardsList = teachingCards.filter(
-    (card) => card.unlockedDay <= currentDay && (profile.unlockedCards || []).includes(card.id)
-  );
+  const unlockedCardsList = teachingCards.filter((card) => card.unlockedDay <= currentDay);
   const unlockedCount = unlockedCardsList.length;
   const totalCards = teachingCards.length;
 
@@ -53,15 +51,6 @@ export const TeachingCardsView: React.FC = () => {
     { id: 'chakra', label: '⚡ Disciplina' },
     { id: 'espirito', label: '🛡️ Confiança' },
     { id: 'genjutsu', label: '👁️ Foco' },
-  ];
-
-  // Dados mock de Liga Shinobi
-  const mockLeagueMembers = [
-    { rank: 1, name: 'Sombra do Trovão', level: 24, xpWeek: 1420, badge: '⚡', isUser: false },
-    { rank: 2, name: profile.name, level: profile.level, xpWeek: 1180, badge: '🥷', isUser: true },
-    { rank: 3, name: 'Guardião de Bambu', level: 19, xpWeek: 960, badge: '🎋', isUser: false },
-    { rank: 4, name: 'Ermitão do Lago', level: 16, xpWeek: 840, badge: '🌊', isUser: false },
-    { rank: 5, name: 'Lâmina Errante', level: 14, xpWeek: 720, badge: '🗡️', isUser: false },
   ];
 
   return (
@@ -134,7 +123,7 @@ export const TeachingCardsView: React.FC = () => {
           {/* Grid Compacta de Cartões Colecionáveis com Design Contrastante por Raridade */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-3">
             {filteredCards.map((card) => {
-              const isUnlocked = card.unlockedDay <= currentDay && (profile.unlockedCards || []).includes(card.id);
+              const isUnlocked = card.unlockedDay <= currentDay;
               const pillar = getPillar(card.pillarId);
 
               // 1. ESTILOS VISUAIS FORTEMENTE CONTRASTANTES POR RARIDADE
@@ -221,11 +210,11 @@ export const TeachingCardsView: React.FC = () => {
 
                       {isUnlocked ? (
                         <span className="text-[9px] font-mono font-bold text-emerald-400 flex items-center gap-0.5">
-                          <CheckCircle2 className="w-3 h-3" /> Dia #{card.unlockedDay}
+                          <CheckCircle2 className="w-3 h-3" /> Dia Cumprido #{card.unlockedDay}
                         </span>
                       ) : (
                         <span className="text-[9px] font-mono text-slate-500 flex items-center gap-0.5">
-                          <Lock className="w-3 h-3" /> Dia #{card.unlockedDay}
+                          <Lock className="w-3 h-3" /> {card.unlockedDay - completedDays} {card.unlockedDay - completedDays === 1 ? 'dia' : 'dias'}
                         </span>
                       )}
                     </div>
@@ -272,71 +261,8 @@ export const TeachingCardsView: React.FC = () => {
         </div>
       )}
 
-      {/* ABA 2: LIGA SHINOBI E RANKING SOCIAL */}
-      {activeTab === 'leagues' && (
-        <div className="bg-shinobi-card rounded-2xl border border-shinobi-border p-4 space-y-4">
-          <div className="flex items-center justify-between border-b border-shinobi-border pb-3">
-            <div>
-              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-shinobi-gold/20 text-shinobi-gold border border-shinobi-gold/40">
-                TEMPORADA 1
-              </span>
-              <h3 className="font-cinzel text-base font-bold text-slate-100 mt-1 flex items-center gap-2">
-                <Medal className="w-5 h-5 text-shinobi-gold" />
-                Liga Prata III — Divisão dos Guerreiros
-              </h3>
-            </div>
-            <span className="text-xs font-mono text-slate-400">
-              Termina em 3 dias
-            </span>
-          </div>
-
-          <p className="text-xs text-slate-400">
-            Os 3 melhores ninjas sobem para a <strong>Liga Ouro I</strong> no encerramento do ciclo semanal.
-          </p>
-
-          <div className="space-y-2">
-            {mockLeagueMembers.map((member) => (
-              <div
-                key={member.rank}
-                className={`p-3 rounded-xl border flex items-center justify-between transition-all ${
-                  member.isUser
-                    ? 'bg-shinobi-gold/10 border-shinobi-gold/60 shadow-glow-gold/20'
-                    : 'bg-shinobi-bg border-shinobi-border'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <span className={`w-6 text-center font-mono font-bold text-sm ${
-                    member.rank === 1 ? 'text-amber-400' : member.rank === 2 ? 'text-slate-300' : 'text-amber-600'
-                  }`}>
-                    #{member.rank}
-                  </span>
-                  <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-sm">
-                    {member.badge}
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-100 flex items-center gap-1.5">
-                      <span>{member.name}</span>
-                      {member.isUser && (
-                        <span className="text-[9px] font-mono bg-shinobi-gold text-shinobi-bg px-1.5 rounded font-bold">
-                          VOCÊ
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[10px] text-slate-400">Nível {member.level}</div>
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  <div className="text-xs font-mono font-bold text-shinobi-gold">
-                    {member.xpWeek} XP
-                  </div>
-                  <div className="text-[10px] text-slate-500 font-mono">esta semana</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* ABA 2: LIGA SEMANAL (real, baseada nos seus Dias Cumpridos) */}
+      {activeTab === 'leagues' && <WeeklyLeague />}
 
       {/* Modal de Leitura e Compartilhamento Instagram do Cartão */}
       {activeCardModal && (

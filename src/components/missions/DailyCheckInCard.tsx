@@ -1,347 +1,263 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useUserStore } from '../../state/useUserStore';
 import { useHabitStore } from '../../state/useHabitStore';
-import { 
-  evaluateProtocolStatus, 
-  getChallengeWeekNumber, 
-  getWeekDayRange 
-} from '../../core/streakEngine';
-import { 
-  Check, 
-  Lock, 
-  Sparkles, 
-  ShieldAlert, 
-  ShieldCheck, 
-  Map, 
-  History, 
-  Flame, 
-  Info,
-  CalendarCheck,
-  Zap
-} from 'lucide-react';
+import { useTheme } from '../../theme/ThemeContext';
+import { evaluateProtocolStatus, getWeekDayRange } from '../../core/streakEngine';
+import { formatDateBR } from '../../core/dateUtils';
+import { Map, History, Flame, ShieldCheck, ShieldAlert, Shield, Zap, Sparkles, CalendarClock, Skull } from 'lucide-react';
 
 interface DailyCheckInCardProps {
   onOpenMap?: () => void;
   onOpenHistory?: () => void;
 }
 
-export const DailyCheckInCard: React.FC<DailyCheckInCardProps> = ({ 
-  onOpenMap, 
-  onOpenHistory 
-}) => {
-  const { 
-    profile, 
-    toggleDailyCheckIn, 
-    openChallengeMapModal, 
-    openChallengeHistoryModal,
-    openStartChallengeModal
-  } = useUserStore();
+/** Selo circular do dia: anel de progresso de XP ou o carimbo 完 quando o dia foi cumprido. */
+const DaySeal: React.FC<{ percentOfGoal: number; done: boolean; dayLabel: string }> = ({ percentOfGoal, done, dayLabel }) => {
+  const radius = 34;
+  const circumference = 2 * Math.PI * radius;
+  const pct = Math.min(1, Math.max(0, percentOfGoal));
+  return (
+    <div className={`relative w-[86px] h-[86px] shrink-0 rounded-full ${done ? 'animate-chakra' : ''}`}>
+      <svg viewBox="0 0 80 80" className="w-full h-full -rotate-90">
+        <circle cx="40" cy="40" r={radius} fill="rgba(2,6,23,0.85)" stroke="rgba(148,163,184,0.18)" strokeWidth="6" />
+        <circle
+          cx="40"
+          cy="40"
+          r={radius}
+          fill="none"
+          stroke={done ? '#FF7A1A' : 'url(#sealGradient)'}
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference * (1 - pct)}
+          style={{ transition: 'stroke-dashoffset 0.6s cubic-bezier(.2,.8,.2,1)' }}
+        />
+        <defs>
+          <linearGradient id="sealGradient" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#FF1341" />
+            <stop offset="100%" stopColor="#eab308" />
+          </linearGradient>
+        </defs>
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        {done ? (
+          <span key="stamp" className="hanko-stamp animate-stamp text-3xl px-1.5 py-1 font-bold">完</span>
+        ) : (
+          <>
+            <span className="font-mono text-lg font-bold text-slate-100 leading-none">{Math.round(pct * 100)}%</span>
+            <span className="text-[9px] font-mono text-slate-400 mt-1 uppercase tracking-wider">{dayLabel}</span>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export const DailyCheckInCard: React.FC<DailyCheckInCardProps> = ({ onOpenMap, onOpenHistory }) => {
+  const { profile, openChallengeMapModal, openChallengeHistoryModal, openStartChallengeModal } = useUserStore();
   const { missions } = useHabitStore();
+  const { getPhaseInfo } = useTheme();
 
-  const [showTooltip, setShowTooltip] = useState(false);
-  const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
+  const status = evaluateProtocolStatus(profile, missions);
+  const { xpProgress } = status;
+  const goal = Math.max(1, xpProgress.target50PctXp);
+  const percentOfGoal = xpProgress.currentXp / goal;
+  const handleOpenMap = onOpenMap || openChallengeMapModal;
+  const handleOpenHistory = onOpenHistory || openChallengeHistoryModal;
+  const cycle = profile.activeChallenge && profile.activeChallenge.status === 'active' ? profile.activeChallenge : undefined;
 
-  const protocolStatus = evaluateProtocolStatus(profile, missions);
-  const { hasActiveChallenge, currentDay, isTodayCheckedIn, xpProgress, missedDaysInCurrentWeek } = protocolStatus;
-  const currentWeek = getChallengeWeekNumber(currentDay);
-  const { startDay, endDay } = getWeekDayRange(currentWeek);
+  const dailyBlock = (
+    <div className="flex items-center gap-4">
+      <DaySeal percentOfGoal={percentOfGoal} done={xpProgress.isUnlocked} dayLabel="da meta" />
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <div className="text-sm font-bold text-slate-100">
+          {xpProgress.isUnlocked ? 'Dia Cumprido!' : xpProgress.totalTargetXp === 0 ? 'Crie missões para começar' : 'Meta do dia em andamento'}
+        </div>
+        <p className="text-xs text-slate-400 leading-snug">
+          {xpProgress.isUnlocked
+            ? `Presença garantida com ${xpProgress.currentXp} XP. Cada missão a mais fortalece seu chakra e causa dano no Duelo.`
+            : xpProgress.totalTargetXp === 0
+            ? 'Adicione missões diárias para definir sua meta.'
+            : `Faltam ${xpProgress.remainingXpToUnlock} XP para cumprir o dia (50% de ${xpProgress.totalTargetXp} XP). A presença é marcada automaticamente.`}
+        </p>
+        <div className="relative w-full h-2.5 bg-slate-900 rounded-full overflow-hidden border border-slate-700/80">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${
+              xpProgress.isUnlocked ? 'bg-gradient-to-r from-shinobi-orange to-amber-300' : 'bg-gradient-to-r from-shinobi-crimson to-shinobi-orange'
+            }`}
+            style={{ width: `${xpProgress.progressPercent}%` }}
+          />
+          <div className="absolute top-0 bottom-0 w-0.5 bg-white/80" style={{ left: '50%' }} title="Meta mínima: 50% do XP" />
+        </div>
+        <div className="flex justify-between text-[10px] font-mono text-slate-500">
+          <span>{xpProgress.currentXp} XP</span>
+          <span className="text-slate-300">meta {xpProgress.target50PctXp}</span>
+          <span>{xpProgress.totalTargetXp} XP</span>
+        </div>
+      </div>
+    </div>
+  );
 
-  const handleOpenMapClick = onOpenMap || openChallengeMapModal;
-  const handleOpenHistoryClick = onOpenHistory || openChallengeHistoryModal;
-
-  if (!hasActiveChallenge) {
+  // ── Sem desafio ativo ─────────────────────────────────────
+  if (!cycle) {
     const nextCycleNum = (profile.challengeHistory?.length || 0) + 1;
     return (
-      <div className="pergaminho-bg rounded-2xl border-2 border-shinobi-gold/70 p-4 sm:p-5 shadow-2xl relative overflow-hidden space-y-4">
-        <div className="absolute -top-10 -right-10 w-40 h-40 bg-shinobi-gold/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
+      <div className="pergaminho-bg rounded-2xl border-2 border-shinobi-orange/50 p-4 sm:p-5 shadow-2xl relative overflow-hidden space-y-4">
+        <div className="absolute -top-6 right-2 font-kanji text-[110px] leading-none text-white/[0.04] select-none pointer-events-none">挑</div>
+        <div className="relative z-10 flex items-start justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2 flex-wrap mb-1">
-              <span className="text-[10px] font-mono uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-shinobi-gold/20 text-shinobi-gold font-bold border border-shinobi-gold/40">
-                SUGESTÃO DE CICLO #{nextCycleNum} • AGUARDANDO INÍCIO
-              </span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-                Sem desafio ativo no momento
-              </span>
-            </div>
-
-            <h2 className="font-cinzel text-lg sm:text-xl font-bold text-slate-100 flex items-center gap-2">
-              <Flame className="w-5 h-5 text-shinobi-gold" />
-              <span>Desafio dos 66 Dias — Ciclo #{nextCycleNum}</span>
+            <span className="inline-block text-[10px] font-mono uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-shinobi-orange/15 text-shinobi-orange font-bold border border-shinobi-orange/40">
+              Ciclo #{nextCycleNum} • aguardando início
+            </span>
+            <h2 className="font-cinzel text-lg sm:text-xl text-slate-100 mt-2 flex items-center gap-2">
+              <Flame className="w-5 h-5 text-shinobi-orange" />
+              Pronto para um novo desafio?
             </h2>
-            <p className="text-xs text-slate-300 mt-0.5 max-w-xl">
-              Os desafios agora só começam quando você decidir. Monte suas missões de forma personalizada e dê início apenas quando estiver pronto para o compromisso!
+            <p className="text-xs text-slate-300 mt-1 max-w-xl">
+              Escolha suas missões, a duração (21, 30, 66 ou 90 dias) e jure seguir o caminho ninja. Sua sequência e seus Dias Cumpridos continuam contando mesmo sem desafio.
             </p>
           </div>
-
-          <div className="flex items-center gap-2 self-start sm:self-center">
-            <button
-              onClick={handleOpenHistoryClick}
-              className="px-3 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-amber-300 border border-amber-500/50 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5"
-              title="Ver histórico de desafios anteriores"
-            >
-              <History className="w-3.5 h-3.5" />
-              <span>Histórico</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Card CTA para personalizar e iniciar */}
-        <div className="bg-slate-950/85 border-2 border-shinobi-gold/40 rounded-2xl p-4 sm:p-5 relative shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-200">
-              <Sparkles className="w-4 h-4 text-shinobi-gold" />
-              <span>Pronto para forjar uma nova lenda?</span>
-            </div>
-            <p className="text-xs text-slate-400 max-w-lg">
-              Você pode escolher as missões diárias que deseja forjar, ajustar a duração (21, 30, 66 ou 90 dias) e confirmar o início hoje mesmo.
-            </p>
-          </div>
-
           <button
-            type="button"
-            onClick={openStartChallengeModal}
-            className="px-6 py-3 bg-gradient-to-r from-shinobi-gold via-amber-400 to-emerald-400 hover:opacity-95 text-slate-950 font-extrabold text-xs sm:text-sm rounded-2xl shadow-glow-gold transition-all duration-300 flex items-center justify-center gap-2 flex-shrink-0"
+            onClick={handleOpenHistory}
+            className="px-3 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-amber-300 border border-amber-500/50 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0"
           >
-            <Flame className="w-4 h-4 stroke-[2.5]" />
-            <span>Personalizar e Iniciar Desafio ⚡</span>
+            <History className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Histórico</span>
           </button>
         </div>
+
+        <div className="relative z-10 bg-slate-950/70 border border-slate-800 rounded-2xl p-4">{dailyBlock}</div>
+
+        <button
+          type="button"
+          onClick={openStartChallengeModal}
+          className="relative z-10 w-full py-3.5 bg-gradient-to-r from-shinobi-orange via-amber-500 to-shinobi-crimson hover:brightness-110 text-slate-950 font-extrabold text-sm rounded-2xl shadow-glow-orange transition-all flex items-center justify-center gap-2"
+        >
+          <Sparkles className="w-4 h-4" />
+          Personalizar e Iniciar Desafio
+        </button>
       </div>
     );
   }
 
-  const handleToggle = () => {
-    const result = toggleDailyCheckIn(currentDay);
-    if (!result.success && result.reason) {
-      setFeedbackMsg(result.reason);
-      setTimeout(() => setFeedbackMsg(null), 4000);
-    } else if (result.success) {
-      if (result.isChecked) {
-        setFeedbackMsg(`✨ Presença confirmada no Dia ${currentDay}/66! Continue firme.`);
-      } else {
-        setFeedbackMsg(`Presença desmarcada para o Dia ${currentDay}.`);
-      }
-      setTimeout(() => setFeedbackMsg(null), 3000);
-    }
-  };
-
-  return (
-    <div className="pergaminho-bg rounded-2xl border-2 border-shinobi-gold/60 p-4 sm:p-5 shadow-2xl relative overflow-hidden space-y-4">
-      {/* Luz ambiente de fundo */}
-      <div className="absolute -top-10 -right-10 w-40 h-40 bg-shinobi-gold/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-shinobi-crimson/10 rounded-full blur-3xl pointer-events-none" />
-
-      {/* Cabeçalho do Card */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
-        <div>
-          <div className="flex items-center gap-2 flex-wrap mb-1">
-            <span className="text-[10px] font-mono uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-shinobi-gold/20 text-shinobi-gold font-bold border border-shinobi-gold/40">
-              Desafio dos 66 Dias — Ciclo #{profile.activeChallenge?.cycleNumber || 1}
-            </span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-              Semana {currentWeek} (Dias {startDay}-{endDay})
-            </span>
-          </div>
-
-          <h2 className="font-cinzel text-lg sm:text-xl font-bold text-slate-100 flex items-center gap-2">
-            <span>Presença Diária — Dia {currentDay} de 66</span>
-          </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
-            {protocolStatus.phaseName} (Fase {protocolStatus.phaseIndex}) — {protocolStatus.totalDaysRemaining} dias restantes para a Maestria Kage
-          </p>
-        </div>
-
-        {/* Botões de Acesso ao Mapa e Histórico */}
-        <div className="flex items-center gap-2 self-start sm:self-center">
-          <button
-            onClick={handleOpenMapClick}
-            className="px-3 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-shinobi-gold border border-shinobi-gold/50 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5"
-            title="Ver mapa dos 66 dias"
-          >
-            <Map className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Mapa 66 Dias</span>
-            <span className="sm:hidden">Mapa</span>
-          </button>
-
-          <button
-            onClick={handleOpenHistoryClick}
-            className="px-3 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-amber-300 border border-amber-500/50 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5"
-            title="Ver histórico de desafios anteriores"
-          >
-            <History className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Histórico</span>
-            <span className="sm:hidden">Ciclos</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Caixa de Seleção Principal do Dia com Regra dos 50% de XP */}
-      <div className="bg-slate-950/85 border-2 border-slate-800 rounded-2xl p-4 sm:p-5 relative shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-        {/* Lado Esquerdo: Checkbox & Status */}
-        <div className="flex items-start sm:items-center gap-3.5">
-          {/* Caixa de Seleção / Checkbox Interativo */}
-          <div 
-            className="relative flex-shrink-0"
-            onMouseEnter={() => setShowTooltip(true)}
-            onMouseLeave={() => setShowTooltip(false)}
-          >
-            <button
-              type="button"
-              onClick={handleToggle}
-              aria-label={`Marcar presença do Dia ${currentDay}`}
-              className={`w-12 h-12 rounded-2xl border-2 flex items-center justify-center transition-all duration-300 select-none relative ${
-                isTodayCheckedIn
-                  ? 'bg-gradient-to-br from-emerald-500 to-emerald-700 border-emerald-400 text-slate-950 shadow-glow-jade scale-105'
-                  : xpProgress.isUnlocked
-                  ? 'bg-amber-950/40 border-shinobi-gold text-shinobi-gold hover:bg-shinobi-gold/20 hover:scale-105 shadow-glow-gold animate-pulse cursor-pointer'
-                  : 'bg-slate-900/90 border-slate-700 text-slate-500 cursor-not-allowed opacity-80 hover:border-slate-500'
-              }`}
-            >
-              {isTodayCheckedIn ? (
-                <Check className="w-7 h-7 stroke-[3] text-white" />
-              ) : xpProgress.isUnlocked ? (
-                <Sparkles className="w-6 h-6 text-shinobi-gold animate-spin-slow" />
-              ) : (
-                <Lock className="w-5 h-5 text-slate-400" />
-              )}
-            </button>
-
-            {/* Tooltip Hover Explicativo da Condição dos 50% de XP */}
-            {showTooltip && (
-              <div className="absolute left-0 bottom-full mb-3 z-50 w-72 sm:w-80 p-3.5 bg-slate-950 border-2 border-shinobi-gold/70 rounded-2xl shadow-2xl text-xs space-y-2 animate-in fade-in zoom-in-95 pointer-events-none">
-                <div className="flex items-center gap-2 font-cinzel font-bold text-slate-100">
-                  {isTodayCheckedIn ? (
-                    <>
-                      <CalendarCheck className="w-4 h-4 text-emerald-400" />
-                      <span>Presença Confirmada!</span>
-                    </>
-                  ) : xpProgress.isUnlocked ? (
-                    <>
-                      <Sparkles className="w-4 h-4 text-shinobi-gold" />
-                      <span>Presença Desbloqueada!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Lock className="w-4 h-4 text-rose-400" />
-                      <span>Presença Bloqueada (50% XP)</span>
-                    </>
-                  )}
-                </div>
-
-                <p className="text-slate-300 text-[11px] leading-relaxed">
-                  {isTodayCheckedIn
-                    ? `Você já registrou a presença para o Dia ${currentDay}/66. Clique novamente caso queira desmarcar.`
-                    : xpProgress.isUnlocked
-                    ? `Meta de 50% de XP atingida (${xpProgress.currentXp}/${xpProgress.totalTargetXp} XP). Clique na caixa para registrar a sua presença!`
-                    : `Para marcar presença no Dia ${currentDay}, você precisa atingir pelo menos 50% do XP previsto para hoje.`}
-                </p>
-
-                <div className="pt-1 border-t border-slate-800 flex items-center justify-between text-[10px] font-mono">
-                  <span className="text-slate-400">Progresso diário de XP:</span>
-                  <span className={xpProgress.isUnlocked ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
-                    {xpProgress.currentXp} / {xpProgress.target50PctXp} XP ({xpProgress.progressPercent}%)
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Texto e Instrução ao Lado da Caixa */}
+  // ── Desafio agendado (começa no futuro) ───────────────────
+  if (status.isScheduled) {
+    return (
+      <div className="pergaminho-bg rounded-2xl border-2 border-cyan-500/40 p-4 sm:p-5 shadow-2xl space-y-4">
+        <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-200">
-                {isTodayCheckedIn
-                  ? `Presença do Dia ${currentDay}/66 Confirmada!`
-                  : xpProgress.isUnlocked
-                  ? `Pronto para Marcar o Dia ${currentDay}/66!`
-                  : `Caixa do Dia ${currentDay}/66 (Pendente 50% XP)`}
-              </span>
-              {isTodayCheckedIn && (
-                <span className="text-[10px] px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 font-mono font-bold border border-emerald-500/40">
-                  PRESENTE ✓
-                </span>
-              )}
-            </div>
-
-            <p className="text-xs text-slate-400 mt-0.5">
-              {isTodayCheckedIn
-                ? `Dia concluído com honra! Continue com o mesmo foco amanhã.`
-                : xpProgress.isUnlocked
-                ? `Você já atingiu 50%+ do XP. Marque sua presença agora!`
-                : `Complete missões para acumular mais ${xpProgress.remainingXpToUnlock} XP e liberar o check-in.`}
+            <span className="text-[10px] font-mono uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 font-bold border border-cyan-500/40">
+              {cycle.title}
+            </span>
+            <h2 className="font-cinzel text-lg text-slate-100 mt-2 flex items-center gap-2">
+              <CalendarClock className="w-5 h-5 text-cyan-300" />
+              Começa em {status.daysUntilStart} {status.daysUntilStart === 1 ? 'dia' : 'dias'}
+            </h2>
+            <p className="text-xs text-slate-400 mt-1">
+              Dia 1 em {formatDateBR(cycle.startDate)}. Até lá, use os dias para ajustar suas missões — eles ainda contam para a sua sequência.
             </p>
           </div>
         </div>
+        <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-4">{dailyBlock}</div>
+      </div>
+    );
+  }
 
-        {/* Lado Direito: Barra de XP com Marcador de 50% */}
-        <div className="md:w-64 space-y-1.5">
-          <div className="flex justify-between text-[11px] font-mono">
-            <span className="text-slate-400 flex items-center gap-1">
-              <Zap className="w-3 h-3 text-shinobi-gold" /> Meta 50% XP
+  // ── Desafio em andamento ──────────────────────────────────
+  const phase = getPhaseInfo(status.currentDay, status.targetDays);
+  const { startDay, endDay } = getWeekDayRange(status.currentWeek, status.targetDays);
+  const allowed = status.allowedMissesPerWeek;
+  const missed = status.missedDaysInCurrentWeek;
+  const atRisk = missed >= allowed;
+
+  return (
+    <div className="pergaminho-bg rounded-2xl border-2 border-shinobi-orange/50 p-4 sm:p-5 shadow-2xl relative overflow-hidden space-y-4">
+      <div className="absolute -top-8 right-0 font-kanji text-[120px] leading-none text-white/[0.035] select-none pointer-events-none">
+        {status.phaseIndex === 1 ? '覚' : status.phaseIndex === 2 ? '鍛' : '極'}
+      </div>
+
+      <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <span className="text-[10px] font-mono uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-shinobi-orange/15 text-shinobi-orange font-bold border border-shinobi-orange/40 truncate max-w-[230px]">
+              {cycle.title || `Desafio ${status.targetDays} Dias`}
             </span>
-            <span className={xpProgress.isUnlocked ? 'text-emerald-400 font-bold' : 'text-shinobi-gold font-bold'}>
-              {xpProgress.currentXp}/{xpProgress.totalTargetXp} XP ({xpProgress.progressPercent}%)
-            </span>
+            {cycle.isEliteMode && (
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-rose-600/20 text-rose-300 border border-rose-500/50 flex items-center gap-1">
+                <Skull className="w-3 h-3" /> ELITE
+              </span>
+            )}
           </div>
+          <h2 className="font-cinzel text-xl sm:text-2xl text-slate-100">
+            Dia {status.currentDay} <span className="text-slate-500 text-base">/ {status.targetDays}</span>
+          </h2>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Fase {status.phaseIndex}: <strong className="text-amber-300">{phase.name}</strong> ({phase.daysRange}) — {status.totalDaysRemaining}{' '}
+            {status.totalDaysRemaining === 1 ? 'dia restante' : 'dias restantes'}
+          </p>
+        </div>
 
-          <div className="relative w-full h-3 bg-slate-900 rounded-full overflow-hidden border border-slate-700">
-            {/* Barra de Progresso Real */}
-            <div
-              className={`h-full transition-all duration-500 rounded-full ${
-                xpProgress.isUnlocked
-                  ? 'bg-gradient-to-r from-shinobi-gold to-emerald-400'
-                  : 'bg-gradient-to-r from-shinobi-crimson to-amber-500'
-              }`}
-              style={{ width: `${Math.min(100, xpProgress.progressPercent)}%` }}
-            />
-            {/* Marcador vertical demarcando os 50% */}
-            <div 
-              className="absolute top-0 bottom-0 w-0.5 bg-white/70 shadow"
-              style={{ left: '50%' }}
-              title="Patamar mínimo de 50% de XP"
-            />
-          </div>
-
-          <div className="flex justify-between text-[9px] font-mono text-slate-500">
-            <span>0 XP</span>
-            <span className="text-slate-400 font-bold">50% ({xpProgress.target50PctXp} XP)</span>
-            <span>100% ({xpProgress.totalTargetXp} XP)</span>
-          </div>
+        <div className="flex items-center gap-2 self-start sm:self-center">
+          <button
+            onClick={handleOpenMap}
+            className="px-3 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-shinobi-orange border border-shinobi-orange/50 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+          >
+            <Map className="w-3.5 h-3.5" />
+            Mapa
+          </button>
+          <button
+            onClick={handleOpenHistory}
+            className="px-3 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-amber-300 border border-amber-500/50 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+          >
+            <History className="w-3.5 h-3.5" />
+            Ciclos
+          </button>
         </div>
       </div>
 
-      {/* Alerta Preventivo de Faltas Semanais (Regra das 2 Faltas na Mesma Semana) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-xl bg-slate-950/70 border border-slate-800 text-xs">
-        <div className="flex items-center gap-2">
-          {missedDaysInCurrentWeek === 0 ? (
-            <ShieldCheck className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+      {/* Barra de progresso da jornada */}
+      <div className="relative z-10">
+        <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-shinobi-crimson via-shinobi-orange to-amber-300 rounded-full transition-all duration-700"
+            style={{ width: `${status.protocolProgressPercent}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="relative z-10 bg-slate-950/70 border border-slate-800 rounded-2xl p-4">{dailyBlock}</div>
+
+      {/* Regras da semana */}
+      <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+        <div className={`flex items-center gap-2 p-2.5 rounded-xl border ${atRisk ? 'bg-rose-950/40 border-rose-500/40' : 'bg-slate-950/60 border-slate-800'}`}>
+          {missed === 0 ? (
+            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
           ) : (
-            <ShieldAlert className="w-4 h-4 text-rose-400 flex-shrink-0 animate-pulse" />
+            <ShieldAlert className={`w-4 h-4 shrink-0 ${atRisk ? 'text-rose-400 animate-pulse' : 'text-amber-400'}`} />
           )}
-          <span className="text-slate-300 text-[11px]">
-            Faltas na Semana {currentWeek}:{' '}
-            <strong className={missedDaysInCurrentWeek === 0 ? 'text-emerald-400' : 'text-rose-400'}>
-              {missedDaysInCurrentWeek}/2
-            </strong>
-            {missedDaysInCurrentWeek === 0
-              ? ' — Desafio 100% consistente nesta semana!'
-              : ' — Cuidado: 2 faltas na mesma semana encerram o desafio e reiniciam em 1/66.'}
+          <span className="text-slate-300">
+            Semana {status.currentWeek} (dias {startDay}–{endDay}): <strong className={missed === 0 ? 'text-emerald-400' : atRisk ? 'text-rose-300' : 'text-amber-300'}>{missed} {missed === 1 ? 'falta' : 'faltas'}</strong>
+            {allowed === 0
+              ? ' — Modo Elite: qualquer falta encerra o desafio.'
+              : atRisk
+              ? ' — mais uma falta nesta semana encerra o desafio!'
+              : ` de ${allowed} tolerada.`}
           </span>
         </div>
-
-        <span className="text-[10px] font-mono text-slate-500 self-end sm:self-auto">
-          Regra: máx 1 falta/semana
-        </span>
+        <div className="flex items-center gap-2 p-2.5 rounded-xl border bg-slate-950/60 border-slate-800">
+          <Shield className={`w-4 h-4 shrink-0 ${profile.weeklyShieldsRemaining > 0 ? 'text-emerald-400' : 'text-slate-500'}`} />
+          <span className="text-slate-300">
+            {profile.isHardModeEnabled
+              ? 'Sem Escudo de Chakra no Modo Elite (+20% XP).'
+              : <>Escudo de Chakra: <strong className="text-emerald-300">{profile.weeklyShieldsRemaining}/{profile.weeklyShieldsMax}</strong> — protege sua sequência de 1 falta.</>}
+          </span>
+        </div>
       </div>
 
-      {/* Notificação / Feedback temporário */}
-      {feedbackMsg && (
-        <div className="p-3 bg-shinobi-card/90 border border-shinobi-gold rounded-xl text-xs text-shinobi-gold flex items-center gap-2 animate-in fade-in shadow-lg">
-          <Info className="w-4 h-4 flex-shrink-0 text-shinobi-gold" />
-          <span>{feedbackMsg}</span>
+      {xpProgress.isUnlocked && (
+        <div className="relative z-10 flex items-center gap-2 text-[11px] text-amber-200/90 bg-amber-950/20 border border-amber-500/20 rounded-xl px-3 py-2">
+          <Zap className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+          Presença do Dia {status.currentDay} confirmada. Volte amanhã para manter a chama acesa.
         </div>
       )}
     </div>

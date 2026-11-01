@@ -84,7 +84,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {profile.name}
                 </span>
                 <span className="text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-md font-mono font-bold bg-shinobi-gold/15 border border-shinobi-gold/35 text-shinobi-gold group-hover:bg-shinobi-gold/25 group-hover:border-shinobi-gold/60 group-hover:shadow-[0_0_10px_rgba(234,179,8,0.3)] transition-all duration-300 whitespace-nowrap">
-                  {rankInfo.name}
+                  <span className="font-kanji mr-1">{rankInfo.kanji}</span>{rankInfo.name}
                 </span>
               </div>
 
@@ -123,7 +123,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               {/* 2. Sequência (Streak) */}
               <div 
-                title={`Sequência ativa: ${profile.currentStreak} dias no protocolo`}
+                title={`Sequência: ${profile.currentStreak} dias cumpridos seguidos (recorde: ${profile.bestStreak})`}
                 className="group/streak relative flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-xl bg-rose-950/35 hover:bg-rose-900/50 border border-rose-500/30 hover:border-rose-400/60 shadow-[0_2px_8px_rgba(244,63,94,0.12)] hover:shadow-[0_4px_16px_rgba(244,63,94,0.3),inset_0_1px_1px_rgba(255,255,255,0.2)] hover:-translate-y-0.5 active:scale-95 transition-all duration-300 backdrop-blur-md cursor-default select-none"
               >
                 <Flame className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-rose-400 group-hover/streak:text-rose-300 group-hover/streak:scale-125 group-hover/streak:-rotate-6 transition-all duration-300 shrink-0 drop-shadow-[0_0_8px_rgba(244,63,94,0.7)] animate-pulse" />
@@ -134,7 +134,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               {/* 3. Escudo de Chakra Semanal */}
               <div
-                title={`Escudos de Chakra restantes: ${profile.weeklyShieldsRemaining}/${profile.weeklyShieldsMax}`}
+                title={profile.isHardModeEnabled ? 'Modo Elite: sem Escudo de Chakra' : `Escudo de Chakra: ${profile.weeklyShieldsRemaining}/${profile.weeklyShieldsMax} nesta semana — protege a sequência de 1 falta`}
                 className={`group/shield relative flex items-center gap-1 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-xl border backdrop-blur-md hover:-translate-y-0.5 active:scale-95 transition-all duration-300 cursor-default select-none ${
                   profile.weeklyShieldsRemaining > 0
                     ? 'bg-emerald-950/35 hover:bg-emerald-900/50 border-emerald-500/30 hover:border-emerald-400/60 shadow-[0_2px_8px_rgba(16,185,129,0.12)] hover:shadow-[0_4px_16px_rgba(16,185,129,0.3),inset_0_1px_1px_rgba(255,255,255,0.2)] text-emerald-400'

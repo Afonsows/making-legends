@@ -25,6 +25,9 @@ export default {
           obsidian: '#14171E',
           slateCut: '#2A313B',
           titanium: '#34404C',
+          orange: '#FF7A1A',
+          orangeGlow: '#FF9A3D',
+          orangeDeep: '#C2410C',
           scroll: '#1e2538',
           scrollAccent: '#d97706',
           textMuted: '#94a3b8',
@@ -32,7 +35,8 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Cinzel', 'Trajan Pro', 'Georgia', 'serif'],
+        display: ['Potta One', 'Cinzel', 'system-ui', 'sans-serif'],
+        kanji: ['Yuji Syuku', 'Noto Serif JP', 'serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
       boxShadow: {
@@ -42,6 +46,7 @@ export default {
         'glow-jade': '0 0 25px -3px rgba(24, 246, 137, 0.55)',
         'glow-emerald': '0 0 25px -3px rgba(24, 246, 137, 0.55)',
         'glow-violet': '0 0 20px -3px rgba(139, 92, 246, 0.45)',
+        'glow-orange': '0 0 24px -3px rgba(255, 122, 26, 0.6)',
       },
       keyframes: {
         pulseGlow: {

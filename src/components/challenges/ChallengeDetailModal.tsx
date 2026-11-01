@@ -7,15 +7,15 @@ import { UserChallenge } from '../../core/types';
 import { ChallengeHabitCard } from './ChallengeHabitCard';
 import { PillarId } from '../../theme/types';
 import { getTodayString } from '../../core/streakEngine';
-import { 
-  X, 
-  Target, 
-  Flame, 
-  Calendar, 
-  Plus, 
-  Sparkles, 
-  Trash2, 
-  CheckCircle2, 
+import {
+  X,
+  Target,
+  Flame,
+  Calendar,
+  Plus,
+  Sparkles,
+  Trash2,
+  CheckCircle2,
   RotateCcw,
   Award,
   Layers,
@@ -35,12 +35,12 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
   onClose,
   challenge,
 }) => {
-  const { 
-    toggleHabitDay, 
-    removeHabitFromChallenge, 
-    addHabitToChallenge, 
+  const {
+    toggleHabitDay,
+    removeHabitFromChallenge,
+    addHabitToChallenge,
     deleteChallenge,
-    toggleChallengeStatus 
+    toggleChallengeStatus
   } = useChallengeStore();
 
   const { profile, openChallengeMapModal, openStartChallengeModal } = useUserStore();
@@ -50,6 +50,7 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
   const [newHabitTitle, setNewHabitTitle] = useState('');
   const [newHabitDesc, setNewHabitDesc] = useState('');
   const [newHabitColor, setNewHabitColor] = useState('#10b981');
+  const [toggleNotice, setToggleNotice] = useState<string | null>(null);
 
   if (!isOpen || !challenge) return null;
 
@@ -63,8 +64,8 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
     : challenge;
 
   // Cálculo de dias e métricas
-  const daysElapsed = isOfficial 
-    ? protocolStatus.currentDay 
+  const daysElapsed = isOfficial
+    ? protocolStatus.currentDay
     : (() => {
         const startDate = new Date(effectiveChallenge.startDate + 'T00:00:00');
         const todayDate = new Date(todayStr + 'T00:00:00');
@@ -225,6 +226,12 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
           </div>
         </div>
 
+        {toggleNotice && (
+          <div className="mx-4 mt-3 p-3 rounded-xl bg-amber-950/50 border border-amber-500/40 text-xs text-amber-200 relative z-10">
+            {toggleNotice}
+          </div>
+        )}
+
         {/* Lista de Hábitos do Desafio (Exibição em Quadros lado a lado) */}
         <div className="p-4 sm:p-5 space-y-3.5 overflow-y-auto flex-1">
           <div className="flex items-center justify-between">
@@ -243,10 +250,10 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
                     openChallengeMapModal();
                   }}
                   className="px-2.5 py-1.5 bg-white/[0.06] hover:bg-white/[0.12] text-shinobi-gold text-xs font-bold rounded-xl border border-shinobi-gold/40 transition-all flex items-center gap-1 backdrop-blur-md"
-                  title="Ver mapa dos 66 dias"
+                  title="Ver mapa do desafio"
                 >
                   <Map className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Mapa 66 Dias</span>
+                  <span className="hidden sm:inline">Mapa do Desafio</span>
                 </button>
               )}
 
@@ -330,7 +337,13 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({
                   habit={habit}
                   targetDays={effectiveChallenge.targetDays}
                   startDate={effectiveChallenge.startDate}
-                  onToggleDay={(dateStr) => toggleHabitDay(effectiveChallenge.id, habit.id, dateStr)}
+                  onToggleDay={(dateStr) => {
+                    const res = toggleHabitDay(effectiveChallenge.id, habit.id, dateStr);
+                    if (res.blockedReason) {
+                      setToggleNotice(res.blockedReason);
+                      setTimeout(() => setToggleNotice(null), 3500);
+                    }
+                  }}
                   onDelete={() => handleDeleteHabit(habit.id, habit.title)}
                 />
               ))}

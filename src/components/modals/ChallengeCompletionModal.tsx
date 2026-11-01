@@ -1,7 +1,7 @@
 import React from 'react';
 import { useUserStore } from '../../state/useUserStore';
 import { Trophy, Sparkles, History, Flame, ArrowRight, CheckCircle2, RotateCcw } from 'lucide-react';
-import { formatDateBR } from '../../core/streakEngine';
+import { formatDateBR } from '../../core/dateUtils';
 
 export const ChallengeCompletionModal: React.FC = () => {
   const { 
@@ -14,6 +14,7 @@ export const ChallengeCompletionModal: React.FC = () => {
   if (!activeCompletionModal) return null;
 
   const { cycle } = activeCompletionModal;
+  const targetDays = cycle.targetDays || 66;
 
   const handleStartNext = () => {
     dismissCompletionModal();
@@ -30,8 +31,8 @@ export const ChallengeCompletionModal: React.FC = () => {
       <div className="bg-slate-900 border-2 border-shinobi-gold w-full max-w-lg rounded-3xl overflow-hidden shadow-glow-gold flex flex-col my-auto relative z-[101]">
         {/* Top Banner Dourado de Vitória */}
         <div className="p-6 bg-gradient-to-b from-amber-950/80 via-slate-950 to-slate-950 border-b border-shinobi-gold/40 text-center space-y-2 relative overflow-hidden">
-          <div className="w-20 h-20 rounded-3xl bg-amber-500/20 border-2 border-shinobi-gold flex items-center justify-center text-shinobi-gold mx-auto shadow-glow-gold animate-bounce">
-            <Trophy className="w-10 h-10 stroke-[2.5]" />
+          <div className="w-24 h-24 rounded-full bg-amber-500/10 border-2 border-shinobi-orange flex items-center justify-center mx-auto shadow-glow-orange animate-chakra">
+            <span className="hanko-stamp animate-stamp text-5xl px-2 py-1.5">完</span>
           </div>
 
           <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-shinobi-gold/20 border border-shinobi-gold/50 text-shinobi-gold text-[10px] font-mono font-bold">
@@ -39,23 +40,23 @@ export const ChallengeCompletionModal: React.FC = () => {
             <span>MESTRIA SHINOBI ALCANÇADA</span>
           </div>
 
-          <h3 className="font-cinzel text-xl sm:text-2xl font-bold text-slate-100">
-            Desafio Concluído com Honra!
+          <h3 className="font-cinzel text-xl sm:text-2xl text-slate-100">
+            Juramento Cumprido!
           </h3>
 
           <p className="text-xs text-amber-300 font-mono">
-            Ciclo #{cycle.cycleNumber || 1} imortalizado com sucesso
+            {cycle.title || `Desafio de ${targetDays} dias`}{cycle.endDate ? ` • ${formatDateBR(cycle.startDate)} a ${formatDateBR(cycle.endDate)}` : ''}
           </p>
         </div>
 
         {/* Corpo Explicativo */}
         <div className="p-6 space-y-4 text-xs">
           <div className="pergaminho-bg rounded-2xl border border-shinobi-gold/40 p-4 space-y-2 shadow-md">
-            <h4 className="font-cinzel font-bold text-slate-100 text-sm flex items-center gap-1.5">
-              <span>Trilha Neural Estabelecida (66 Dias)</span>
+            <h4 className="font-cinzel text-slate-100 text-sm flex items-center gap-1.5">
+              <span>{targetDays} dias de disciplina forjados</span>
             </h4>
             <p className="text-slate-300 text-[11px] leading-relaxed">
-              Você completou a jornada do protocolo de neuroplasticidade. O ciclo foi arquivado com honra no seu <strong>Histórico de Desafios</strong>.
+              Você manteve a palavra até o último dia. O ciclo foi guardado com honra no seu <strong>Histórico de Desafios</strong> e a vila te recompensou: <strong className="text-amber-300">+{cycle.rewardXp || 0} XP</strong> e <strong className="text-amber-300">+{cycle.rewardRyo || 0} Ryō</strong>.
             </p>
           </div>
 
@@ -71,7 +72,7 @@ export const ChallengeCompletionModal: React.FC = () => {
             <div className="p-2 bg-slate-900/80 rounded-xl border border-slate-800">
               <span className="text-slate-400 block text-[10px]">Presenças</span>
               <span className="font-bold text-emerald-400 font-mono text-sm">
-                {cycle.daysCompleted || 0} / 66
+                {cycle.daysCompleted || 0} / {targetDays}
               </span>
             </div>
 
@@ -108,10 +109,10 @@ export const ChallengeCompletionModal: React.FC = () => {
 
             <button
               onClick={handleStartNext}
-              className="flex-1 sm:flex-initial px-5 py-2.5 bg-gradient-to-r from-shinobi-gold via-amber-400 to-emerald-400 hover:opacity-95 text-slate-950 font-bold text-xs rounded-xl shadow-glow-gold transition-all flex items-center justify-center gap-1.5"
+              className="flex-1 sm:flex-initial px-5 py-2.5 bg-gradient-to-r from-shinobi-orange via-amber-500 to-shinobi-crimson hover:brightness-110 text-slate-950 font-bold text-xs rounded-xl shadow-glow-orange transition-all flex items-center justify-center gap-1.5"
             >
               <Flame className="w-4 h-4" />
-              <span>Personalizar Próximo Ciclo ⚡</span>
+              <span>Próximo Desafio</span>
             </button>
           </div>
         </div>

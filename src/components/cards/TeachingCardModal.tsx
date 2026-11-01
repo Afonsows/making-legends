@@ -1,10 +1,10 @@
 import React from 'react';
 import { TeachingCard } from '../../core/types';
 import { useTheme } from '../../theme/ThemeContext';
-import { 
-  X, 
-  Sparkles, 
-  Zap, 
+import {
+  X,
+  Sparkles,
+  Zap,
   Check
 } from 'lucide-react';
 import { soundFx } from '../../utils/audio';
@@ -69,7 +69,7 @@ export const TeachingCardModal: React.FC<TeachingCardModalProps> = ({ card, onCl
 
   return (
     /* Backdrop translúcido estilo Notion (permite ver a tela/aba anterior com leve desfoque) */
-    <div 
+    <div
       onClick={() => {
         soundFx.playButtonClick();
         onClose();
@@ -77,7 +77,7 @@ export const TeachingCardModal: React.FC<TeachingCardModalProps> = ({ card, onCl
       className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 bg-black/50 backdrop-blur-[3px] animate-in fade-in duration-200"
     >
       {/* Container Centralizado do Pergaminho - Cabe 100% na tela sem rolagem */}
-      <div 
+      <div
         onClick={(e) => e.stopPropagation()}
         className={`w-full max-w-md sm:max-w-lg rounded-2xl sm:rounded-3xl p-4 sm:p-5 relative shadow-2xl transition-all duration-300 flex flex-col justify-between overflow-hidden ${rarityConfig.modalBorder} ${rarityConfig.modalBg}`}
       >
@@ -147,7 +147,7 @@ export const TeachingCardModal: React.FC<TeachingCardModalProps> = ({ card, onCl
 
             {/* Dia */}
             <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-black/50 border border-white/10 text-slate-200">
-              DIA #{card.unlockedDay}
+              DIA CUMPRIDO #{card.unlockedDay}
             </span>
           </div>
 
@@ -164,16 +164,16 @@ export const TeachingCardModal: React.FC<TeachingCardModalProps> = ({ card, onCl
           {/* Emblema Shinobi */}
           <div className="relative inline-block mx-auto">
             <div className={`w-14 h-14 sm:w-16 sm:h-16 mx-auto rounded-2xl flex items-center justify-center p-1.5 relative transition-transform ${rarityConfig.emblemBg}`}>
-              <img 
-                src={rarityConfig.emblemImg} 
-                alt={card.title} 
+              <img
+                src={rarityConfig.emblemImg}
+                alt={card.title}
                 className="w-full h-full object-contain filter drop-shadow-[0_4px_6px_rgba(0,0,0,0.6)]"
               />
             </div>
 
             {/* Selo Kanji */}
             {card.kanji && (
-              <div 
+              <div
                 className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center font-serif text-[10px] font-bold text-white shadow-md border border-white/20"
                 style={{ backgroundColor: rarityConfig.sealBg }}
               >

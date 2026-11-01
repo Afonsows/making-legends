@@ -35,8 +35,83 @@
 }
 
 @layer utilities {
-  .font-cinzel {
-    font-family: 'Cinzel', serif;
+  /* Títulos: pincelada de anime ninja (a classe mantém o nome antigo por compatibilidade) */
+  .font-cinzel,
+  .font-brush {
+    font-family: 'Potta One', 'Cinzel', system-ui, sans-serif;
+    font-weight: 400;
+    font-synthesis: none;
+    letter-spacing: 0.01em;
+  }
+
+  /* Kanji decorativos em caligrafia */
+  .font-kanji {
+    font-family: 'Yuji Syuku', 'Noto Serif JP', 'Hiragino Mincho ProN', serif;
+    font-synthesis: none;
+  }
+
+  /* ── Animações que os componentes já usavam (antes inexistentes) ── */
+  .animate-in {
+    animation-duration: 0.28s;
+    animation-fill-mode: both;
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .animate-in.fade-in { animation-name: ml-fade-in; }
+  .animate-in.zoom-in-95 { animation-name: ml-zoom-in; }
+  .animate-in.slide-in-from-bottom { animation-name: ml-slide-up; }
+  .animate-spin-slow { animation: spin 6s linear infinite; }
+
+  /* ── Efeitos shinobi ── */
+  .animate-hit { animation: ml-hit 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
+  .animate-float-up { animation: ml-float-up 1.1s ease-out forwards; }
+  .animate-stamp { animation: ml-stamp 0.42s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+  .animate-leaf { animation: ml-leaf 7s ease-in-out infinite; }
+  .animate-chakra { animation: ml-chakra 2.4s ease-in-out infinite; }
+
+  .hanko-stamp {
+    font-family: 'Yuji Syuku', 'Noto Serif JP', serif;
+    color: #ff1341;
+    border: 2px solid currentColor;
+    border-radius: 10px;
+    line-height: 1;
+    box-shadow: inset 0 0 0 1px rgba(255, 19, 65, 0.25);
+    text-shadow: 0 0 1px rgba(255, 19, 65, 0.6);
+    mix-blend-mode: screen;
+    transform: rotate(-10deg);
+  }
+
+  .smoke-poof {
+    position: absolute;
+    pointer-events: none;
+    border-radius: 9999px;
+    background:
+      radial-gradient(circle at 30% 40%, rgba(226, 232, 240, 0.9) 0 18%, transparent 19%),
+      radial-gradient(circle at 65% 35%, rgba(203, 213, 225, 0.85) 0 22%, transparent 23%),
+      radial-gradient(circle at 50% 65%, rgba(241, 245, 249, 0.9) 0 24%, transparent 25%),
+      radial-gradient(circle at 25% 70%, rgba(148, 163, 184, 0.7) 0 15%, transparent 16%),
+      radial-gradient(circle at 75% 70%, rgba(203, 213, 225, 0.75) 0 16%, transparent 17%);
+    animation: ml-poof 0.65s ease-out forwards;
+  }
+
+  /* Papel de pergaminho (washi) com fibras sutis */
+  .washi-texture {
+    background-image:
+      repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.018) 0 2px, transparent 2px 9px),
+      repeating-linear-gradient(25deg, rgba(255, 255, 255, 0.012) 0 1px, transparent 1px 13px);
+  }
+
+  .scroll-rod {
+    height: 10px;
+    border-radius: 9999px;
+    background: linear-gradient(180deg, #7c2d12 0%, #c2410c 45%, #431407 100%);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  }
+
+  .text-naruto-gradient {
+    background: linear-gradient(90deg, #ff7a1a, #ffb347 50%, #ff1341);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
 
   .pt-safe {
@@ -63,7 +138,10 @@
   }
 
   .pergaminho-bg {
-    background: linear-gradient(180deg, #161c2e 0%, #0e121e 100%);
+    background:
+      repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.016) 0 2px, transparent 2px 9px),
+      radial-gradient(120% 80% at 100% 0%, rgba(255, 122, 26, 0.07), transparent 60%),
+      linear-gradient(180deg, #171d2f 0%, #0e121e 100%);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 10px 25px -5px rgba(0, 0, 0, 0.5);
   }
 
@@ -130,5 +208,54 @@
     box-shadow: 
       0 8px 30px rgba(0, 0, 0, 0.45),
       inset 0 -1px 1px 0 rgba(255, 255, 255, 0.2);
+  }
+}
+
+/* ── Keyframes ── */
+@keyframes ml-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes ml-zoom-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes ml-slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes ml-hit {
+  0%, 100% { transform: translateX(0) rotate(0); filter: none; }
+  15% { transform: translateX(-7px) rotate(-4deg); filter: brightness(1.8) saturate(0.4); }
+  35% { transform: translateX(6px) rotate(3deg); }
+  55% { transform: translateX(-4px) rotate(-1deg); }
+  75% { transform: translateX(2px); }
+}
+@keyframes ml-float-up {
+  0% { transform: translateY(0) scale(0.8); opacity: 0; }
+  15% { transform: translateY(-6px) scale(1.15); opacity: 1; }
+  100% { transform: translateY(-46px) scale(1); opacity: 0; }
+}
+@keyframes ml-stamp {
+  0% { transform: scale(2.4) rotate(-22deg); opacity: 0; }
+  60% { transform: scale(0.9) rotate(-8deg); opacity: 1; }
+  100% { transform: scale(1) rotate(-10deg); opacity: 1; }
+}
+@keyframes ml-poof {
+  0% { transform: scale(0.3); opacity: 0.95; }
+  100% { transform: scale(2.3); opacity: 0; }
+}
+@keyframes ml-leaf {
+  0%, 100% { transform: translateY(0) rotate(-8deg); }
+  50% { transform: translateY(-5px) rotate(10deg); }
+}
+@keyframes ml-chakra {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 122, 26, 0.0), 0 0 18px -4px rgba(255, 122, 26, 0.45); }
+  50% { box-shadow: 0 0 0 4px rgba(255, 122, 26, 0.12), 0 0 28px -2px rgba(255, 122, 26, 0.7); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-hit, .animate-float-up, .animate-stamp, .animate-leaf, .animate-chakra, .smoke-poof, .animate-spin-slow {
+    animation: none !important;
   }
 }

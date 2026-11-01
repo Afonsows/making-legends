@@ -25,6 +25,7 @@ interface ChallengeHistoryModalProps {
 export const ChallengeHistoryModal: React.FC<ChallengeHistoryModalProps> = ({ isOpen, onClose }) => {
   const { profile, openStartChallengeModal, restoreArchivedCycle } = useUserStore();
   const [expandedCycleId, setExpandedCycleId] = useState<string | null>(null);
+  const [restoreMsg, setRestoreMsg] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -54,7 +55,7 @@ export const ChallengeHistoryModal: React.FC<ChallengeHistoryModalProps> = ({ is
                 <span>Área de Histórico de Desafios</span>
               </h3>
               <p className="text-[11px] text-slate-400">
-                Auditoria de todos os ciclos dos 66 dias • Tentativas, conclusões e registros diários
+                Todas as tentativas, conclusões e registros diários dos seus desafios
               </p>
             </div>
           </div>
@@ -75,7 +76,7 @@ export const ChallengeHistoryModal: React.FC<ChallengeHistoryModalProps> = ({ is
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-glow-jade" />
                   <h4 className="font-cinzel font-bold text-slate-100 text-sm sm:text-base">
-                    {activeCycle.title || 'Desafio dos 66 Dias'} — Ciclo #{activeCycle.cycleNumber || 1}
+                    {activeCycle.title || `Desafio ${activeCycle.targetDays || 66} Dias`} — Ciclo #{activeCycle.cycleNumber || 1}
                   </h4>
                 </div>
                 <span className="text-xs font-mono text-shinobi-gold">
@@ -87,7 +88,7 @@ export const ChallengeHistoryModal: React.FC<ChallengeHistoryModalProps> = ({ is
                 <div className="p-2 rounded-xl bg-slate-950/80 border border-slate-800">
                   <span className="text-slate-400 block text-[10px]">Dia Atual</span>
                   <span className="font-bold text-shinobi-gold font-mono text-sm">
-                    Dia {activeCycle.currentDay || profile.currentProtocolDay || 1} / {activeCycle.targetDays || 66}
+                    Dia {activeCycle.currentDay || 0} / {activeCycle.targetDays || 66}
                   </span>
                 </div>
                 <div className="p-2 rounded-xl bg-slate-950/80 border border-slate-800">
@@ -129,6 +130,10 @@ export const ChallengeHistoryModal: React.FC<ChallengeHistoryModalProps> = ({ is
                 <span>Personalizar e Iniciar ⚡</span>
               </button>
             </div>
+          )}
+
+          {restoreMsg && (
+            <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-500/40 text-xs text-rose-200">{restoreMsg}</div>
           )}
 
           {/* Lista de Ciclos Arquivados */}
@@ -195,19 +200,20 @@ export const ChallengeHistoryModal: React.FC<ChallengeHistoryModalProps> = ({ is
                         </div>
 
                         <div className="flex items-center gap-2 self-start sm:self-auto">
-                          {!isCompleted && (
+                          {!isCompleted && !(activeCycle && activeCycle.status === 'active') && (
                             <button
                               onClick={() => {
-                                if (window.confirm(`Deseja restaurar o Ciclo #${cycle.cycleNumber || 1} como seu desafio ativo atual?`)) {
-                                  restoreArchivedCycle(cycle.id);
-                                  onClose();
+                                if (window.confirm(`Reavaliar e restaurar o Ciclo #${cycle.cycleNumber || 1}? Só é possível se o histórico real de dias não violar as regras.`)) {
+                                  const ok = restoreArchivedCycle(cycle.id);
+                                  if (ok) onClose();
+                                  else setRestoreMsg(`O Ciclo #${cycle.cycleNumber || 1} não pode ser restaurado: os dias registrados confirmam o encerramento.`);
                                 }
                               }}
                               className="px-3 py-1.5 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 text-xs font-semibold rounded-xl border border-rose-800 transition-colors flex items-center gap-1.5"
                               title="Restaurar este ciclo como ativo"
                             >
                               <RotateCcw className="w-3.5 h-3.5" />
-                              <span>Restaurar Ciclo</span>
+                              <span>Reavaliar</span>
                             </button>
                           )}
 

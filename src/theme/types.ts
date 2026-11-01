@@ -19,6 +19,7 @@ export interface ThemePillarConfig {
   color: string;            // Hex / Tailwind color
   iconName: string;         // Nome do ícone
   badgeIcon: string;
+  kanji: string;            // Ex: '体'
 }
 
 export interface ThemeRankConfig {
@@ -28,6 +29,8 @@ export interface ThemeRankConfig {
   description: string;      // Descrição de lore
   badge: string;            // Insígnia/Emoji representativo
   titleColor: string;       // Cor de destaque do rank
+  kanji: string;            // Ex: '下忍'
+  reading: string;          // Ex: 'ge-nin'
 }
 
 export interface ThemeMissionRankConfig {

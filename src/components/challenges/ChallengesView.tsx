@@ -6,15 +6,15 @@ import { evaluateProtocolStatus } from '../../core/streakEngine';
 import { CreateChallengeModal } from './CreateChallengeModal';
 import { ChallengeDetailModal } from './ChallengeDetailModal';
 import { getTodayString } from '../../core/streakEngine';
-import { 
-  Trophy, 
-  Flame, 
-  Target, 
-  Plus, 
-  Sparkles, 
-  Calendar, 
-  CheckCircle2, 
-  Clock, 
+import {
+  Trophy,
+  Flame,
+  Target,
+  Plus,
+  Sparkles,
+  Calendar,
+  CheckCircle2,
+  Clock,
   ArrowRight,
   Layers,
   ChevronRight,
@@ -25,22 +25,22 @@ import {
 } from 'lucide-react';
 
 export const ChallengesView: React.FC = () => {
-  const { 
-    challenges, 
-    isCreateModalOpen, 
-    isDetailModalOpen, 
+  const {
+    challenges,
+    isCreateModalOpen,
+    isDetailModalOpen,
     selectedChallengeForModal,
-    openCreateModal, 
-    closeCreateModal, 
-    openDetailModal, 
-    closeDetailModal 
+    openCreateModal,
+    closeCreateModal,
+    openDetailModal,
+    closeDetailModal
   } = useChallengeStore();
 
-  const { 
-    profile, 
-    openChallengeMapModal, 
-    openChallengeHistoryModal, 
-    openStartChallengeModal 
+  const {
+    profile,
+    openChallengeMapModal,
+    openChallengeHistoryModal,
+    openStartChallengeModal
   } = useUserStore();
   const { missions } = useHabitStore();
 
@@ -52,7 +52,7 @@ export const ChallengesView: React.FC = () => {
 
   // Outros desafios criados pelo usuário
   const customChallenges = challenges.filter((c) => !c.isOfficial66 && c.id !== 'challenge_official_66');
-  
+
   const activeChallengesCount = (protocolStatus.hasActiveChallenge ? 1 : 0) + customChallenges.filter((c) => c.status === 'active').length;
   const completedChallengesCount = customChallenges.filter((c) => c.status === 'completed').length;
   const totalHabitsCount = missions.length + customChallenges.reduce((acc, c) => acc + (c.habits?.length || 0), 0);
@@ -159,7 +159,7 @@ export const ChallengesView: React.FC = () => {
                 className="text-[11px] font-mono text-shinobi-gold hover:text-amber-300 flex items-center gap-1 transition-colors"
               >
                 <Map className="w-3.5 h-3.5" />
-                <span>Mapa 66 Dias</span>
+                <span>Mapa do Desafio</span>
               </button>
             )}
           </div>
@@ -174,7 +174,7 @@ export const ChallengesView: React.FC = () => {
               <div className="space-y-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="bg-gradient-to-r from-amber-500 to-shinobi-gold text-slate-950 font-extrabold text-[10px] px-3 py-0.5 rounded-full shadow-glow-gold/40 animate-pulse">
-                    ⭐ MAIS POPULAR • FORMAÇÃO DE HÁBITO
+                    ⭐ DESAFIO PRINCIPAL
                   </span>
                   <span className="text-[10px] font-mono font-bold text-shinobi-gold bg-slate-950/80 px-2.5 py-0.5 rounded-full border border-shinobi-gold/40">
                     Ciclo #{profile.activeChallenge?.cycleNumber || 1} • {protocolStatus.phaseName} (Fase {protocolStatus.phaseIndex})
@@ -186,7 +186,7 @@ export const ChallengesView: React.FC = () => {
                 </h3>
 
                 <p className="text-xs text-slate-300 max-w-xl">
-                  O protocolo supremo de neuroplasticidade. 100% sincronizado com suas missões diárias e presença.
+                  Suas missões diárias da tela inicial. Cada dia com 50% do XP conta como presença.
                 </p>
               </div>
 
@@ -205,7 +205,7 @@ export const ChallengesView: React.FC = () => {
               <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
                 <span className="text-slate-400 block text-[10px]">Dia Atual</span>
                 <span className="font-bold text-shinobi-gold font-mono text-sm sm:text-base">
-                  Dia {protocolStatus.currentDay} / 66 ({protocolStatus.protocolProgressPercent}%)
+                  Dia {protocolStatus.currentDay} / {protocolStatus.targetDays} ({protocolStatus.protocolProgressPercent}%)
                 </span>
               </div>
 
@@ -216,9 +216,9 @@ export const ChallengesView: React.FC = () => {
                 </span>
                 <span className="font-bold text-emerald-400 font-mono text-sm sm:text-base">
                   {missions.reduce((acc, m) => {
-                    const days = generateChallengeDays(66, profile.activeChallenge?.startDate, m.completedDates);
+                    const days = generateChallengeDays(protocolStatus.targetDays, profile.activeChallenge?.startDate, m.completedDates);
                     return acc + days.filter((d) => d.isCompleted).length;
-                  }, 0)} / {missions.length * 66}
+                  }, 0)} / {missions.length * protocolStatus.targetDays}
                 </span>
               </div>
 
@@ -275,11 +275,11 @@ export const ChallengesView: React.FC = () => {
                 </div>
 
                 <h3 className="font-cinzel text-lg sm:text-xl font-bold text-slate-100">
-                  Desafio 66 Dias — Protocolo UCL de Neuroplasticidade
+                  Desafio de 66 Dias — o caminho da formação de hábitos
                 </h3>
 
                 <p className="text-xs text-slate-300 max-w-xl leading-relaxed">
-                  Os desafios agora só começam quando você decidir. Monte suas missões de forma personalizada, escolha a duração e dê início quando estiver 100% pronto!
+                  Estudos da University College London (Lally, 2009) mostram que um hábito leva em média 66 dias para se tornar automático. Monte suas missões, escolha a duração e comece quando estiver pronto.
                 </p>
               </div>
 

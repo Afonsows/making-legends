@@ -3,11 +3,11 @@ import { teachingCards } from '../../core/cardsData';
 import { useUserStore } from '../../state/useUserStore';
 import { useTheme } from '../../theme/ThemeContext';
 import { TeachingCardModal } from './TeachingCardModal';
-import { 
-  BookOpen, 
-  Sparkles, 
-  ChevronRight, 
-  Zap, 
+import {
+  BookOpen,
+  Sparkles,
+  ChevronRight,
+  Zap,
   Share2,
   Award
 } from 'lucide-react';
@@ -26,19 +26,13 @@ export const DailyScrollWidget: React.FC<DailyScrollWidgetProps> = ({ onNavigate
   // 1. O cartão com unlockedDay mais próximo ou igual ao dia atual do protocolo
   // 2. Ou o último cartão desbloqueado até o dia atual
   // 3. Ou o primeiro cartão (Dia 1)
-  const currentDay = Math.min(
-    66,
-    Math.max(1, profile.activeChallenge?.currentDay || profile.currentProtocolDay || 1)
-  );
-  
-  const dailyCard = 
-    teachingCards.find((c) => c.unlockedDay === currentDay) ||
-    teachingCards
-      .filter((c) => c.unlockedDay <= currentDay && (profile.unlockedCards || []).includes(c.id))
-      .pop() ||
-    teachingCards[0];
-
-  const isUnlocked = dailyCard.unlockedDay <= currentDay && (profile.unlockedCards || []).includes(dailyCard.id);
+  // O pergaminho em destaque é o último liberado pelos Dias Cumpridos
+  const completedDays = Object.values(profile.dayLog || {}).filter((d) => d.completed).length;
+  const reached = Math.max(1, completedDays);
+  const sorted = [...teachingCards].sort((a, b) => a.unlockedDay - b.unlockedDay);
+  const dailyCard = sorted.filter((c) => c.unlockedDay <= reached).pop() || sorted[0];
+  const nextCard = sorted.find((c) => c.unlockedDay > reached);
+  const daysToNext = nextCard ? nextCard.unlockedDay - completedDays : 0;
   const pillar = getPillar(dailyCard.pillarId);
 
   const rarityStyles = {
@@ -49,7 +43,7 @@ export const DailyScrollWidget: React.FC<DailyScrollWidgetProps> = ({ onNavigate
 
   return (
     <>
-      <div 
+      <div
         onClick={() => {
           soundFx.playButtonClick();
           setSelectedCard(dailyCard);
@@ -57,7 +51,7 @@ export const DailyScrollWidget: React.FC<DailyScrollWidgetProps> = ({ onNavigate
         className={`rounded-2xl border p-4 sm:p-4.5 cursor-pointer relative overflow-hidden transition-all duration-300 hover:scale-[1.01] hover:border-shinobi-gold group ${rarityStyles}`}
       >
         {/* Kanji de Fundo */}
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-7xl font-serif font-black select-none pointer-events-none opacity-5 text-white">
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-7xl font-kanji select-none pointer-events-none opacity-[0.07] text-white">
           {dailyCard.kanji || '忍'}
         </div>
 
@@ -67,7 +61,7 @@ export const DailyScrollWidget: React.FC<DailyScrollWidgetProps> = ({ onNavigate
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-shinobi-gold/20 text-shinobi-gold font-bold border border-shinobi-gold/40 flex items-center gap-1">
                 <BookOpen className="w-3 h-3" />
-                Pergaminho de Sabedoria do Dia #{dailyCard.unlockedDay}
+                Pergaminho #{sorted.indexOf(dailyCard) + 1} de {sorted.length}
               </span>
 
               <span
@@ -104,6 +98,11 @@ export const DailyScrollWidget: React.FC<DailyScrollWidgetProps> = ({ onNavigate
               <Zap className="w-3 h-3 flex-shrink-0" />
               <span className="truncate">Ação do dia: {dailyCard.actionTip}</span>
             </div>
+            {nextCard && (
+              <div className="text-[10px] font-mono text-slate-500">
+                Próximo pergaminho em {daysToNext} {daysToNext === 1 ? 'Dia Cumprido' : 'Dias Cumpridos'}
+              </div>
+            )}
           </div>
 
           {/* Botão de Ação */}

@@ -1,23 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { useToolStore, bookSummariesList } from '../../state/useToolStore';
+import { useToolStore, bookSummariesList, TOOL_LIMITS, TOOL_REWARDS } from '../../state/useToolStore';
 import { useUserStore } from '../../state/useUserStore';
 import { useTheme } from '../../theme/ThemeContext';
 import { soundFx } from '../../utils/audio';
-import { getTodayString } from '../../core/streakEngine';
-import { 
-  Utensils, 
-  Timer, 
-  BookOpen, 
-  Wind, 
-  Lock, 
-  Dumbbell, 
-  Moon, 
+import { getTodayString } from '../../core/dateUtils';
+import {
+  Utensils,
+  Timer,
+  BookOpen,
+  Wind,
+  Lock,
+  Dumbbell,
+  Moon,
   Droplet,
-  Plus, 
-  Play, 
-  Pause, 
-  RotateCcw, 
-  Check, 
+  Plus,
+  Play,
+  Pause,
+  RotateCcw,
+  Check,
   Sparkles,
   ChevronRight,
   Flame
@@ -26,35 +26,44 @@ import {
 type ActiveTool = 'nutrition' | 'pomodoro' | 'books' | 'meditation' | 'seallock' | 'workout' | 'body' | null;
 
 export const ToolsHub: React.FC = () => {
-  const { 
-    nutritionLogs, 
-    currentCalorieTarget, 
+  const {
+    nutritionLogs,
+    currentCalorieTarget,
     currentProteinTarget,
-    addMeal, 
+    addMeal,
     setNutritionTargets,
-    pomodoroSessionsCompletedToday, 
-    incrementPomodoroSession,
-    meditationMinutesToday, 
+    pomodoroSessionsCompletedToday,
+    pomodoro,
+    setPomodoroPreset,
+    startPomodoro,
+    pausePomodoro,
+    resetPomodoro,
+    completePomodoroIfDue,
+    countRewardedToday,
+    meditationMinutesToday,
     logMeditationSession,
-    sealLockActive, 
+    sealLockActive,
     setSealLock,
-    bodyJournal, 
-    addWaterGlass, 
-    removeWaterGlass, 
+    bodyJournal,
+    addWaterGlass,
+    removeWaterGlass,
     logSleep,
-    trainingLogs, 
-    addTrainingLog 
+    trainingLogs,
+    addTrainingLog
   } = useToolStore();
 
-  const { addXp, addRyo } = useUserStore();
+  const { pushToast } = useUserStore();
   const { theme } = useTheme();
 
   const [activeTool, setActiveTool] = useState<ActiveTool>('nutrition');
 
-  // Estado Pomodoro
-  const [pomoSeconds, setPomoSeconds] = useState(25 * 60);
-  const [isPomoRunning, setIsPomoRunning] = useState(false);
-  const [pomoMode, setPomoMode] = useState<'work' | 'break'>('work');
+  // Pomodoro guardado na store com horário de término: não se perde ao trocar de aba
+  const [, setTick] = useState(0);
+  const isPomoRunning = pomodoro.endsAt !== null;
+  const pomoMode = pomodoro.mode;
+  const pomoSeconds = isPomoRunning
+    ? Math.max(0, Math.ceil(((pomodoro.endsAt || 0) - Date.now()) / 1000))
+    : pomodoro.remainingSeconds;
 
   // Estado Meditação
   const [breathPhase, setBreathPhase] = useState<'Inspire' | 'Segure' | 'Expire' | 'Vazio'>('Inspire');
@@ -84,33 +93,31 @@ export const ToolsHub: React.FC = () => {
     meals: []
   };
   const todayBody = bodyJournal[todayStr] || {
-    waterGlasses: 4,
-    sleepHours: 7,
-    sleepQuality: 4
+    waterGlasses: 0,
+    sleepHours: 0,
+    sleepQuality: 3,
+    sleepLogged: false
   };
 
-  // Timer Pomodoro Effect
+  // Timer Pomodoro: re-renderiza a cada segundo e conclui a sessão quando o tempo acaba
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isPomoRunning && pomoSeconds > 0) {
-      interval = setInterval(() => {
-        setPomoSeconds((prev) => prev - 1);
-      }, 1000);
-    } else if (isPomoRunning && pomoSeconds === 0) {
-      soundFx.playZenBell();
-      if (pomoMode === 'work') {
-        incrementPomodoroSession();
-        addXp(60, 'genjutsu');
-        setPomoMode('break');
-        setPomoSeconds(5 * 60);
-      } else {
-        setPomoMode('work');
-        setPomoSeconds(25 * 60);
+    if (!isPomoRunning) return;
+    const interval = setInterval(() => {
+      const result = completePomodoroIfDue();
+      if (result.completed) {
+        soundFx.playZenBell();
+        if (result.mode === 'work') {
+          pushToast({
+            kind: result.rewarded ? 'reward' : 'info',
+            title: 'Sessão de foco concluída!',
+            message: result.rewarded ? 'XP de Genjutsu recebido. Hora de um descanso de 5 minutos.' : 'Limite diário de recompensas de foco atingido — mas o treino continua valendo!',
+          });
+        }
       }
-      setIsPomoRunning(false);
-    }
+      setTick((t) => t + 1);
+    }, 1000);
     return () => clearInterval(interval);
-  }, [isPomoRunning, pomoSeconds, pomoMode]);
+  }, [isPomoRunning]);
 
   // Meditação 4-4-4-4 Effect
   useEffect(() => {
@@ -136,21 +143,22 @@ export const ToolsHub: React.FC = () => {
     return () => clearInterval(interval);
   }, [isMeditating]);
 
+  const notifyReward = (rewarded: boolean, text: string) => {
+    if (rewarded) soundFx.playMissionComplete();
+    else soundFx.playButtonClick();
+    if (!rewarded) pushToast({ kind: 'info', title: 'Registrado!', message: text });
+  };
+
   const handleAddMeal = (e: React.FormEvent) => {
     e.preventDefault();
     if (!mealName.trim()) return;
-    const cals = parseInt(mealCals, 10) || 0;
-    const protein = parseInt(mealProtein, 10) || 0;
-
-    addMeal({
+    const { rewarded } = addMeal({
       name: mealName.trim(),
-      calories: cals,
-      protein: protein,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      calories: parseInt(mealCals, 10) || 0,
+      protein: parseInt(mealProtein, 10) || 0,
+      time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     });
-
-    addXp(15, 'taijutsu');
-    addRyo(10);
+    notifyReward(rewarded, `Refeição salva. A recompensa vale para as ${TOOL_LIMITS.mealsRewarded} primeiras do dia.`);
     setMealName('');
     setMealCals('');
     setMealProtein('');
@@ -159,27 +167,24 @@ export const ToolsHub: React.FC = () => {
   const handleAddWorkout = (e: React.FormEvent) => {
     e.preventDefault();
     if (!exerciseName.trim()) return;
-
-    addTrainingLog({
+    const { rewarded } = addTrainingLog({
       exerciseName: exerciseName.trim(),
       category: exerciseCategory,
       sets: parseInt(exerciseSets, 10) || 3,
       repsOrMinutes: exerciseReps,
-      rpeIntensity: 8
+      rpeIntensity: 8,
     });
-
-    addXp(40, 'taijutsu');
-    addRyo(30);
-    soundFx.playMissionComplete();
+    notifyReward(rewarded, `Treino salvo. A recompensa vale para os ${TOOL_LIMITS.workoutsRewarded} primeiros registros do dia.`);
     setExerciseName('');
   };
 
   const handleSaveSleep = () => {
-    logSleep(sleepHours, sleepQuality);
-    addXp(20, 'taijutsu');
-    addRyo(15);
-    soundFx.playMissionComplete();
+    const { rewarded } = logSleep(sleepHours, sleepQuality);
+    notifyReward(rewarded, 'Sono atualizado. A recompensa do registro de sono é diária.');
   };
+
+  const mealsRewarded = countRewardedToday(`tool:meal:${todayStr}`);
+  const workoutsRewarded = countRewardedToday(`tool:workout:${todayStr}`);
 
   const toolsList: { id: ActiveTool; name: string; icon: React.ComponentType<{ className?: string }>; color: string; desc: string }[] = [
     { id: 'nutrition', name: 'Diário de Nutrição', icon: Utensils, color: '#FF1341', desc: 'Controle de calorias e proteínas do guerreiro' },
@@ -318,7 +323,7 @@ export const ToolsHub: React.FC = () => {
                 type="submit"
                 className="w-full py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1"
               >
-                <Plus className="w-3.5 h-3.5" /> Adicionar Refeição (+15 XP Taijutsu)
+                <Plus className="w-3.5 h-3.5" /> Adicionar Refeição (+{TOOL_REWARDS.meal.xp} XP • {mealsRewarded}/{TOOL_LIMITS.mealsRewarded} hoje)
               </button>
             </form>
           </div>
@@ -354,13 +359,9 @@ export const ToolsHub: React.FC = () => {
 
           <div className="flex justify-center gap-2">
             <button
-              onClick={() => {
-                setPomoMode('work');
-                setPomoSeconds(25 * 60);
-                setIsPomoRunning(false);
-              }}
+              onClick={() => setPomodoroPreset('work', 25)}
               className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-                pomoMode === 'work' && pomoSeconds === 25 * 60
+                pomoMode === 'work' && pomodoro.durationMinutes === 25
                   ? 'bg-purple-600 text-white shadow-glow-violet'
                   : 'bg-shinobi-bg border border-shinobi-border text-slate-400'
               }`}
@@ -368,13 +369,9 @@ export const ToolsHub: React.FC = () => {
               Foco 25min
             </button>
             <button
-              onClick={() => {
-                setPomoMode('work');
-                setPomoSeconds(50 * 60);
-                setIsPomoRunning(false);
-              }}
+              onClick={() => setPomodoroPreset('work', 50)}
               className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-                pomoMode === 'work' && pomoSeconds === 50 * 60
+                pomoMode === 'work' && pomodoro.durationMinutes === 50
                   ? 'bg-purple-600 text-white shadow-glow-violet'
                   : 'bg-shinobi-bg border border-shinobi-border text-slate-400'
               }`}
@@ -382,11 +379,7 @@ export const ToolsHub: React.FC = () => {
               Foco Mestre 50min
             </button>
             <button
-              onClick={() => {
-                setPomoMode('break');
-                setPomoSeconds(5 * 60);
-                setIsPomoRunning(false);
-              }}
+              onClick={() => setPomodoroPreset('break', 5)}
               className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
                 pomoMode === 'break'
                   ? 'bg-emerald-600 text-white shadow-glow-jade'
@@ -415,7 +408,8 @@ export const ToolsHub: React.FC = () => {
             <button
               onClick={() => {
                 soundFx.playZenBell();
-                setIsPomoRunning(!isPomoRunning);
+                if (isPomoRunning) pausePomodoro();
+                else startPomodoro();
               }}
               className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm rounded-xl shadow-glow-violet transition-all flex items-center gap-2"
             >
@@ -423,10 +417,7 @@ export const ToolsHub: React.FC = () => {
               {isPomoRunning ? 'Pausar Foco' : 'Iniciar Foco'}
             </button>
             <button
-              onClick={() => {
-                setIsPomoRunning(false);
-                setPomoSeconds(pomoMode === 'work' ? 25 * 60 : 5 * 60);
-              }}
+              onClick={resetPomodoro}
               className="p-3 bg-shinobi-bg border border-shinobi-border text-slate-400 hover:text-white rounded-xl transition-colors"
             >
               <RotateCcw className="w-4 h-4" />
@@ -434,7 +425,7 @@ export const ToolsHub: React.FC = () => {
           </div>
 
           <div className="text-xs text-slate-400 font-mono">
-            Sessões de Foco completas hoje: <span className="font-bold text-shinobi-gold">{pomodoroSessionsCompletedToday}</span> (+60 XP Genjutsu por sessão)
+            Sessões de foco hoje: <span className="font-bold text-shinobi-gold">{pomodoroSessionsCompletedToday}</span> • 25 min = +{Math.round(25 * TOOL_REWARDS.pomodoroPerMinute.xp)} XP Genjutsu (até {TOOL_LIMITS.pomodoroSessions} sessões/dia)
           </div>
         </div>
       )}
@@ -536,16 +527,21 @@ export const ToolsHub: React.FC = () => {
               <button
                 onClick={() => {
                   const minutes = Math.floor(meditationElapsed / 60);
-                  logMeditationSession(minutes);
-                  addXp(minutes * 20, 'chakra');
-                  addRyo(minutes * 15);
-                  soundFx.playLevelUp();
+                  const { rewardedMinutes } = logMeditationSession(minutes);
+                  soundFx.playZenBell();
+                  pushToast({
+                    kind: rewardedMinutes > 0 ? 'reward' : 'info',
+                    title: `Meditação de ${minutes} min concluída`,
+                    message: rewardedMinutes > 0
+                      ? `+${rewardedMinutes * TOOL_REWARDS.meditationPerMinute.xp} XP de Controle de Chakra.`
+                      : `Você já atingiu o limite de ${TOOL_LIMITS.meditationMinutes} min recompensados hoje.`,
+                  });
                   setMeditationElapsed(0);
                   setIsMeditating(false);
                 }}
                 className="px-4 py-3 bg-shinobi-gold text-shinobi-bg font-bold text-xs rounded-xl shadow-glow-gold transition-all"
               >
-                Concluir Sessão (+{Math.floor(meditationElapsed / 60) * 20} XP, +{Math.floor(meditationElapsed / 60) * 15} Ryō)
+                Concluir Sessão ({Math.floor(meditationElapsed / 60)} min)
               </button>
             )}
           </div>
@@ -580,11 +576,10 @@ export const ToolsHub: React.FC = () => {
 
           <button
             onClick={() => {
-              setSealLock(!sealLockActive, 60);
+              const { rewarded } = setSealLock(!sealLockActive, 60);
               if (!sealLockActive) {
-                soundFx.playMissionComplete();
-                addXp(30, 'chakra');
-                addRyo(20);
+                soundFx.playShield();
+                if (!rewarded) pushToast({ kind: 'info', title: 'Selo reativado', message: 'A recompensa do Selo de Bloqueio é uma vez por dia.' });
               }
             }}
             className={`px-6 py-3 font-bold text-xs rounded-xl transition-all ${
@@ -593,7 +588,7 @@ export const ToolsHub: React.FC = () => {
                 : 'bg-shinobi-gold text-shinobi-bg shadow-glow-gold'
             }`}
           >
-            {sealLockActive ? 'Desativar Selo de Bloqueio' : 'Ativar Selo de Bloqueio (+30 XP, +20 Ryō)'}
+            {sealLockActive ? 'Desativar Selo de Bloqueio' : `Ativar Selo de Bloqueio (+${TOOL_REWARDS.seal.xp} XP, 1x ao dia)`}
           </button>
         </div>
       )}
@@ -656,7 +651,7 @@ export const ToolsHub: React.FC = () => {
               type="submit"
               className="w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5"
             >
-              <Plus className="w-3.5 h-3.5" /> Registrar Série (+40 XP Taijutsu)
+              <Plus className="w-3.5 h-3.5" /> Registrar Treino (+{TOOL_REWARDS.workout.xp} XP • {workoutsRewarded}/{TOOL_LIMITS.workoutsRewarded} hoje)
             </button>
           </form>
 
@@ -699,7 +694,7 @@ export const ToolsHub: React.FC = () => {
                   <span className="text-xs font-bold text-slate-200">Hidratação Diária</span>
                 </div>
                 <span className="font-mono text-cyan-400 font-bold text-xs">
-                  {todayBody.waterGlasses * 250}ml / 2500ml ({todayBody.waterGlasses} copos)
+                  {todayBody.waterGlasses * 250}ml / {TOOL_LIMITS.waterGoalGlasses * 250}ml {todayBody.waterGlasses >= TOOL_LIMITS.waterGoalGlasses ? '✓' : `(+${TOOL_REWARDS.water.xp} XP na meta)`}
                 </span>
               </div>
 
@@ -747,7 +742,7 @@ export const ToolsHub: React.FC = () => {
                   <span className="text-xs font-bold text-slate-200">Registro de Sono</span>
                 </div>
                 <span className="font-mono text-indigo-400 font-bold text-xs">
-                  {todayBody.sleepHours}h ({todayBody.sleepQuality}★)
+                  {todayBody.sleepLogged ? `${todayBody.sleepHours}h (${todayBody.sleepQuality}★)` : 'não registrado'}
                 </span>
               </div>
 
@@ -790,7 +785,7 @@ export const ToolsHub: React.FC = () => {
                 onClick={handleSaveSleep}
                 className="w-full py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-colors"
               >
-                Salvar Sono (+20 XP Taijutsu)
+                {todayBody.sleepLogged ? 'Atualizar Registro de Sono' : `Salvar Sono (+${TOOL_REWARDS.sleep.xp} XP)`}
               </button>
             </div>
           </div>

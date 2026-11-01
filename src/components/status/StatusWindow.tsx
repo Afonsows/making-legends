@@ -6,8 +6,6 @@ import { RadarChart } from './RadarChart';
 import { getLevelProgress } from '../../core/xpEngine';
 import { getDefaultRyoReward } from '../../core/ryoEngine';
 import { evaluateProtocolStatus } from '../../core/streakEngine';
-import { syncService } from '../../services/syncService';
-import { supabase } from '../../services/supabase';
 import { soundFx } from '../../utils/audio';
 import { 
   Shield, 
@@ -36,13 +34,14 @@ import {
   Backpack,
   Swords,
   BookOpen,
-  FlaskConical
+  FlaskConical,
+  ShoppingBag
 } from 'lucide-react';
 import { allGameItems } from '../../core/itemsData';
-import { EditProfileModal, AVATAR_OPTIONS } from '../modals/EditProfileModal';
+import { EditProfileModal } from '../modals/EditProfileModal';
+import { ShopPanel } from './ShopPanel';
 import { ChallengeMapModal } from '../modals/ChallengeMapModal';
 import { ChallengeHistoryModal } from '../modals/ChallengeHistoryModal';
-import { triggerLevelUpConfetti } from '../../utils/confetti';
 
 interface StatusWindowProps {
   onOpenAvatarCustomizer?: () => void;
@@ -71,7 +70,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
   const hasActiveChallenge = protocolStatus.hasActiveChallenge;
 
   // Sub-abas do Pergaminho de Status
-  const [activeSubTab, setActiveSubTab] = useState<'stats' | 'inventory' | 'profile' | 'history'>('stats');
+  const [activeSubTab, setActiveSubTab] = useState<'stats' | 'inventory' | 'shop' | 'history'>('stats');
   const [inventoryCategory, setInventoryCategory] = useState<'all' | 'gear' | 'relic' | 'scroll' | 'elixir'>('all');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -81,101 +80,14 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
 
   const avatarDisplay = profile.avatarConfig.customEmoji || (profile.gender === 'female' ? '🥷‍♀️' : (rankInfo.badge === '🌱' ? '🥷' : rankInfo.badge));
 
-  // Estados de edição de perfil
-  const [editName, setEditName] = useState(profile.name);
-  const [editEmail, setEditEmail] = useState(profile.email || '');
-  const [editWhatsapp, setEditWhatsapp] = useState(profile.whatsapp || '');
-  const [editGender, setEditGender] = useState<'male' | 'female'>(profile.gender || 'male');
-  const [editAvatarEmoji, setEditAvatarEmoji] = useState(avatarDisplay);
-  const [activeCategory, setActiveCategory] = useState<'all' | 'shinobi' | 'kunoichi' | 'mestres' | 'bestas' | 'elementos'>('all');
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
   const [recalibrateNotice, setRecalibrateNotice] = useState<string | null>(null);
+  const [eliteNotice, setEliteNotice] = useState<string | null>(null);
+  const completedDays = Object.values(profile.dayLog || {}).filter((d) => d.completed).length;
 
-  // Sincroniza campos quando o perfil carregar
-  useEffect(() => {
-    setEditName(profile.name);
-    setEditEmail(profile.email || '');
-    setEditWhatsapp(profile.whatsapp || '');
-    setEditGender(profile.gender || 'male');
-    setEditAvatarEmoji(avatarDisplay);
-  }, [profile, activeSubTab]);
-
-  const filteredAvatars = activeCategory === 'all' 
-    ? AVATAR_OPTIONS 
-    : AVATAR_OPTIONS.filter((a) => a.category === activeCategory);
-
-  const handleSelectAvatarInline = (emoji: string) => {
-    soundFx.playButtonClick();
-    setEditAvatarEmoji(emoji);
-    if (emoji === '🥷‍♀️' || emoji === '🌸' || emoji === '🌺' || emoji === '🧕') {
-      setEditGender('female');
-    } else if (emoji === '🥷' || emoji === '👺' || emoji === '🥋') {
-      setEditGender('male');
-    }
-  };
-
-  const handleSaveProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSaving(true);
-    setSaveSuccess(false);
-
-    const updatedData = {
-      name: editName.trim() || 'Aspirante Shinobi',
-      email: editEmail.trim(),
-      whatsapp: editWhatsapp.trim(),
-      gender: editGender,
-      avatarConfig: {
-        ...profile.avatarConfig,
-        customEmoji: editAvatarEmoji,
-      },
-    };
-
-    updateProfile(updatedData);
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const targetUserId = session?.user?.id || profile.id;
-
-      if (targetUserId) {
-        await syncService.pushUserProfile({ ...profile, ...updatedData }, targetUserId);
-      }
-      soundFx.playLevelUp();
-      triggerLevelUpConfetti();
-      setSaveSuccess(true);
-      setTimeout(() => {
-        setSaveSuccess(false);
-      }, 2500);
-    } catch (err) {
-      console.error('Erro ao salvar perfil no Supabase:', err);
-      soundFx.playLevelUp();
-      setSaveSuccess(true);
-      setTimeout(() => {
-        setSaveSuccess(false);
-      }, 2500);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleRecalibrate = async () => {
+  const handleRecalibrate = () => {
     const result = recalibrateFromMissions();
     soundFx.playScrollOpen();
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const targetUserId = session?.user?.id || profile.id;
-      if (targetUserId) {
-        const freshProfile = useUserStore.getState().profile;
-        const freshMissions = useHabitStore.getState().missions;
-        await syncService.pushUserProfile(freshProfile, targetUserId);
-        await syncService.pushMissions(freshMissions, targetUserId);
-      }
-    } catch (err) {
-      console.warn('Recalibrado localmente.', err);
-    }
-
-    setRecalibrateNotice(`Ficha sincronizada com sucesso: ${result.totalXp} XP Total, Nível ${result.level} e ${result.ryo} Ryō.`);
+    setRecalibrateNotice(`Ficha verificada: ${result.totalXp} XP, Nível ${result.level}, ${result.ryo} Ryō. Nível, patente, sequência e mochila foram conferidos — nada foi apagado.`);
     setTimeout(() => {
       setRecalibrateNotice(null);
     }, 4000);
@@ -210,7 +122,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
           {/* Nome e Títulos */}
           <div className="text-center sm:text-left flex-1 min-w-0">
             <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap mb-1">
-              <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded-full bg-shinobi-gold/20 text-shinobi-gold border border-shinobi-gold/40">
+              <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded-full bg-shinobi-gold/20 text-shinobi-gold border border-shinobi-gold/40 flex items-center gap-1.5">
+                <span className="font-kanji text-sm leading-none">{rankInfo.kanji}</span>
                 {rankInfo.name}
               </span>
               <span className="text-xs text-slate-400 font-mono">
@@ -291,15 +204,15 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
         </button>
 
         <button
-          onClick={() => setActiveSubTab('profile')}
+          onClick={() => setActiveSubTab('shop')}
           className={`py-2.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-            activeSubTab === 'profile'
+            activeSubTab === 'shop'
               ? 'bg-gradient-to-r from-shinobi-gold to-amber-500 text-slate-950 shadow-glow-gold font-bold scale-[1.02]'
               : 'bg-slate-800 border border-slate-700 text-slate-200 hover:text-white hover:bg-slate-700'
           }`}
         >
-          <Sliders className="w-4 h-4 flex-shrink-0" />
-          <span className="truncate">Editar Ficha</span>
+          <ShoppingBag className="w-4 h-4 flex-shrink-0" />
+          <span className="truncate">Loja</span>
         </button>
 
         <button
@@ -329,7 +242,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
                 {profile.ryo || 0}
               </div>
               <p className="text-[10px] text-slate-300">
-                Ganhos em missões
+                gaste no Mercado
               </p>
             </div>
 
@@ -386,7 +299,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
                 {profile.weeklyShieldsRemaining}<span className="text-xs font-mono text-slate-400">/{profile.weeklyShieldsMax}</span>
               </div>
               <p className="text-[10px] text-slate-300">
-                1 perdão semanal ativo
+                {profile.isHardModeEnabled ? 'Modo Elite: sem escudos' : 'protege a sequência'}
               </p>
             </div>
 
@@ -515,12 +428,23 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
                 </h3>
               </div>
               <p className="text-xs text-slate-400 max-w-md">
-                No Modo Elite você ganha <strong>+20% de XP em todas as missões</strong>, mas perde os escudos de perdão semanal.
+                <strong>+20% de XP em todas as missões</strong>, mas sem Escudo de Chakra e sem tolerância a faltas nos desafios.
+                {hasActiveChallenge && ' Fica travado até o desafio atual terminar.'}
               </p>
+              {eliteNotice && <p className="text-[11px] text-amber-300">{eliteNotice}</p>}
             </div>
 
             <button
-              onClick={toggleHardMode}
+              onClick={() => {
+                const res = toggleHardMode();
+                if (!res.success) {
+                  soundFx.playError();
+                  setEliteNotice(res.reason || null);
+                  setTimeout(() => setEliteNotice(null), 4000);
+                } else {
+                  soundFx.playButtonClick();
+                }
+              }}
               className={`px-5 py-2.5 rounded-xl font-bold text-xs font-mono transition-all ${
                 profile.isHardModeEnabled
                   ? 'bg-rose-600 text-white shadow-glow-crimson'
@@ -780,10 +704,10 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
               <div>
                 <h3 className="font-cinzel text-base font-bold text-slate-100 flex items-center gap-2">
                   <Award className="w-4 h-4 text-shinobi-gold" />
-                  Catálogo das 30 Relíquias Shinobi (Drop de Chefes)
+                  Catálogo de Relíquias ({Object.keys(allGameItems).length})
                 </h3>
                 <p className="text-xs text-slate-400">
-                  Derrote adversários correspondentes no Modo Duelo para forjar cada relíquia.
+                  Relíquias caem dos chefes da Arena ou são vendidas no Mercado da Vila.
                 </p>
               </div>
             </div>
@@ -809,7 +733,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
                         </span>
                       ) : (
                         <span className="text-[10px] font-mono text-slate-500 flex items-center gap-1">
-                          <Lock className="w-3 h-3" /> Na Arena de Duelo
+                          <Lock className="w-3 h-3" /> {item.shopPrice ? `Loja • ${item.shopPrice} Ryō` : 'Arena de Duelo'}
                         </span>
                       )}
                     </div>
@@ -826,229 +750,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
         </div>
       )}
 
-      {/* SUB-ABA 3: EDITAR FICHA & FOTO/AVATAR */}
-      {activeSubTab === 'profile' && (
-        <div className="bg-slate-900/95 border border-shinobi-gold/60 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-5 animate-in fade-in duration-300">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <div>
-              <h3 className="font-cinzel text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2">
-                <User className="w-5 h-5 text-shinobi-gold" />
-                Personalização de Ficha & Avatar
-              </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Altere seu nome de guerreiro, foto de perfil, gênero e informações de contato.
-              </p>
-            </div>
-            <button
-              onClick={() => setIsEditModalOpen(true)}
-              className="px-3 py-1.5 bg-shinobi-gold/20 border border-shinobi-gold/50 hover:bg-shinobi-gold/30 text-shinobi-gold text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
-            >
-              <Sliders className="w-3.5 h-3.5" />
-              <span>Abrir em Janela Modal</span>
-            </button>
-          </div>
-
-          {/* Pré-visualização da Ficha */}
-          <div className="pergaminho-bg rounded-2xl border border-shinobi-gold/40 p-4 shadow-lg flex items-center gap-4">
-            <div className="relative flex-shrink-0">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-shinobi-card to-slate-950 border-2 border-shinobi-gold flex items-center justify-center text-3xl shadow-glow-gold/50">
-                <span>{editAvatarEmoji}</span>
-              </div>
-              <div className="absolute -bottom-1.5 -right-1.5 bg-shinobi-crimson text-white text-[10px] font-mono font-bold px-2 py-0.2 rounded-full border border-slate-900 shadow">
-                Nv. {profile.level}
-              </div>
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap mb-1">
-                <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-full bg-shinobi-gold/20 text-shinobi-gold border border-shinobi-gold/40">
-                  {rankInfo.name}
-                </span>
-                <span className="text-[10px] text-slate-400 font-mono">
-                  {editGender === 'female' ? 'Kunoichi 🥷‍♀️' : 'Shinobi 🥷'}
-                </span>
-                <span className="text-[10px] text-amber-300 font-mono">
-                  🪙 {profile.ryo || 0} Ryō
-                </span>
-              </div>
-              <div className="font-cinzel text-lg font-bold text-slate-100 truncate">
-                {editName || 'Aspirante Shinobi'}
-              </div>
-              <div className="text-[11px] text-slate-400">
-                Avatar ativo: <strong className="text-shinobi-gold">{AVATAR_OPTIONS.find((a) => a.emoji === editAvatarEmoji)?.label || 'Avatar Personalizado'}</strong>
-              </div>
-            </div>
-          </div>
-
-          <form onSubmit={handleSaveProfile} className="space-y-4">
-            {/* SELETOR DE FOTO / AVATAR SHINOBI */}
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-shinobi-gold" /> Escolha sua Foto / Avatar Shinobi:
-                </label>
-                <span className="text-xs text-shinobi-gold font-mono">
-                  {filteredAvatars.length} avatares disponíveis
-                </span>
-              </div>
-
-              {/* Filtros de Categoria */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-                {[
-                  { id: 'all', label: 'Todos' },
-                  { id: 'shinobi', label: '🥷 Shinobis' },
-                  { id: 'kunoichi', label: '🌸 Kunoichis' },
-                  { id: 'mestres', label: '👑 Mestres' },
-                  { id: 'bestas', label: '🐉 Bestas' },
-                  { id: 'elementos', label: '🔥 Elementos' },
-                ].map((cat) => (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setActiveCategory(cat.id as any)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                      activeCategory === cat.id
-                        ? 'bg-shinobi-gold text-slate-950 shadow-glow-gold/30 font-bold'
-                        : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
-                    }`}
-                  >
-                    {cat.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Grid de Avatares */}
-              <div className="grid grid-cols-4 sm:grid-cols-7 gap-2.5 p-3 border border-slate-800 rounded-2xl bg-slate-950/90 max-h-60 overflow-y-auto">
-                {filteredAvatars.map((opt) => {
-                  const isSelected = editAvatarEmoji === opt.emoji;
-                  return (
-                    <button
-                      key={opt.emoji + opt.label}
-                      type="button"
-                      title={opt.label}
-                      onClick={() => handleSelectAvatarInline(opt.emoji)}
-                      className={`h-14 rounded-xl text-3xl flex flex-col items-center justify-center border transition-all relative ${
-                        isSelected
-                          ? 'border-shinobi-gold bg-shinobi-gold/25 shadow-glow-gold scale-105 z-10'
-                          : 'border-slate-800 bg-slate-900 hover:bg-slate-800 hover:border-slate-600'
-                      }`}
-                    >
-                      <span>{opt.emoji}</span>
-                      {isSelected && (
-                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-shinobi-gold text-slate-950 rounded-full flex items-center justify-center text-[10px] font-bold shadow">
-                          ✓
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Nome */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5 text-shinobi-gold" /> Nome ou Codinome Shinobi
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  placeholder="Ex: Afonso"
-                  className="w-full bg-slate-950 border border-slate-700 focus:border-shinobi-gold rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none transition-colors"
-                />
-              </div>
-
-              {/* Gênero */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-300">
-                  Gênero do Guerreiro
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditGender('male');
-                      if (editAvatarEmoji === '🥷‍♀️') setEditAvatarEmoji('🥷');
-                    }}
-                    className={`py-2.5 px-3 rounded-xl border text-xs font-medium flex items-center justify-center gap-1.5 transition-all ${
-                      editGender === 'male'
-                        ? 'border-shinobi-gold bg-shinobi-gold/15 text-shinobi-gold font-bold shadow-glow-gold/20'
-                        : 'border-slate-800 bg-slate-950 text-slate-400'
-                    }`}
-                  >
-                    <span>🥷</span> Masculino
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditGender('female');
-                      if (editAvatarEmoji === '🥷') setEditAvatarEmoji('🥷‍♀️');
-                    }}
-                    className={`py-2.5 px-3 rounded-xl border text-xs font-medium flex items-center justify-center gap-1.5 transition-all ${
-                      editGender === 'female'
-                        ? 'border-shinobi-gold bg-shinobi-gold/15 text-shinobi-gold font-bold shadow-glow-gold/20'
-                        : 'border-slate-800 bg-slate-950 text-slate-400'
-                    }`}
-                  >
-                    <span>🥷‍♀️</span> Feminino
-                  </button>
-                </div>
-              </div>
-
-              {/* E-mail */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5 text-shinobi-chakra" /> E-mail
-                </label>
-                <input
-                  type="email"
-                  value={editEmail}
-                  onChange={(e) => setEditEmail(e.target.value)}
-                  placeholder="seuemail@exemplo.com"
-                  className="w-full bg-slate-950 border border-slate-700 focus:border-shinobi-gold rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none transition-colors"
-                />
-              </div>
-
-              {/* WhatsApp */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                  <Phone className="w-3.5 h-3.5 text-emerald-400" /> WhatsApp com DDD
-                </label>
-                <input
-                  type="tel"
-                  value={editWhatsapp}
-                  onChange={(e) => setEditWhatsapp(e.target.value)}
-                  placeholder="(11) 99999-9999"
-                  className="w-full bg-slate-950 border border-slate-700 focus:border-shinobi-gold rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none transition-colors"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
-              <button
-                type="submit"
-                disabled={isSaving}
-                className="px-6 py-3 bg-gradient-to-r from-shinobi-gold to-amber-500 text-slate-950 font-bold text-xs rounded-xl shadow-glow-gold hover:opacity-95 transition-all flex items-center gap-2"
-              >
-                {saveSuccess ? (
-                  <>
-                    <CheckCircle2 className="w-4 h-4 text-emerald-950" />
-                    <span>Dados e Avatar Salvos com Sucesso!</span>
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" />
-                    <span>{isSaving ? 'Salvando...' : 'Salvar Alterações na Nuvem'}</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+      {/* SUB-ABA 3: LOJA */}
+      {activeSubTab === 'shop' && <ShopPanel />}
 
       {/* SUB-ABA 3: HISTÓRICO DE MISSÕES & LOGS DE XP/RYŌ */}
       {activeSubTab === 'history' && (
@@ -1067,10 +770,10 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
             <button
               onClick={handleRecalibrate}
               className="px-4 py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 text-xs font-bold rounded-xl shadow-glow-gold transition-all flex items-center gap-1.5 self-start sm:self-auto"
-              title="Recalcula e zera divergências de XP com as missões reais"
+              title="Confere nível, patente, sequência e mochila sem apagar nenhum progresso"
             >
               <RotateCcw className="w-4 h-4 stroke-[2.5]" />
-              <span>Sincronizar / Recalibrar Ficha</span>
+              <span>Verificar Ficha</span>
             </button>
           </div>
 
@@ -1126,31 +829,23 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
             </div>
           </div>
 
-          {/* Resumo da Ficha Real */}
+          {/* Estatísticas da jornada */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3.5 rounded-2xl bg-slate-950 border-2 border-slate-800 text-center text-xs shadow-md">
             <div className="p-2 bg-slate-900/80 rounded-xl border border-slate-800">
-              <span className="text-slate-400 block text-[10px]">Missões Concluídas Hoje</span>
-              <span className="font-bold text-slate-100 font-mono text-sm">
-                {missions.filter((m) => m.isCompletedToday).length} / {missions.length}
-              </span>
+              <span className="text-slate-400 block text-[10px]">Dias Cumpridos</span>
+              <span className="font-bold text-shinobi-orange font-mono text-sm">{completedDays}</span>
             </div>
             <div className="p-2 bg-slate-900/80 rounded-xl border border-slate-800">
-              <span className="text-slate-400 block text-[10px]">XP Calculado</span>
-              <span className="font-bold text-shinobi-gold font-mono text-sm">
-                {missions.filter((m) => m.isCompletedToday).reduce((acc, m) => acc + m.xpReward, 0)} XP
-              </span>
+              <span className="text-slate-400 block text-[10px]">Missões Concluídas</span>
+              <span className="font-bold text-shinobi-gold font-mono text-sm">{profile.missionsCompletedTotal || 0}</span>
             </div>
             <div className="p-2 bg-slate-900/80 rounded-xl border border-slate-800">
-              <span className="text-slate-400 block text-[10px]">Ryō Calculado</span>
-              <span className="font-bold text-amber-300 font-mono text-sm">
-                {missions.filter((m) => m.isCompletedToday).reduce((acc, m) => acc + (m.ryoReward || getDefaultRyoReward(m.rank)), 0)} Ryō
-              </span>
+              <span className="text-slate-400 block text-[10px]">Chefes Derrotados</span>
+              <span className="font-bold text-rose-300 font-mono text-sm">{profile.bossesDefeated || 0} / 30</span>
             </div>
             <div className="p-2 bg-slate-900/80 rounded-xl border border-slate-800">
-              <span className="text-slate-400 block text-[10px]">Nível Real Correspondente</span>
-              <span className="font-bold text-cyan-400 font-mono text-sm">
-                Nv. {getLevelProgress(missions.filter((m) => m.isCompletedToday).reduce((acc, m) => acc + m.xpReward, 0)).currentLevel}
-              </span>
+              <span className="text-slate-400 block text-[10px]">Recorde de Sequência</span>
+              <span className="font-bold text-cyan-400 font-mono text-sm">{profile.bestStreak} dias</span>
             </div>
           </div>
 

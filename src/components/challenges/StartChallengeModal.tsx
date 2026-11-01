@@ -3,7 +3,9 @@ import { useUserStore } from '../../state/useUserStore';
 import { useHabitStore } from '../../state/useHabitStore';
 import { Mission, TimeOfDay } from '../../core/types';
 import { PillarId, MissionRank } from '../../theme/types';
-import { getTodayString, formatDateBR } from '../../core/streakEngine';
+import { getTodayString, formatDateBR, addDaysToDateString } from '../../core/dateUtils';
+import { getRankRewards } from '../../state/useHabitStore';
+import { getChallengeCompletionReward } from '../../core/streakEngine';
 import { 
   X, 
   Sparkles, 
@@ -15,7 +17,8 @@ import {
   Clock, 
   Target,
   Layers,
-  Info
+  Info,
+  Skull
 } from 'lucide-react';
 
 interface StartChallengeModalProps {
@@ -52,6 +55,7 @@ export const StartChallengeModal: React.FC<StartChallengeModalProps> = ({ isOpen
   const [title, setTitle] = useState<string>(`Desafio 66 Dias — Ciclo #${nextCycleNumber}`);
   const [startDate, setStartDate] = useState<string>(todayStr);
   const [isCustomStartDate, setIsCustomStartDate] = useState<boolean>(false);
+  const [isEliteMode, setIsEliteMode] = useState<boolean>(false);
 
   // Lista de Missões que farão parte do Desafio
   const [selectedMissions, setSelectedMissions] = useState<Mission[]>([]);
@@ -71,6 +75,7 @@ export const StartChallengeModal: React.FC<StartChallengeModalProps> = ({ isOpen
       setStartDate(todayStr);
       setIsCustomStartDate(false);
       setIsAddingNewMission(false);
+      setIsEliteMode(profile.isHardModeEnabled);
     }
   }, [isOpen, nextCycleNumber, todayStr]);
 
@@ -85,7 +90,7 @@ export const StartChallengeModal: React.FC<StartChallengeModalProps> = ({ isOpen
   const handleCustomDaysChange = (val: string) => {
     setCustomDaysInput(val);
     const parsed = parseInt(val, 10);
-    if (!isNaN(parsed) && parsed > 0) {
+    if (!isNaN(parsed) && parsed >= 7 && parsed <= 365) {
       setTargetDays(parsed);
       setTitle(`Desafio ${parsed} Dias — Ciclo #${nextCycleNumber}`);
     }
@@ -103,22 +108,14 @@ export const StartChallengeModal: React.FC<StartChallengeModalProps> = ({ isOpen
     e.preventDefault();
     if (!newMissionTitle.trim()) return;
 
-    const rankRewards: Record<MissionRank, { xp: number; ryo: number }> = {
-      E: { xp: 25, ryo: 15 },
-      D: { xp: 50, ryo: 35 },
-      C: { xp: 85, ryo: 70 },
-      B: { xp: 140, ryo: 130 },
-      A: { xp: 220, ryo: 200 },
-      S: { xp: 350, ryo: 320 },
-    };
-
+    const rewards = getRankRewards(newMissionRank);
     const newM: Mission = {
       id: `mis_custom_${Date.now()}`,
       title: newMissionTitle.trim(),
       pillarId: newMissionPillar,
       rank: newMissionRank,
-      xpReward: rankRewards[newMissionRank].xp,
-      ryoReward: rankRewards[newMissionRank].ryo,
+      xpReward: rewards.xp,
+      ryoReward: rewards.ryo,
       timeOfDay: newMissionTime,
       isCompletedToday: false,
       completedDates: [],
@@ -143,6 +140,7 @@ export const StartChallengeModal: React.FC<StartChallengeModalProps> = ({ isOpen
       targetDays,
       startDate: isCustomStartDate ? startDate : todayStr,
       missions: selectedMissions,
+      isEliteMode,
     });
     onClose();
   };
@@ -229,7 +227,7 @@ export const StartChallengeModal: React.FC<StartChallengeModalProps> = ({ isOpen
                 <div className="flex items-center gap-1.5 mt-1">
                   <input
                     type="number"
-                    min={1}
+                    min={7}
                     max={365}
                     value={customDaysInput}
                     onChange={(e) => handleCustomDaysChange(e.target.value)}
@@ -297,6 +295,8 @@ export const StartChallengeModal: React.FC<StartChallengeModalProps> = ({ isOpen
                 <span className="text-slate-400 text-xs">Data de início:</span>
                 <input
                   type="date"
+                  min={todayStr}
+                  max={addDaysToDateString(todayStr, 30)}
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-shinobi-gold font-mono"
@@ -443,11 +443,46 @@ export const StartChallengeModal: React.FC<StartChallengeModalProps> = ({ isOpen
             </div>
           </div>
 
-          {/* Dica / Aviso de Regra de Negócio */}
-          <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-shinobi-gold/30 flex items-start gap-2.5 text-[11px] text-slate-300">
-            <Info className="w-4 h-4 text-shinobi-gold flex-shrink-0 mt-0.5" />
+          {/* Seção 5: Modo Elite */}
+          <div className="space-y-3">
+            <label className="font-bold text-slate-200 flex items-center gap-2 text-xs uppercase tracking-wider font-mono">
+              <Skull className="w-4 h-4 text-rose-400" />
+              <span>5. Intensidade do Treino</span>
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setIsEliteMode(false)}
+                className={`p-3 rounded-2xl border text-left transition-all ${
+                  !isEliteMode ? 'bg-emerald-950/30 border-emerald-500/80 shadow-glow-jade/20' : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
+                }`}
+              >
+                <div className="font-bold text-xs text-slate-100">🛡️ Caminho Padrão</div>
+                <div className="text-[10px] text-slate-400 mt-1 leading-snug">1 falta tolerada por semana + Escudo de Chakra semanal para proteger a sequência.</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsEliteMode(true)}
+                className={`p-3 rounded-2xl border text-left transition-all ${
+                  isEliteMode ? 'bg-rose-950/40 border-rose-500 shadow-glow-crimson/30' : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
+                }`}
+              >
+                <div className="font-bold text-xs text-rose-200">💀 Modo Elite (+20% XP)</div>
+                <div className="text-[10px] text-slate-400 mt-1 leading-snug">Tolerância zero: qualquer falta encerra o desafio e não há Escudo de Chakra.</div>
+              </button>
+            </div>
+          </div>
+
+          {/* Regras do desafio */}
+          <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-shinobi-orange/30 flex items-start gap-2.5 text-[11px] text-slate-300">
+            <Info className="w-4 h-4 text-shinobi-orange flex-shrink-0 mt-0.5" />
             <span>
-              Ao confirmar o início, o Desafio entrará oficialmente no <strong>Dia 1</strong>. Cada dia precisará de pelo menos 50% de XP das missões para confirmar presença.
+              <strong>Regras do juramento:</strong> um dia só conta quando você conclui pelo menos <strong>50% do XP</strong> das missões (a presença é automática).{' '}
+              {isEliteMode
+                ? 'No Modo Elite, uma única falta encerra o desafio.'
+                : 'Você pode faltar 1 dia por semana do desafio; a 2ª falta na mesma semana encerra o ciclo.'}{' '}
+              Ao concluir os {targetDays} dias você recebe <strong>+{getChallengeCompletionReward(targetDays).xp} XP</strong> e{' '}
+              <strong>+{getChallengeCompletionReward(targetDays).ryo} Ryō</strong>.
             </span>
           </div>
         </div>
@@ -465,10 +500,10 @@ export const StartChallengeModal: React.FC<StartChallengeModalProps> = ({ isOpen
           <button
             type="button"
             onClick={handleConfirmStart}
-            className="w-full sm:w-auto px-7 py-3 bg-gradient-to-r from-shinobi-gold via-amber-400 to-emerald-400 hover:opacity-95 text-slate-950 font-extrabold text-xs sm:text-sm rounded-2xl shadow-glow-gold transition-all duration-300 flex items-center justify-center gap-2"
+            className="w-full sm:w-auto px-7 py-3 bg-gradient-to-r from-shinobi-orange via-amber-500 to-shinobi-crimson hover:brightness-110 text-slate-950 font-extrabold text-xs sm:text-sm rounded-2xl shadow-glow-orange transition-all duration-300 flex items-center justify-center gap-2"
           >
             <Flame className="w-4 h-4 stroke-[2.5]" />
-            <span>Confirmar e Iniciar Desafio ⚡</span>
+            <span>Jurar e Iniciar o Desafio</span>
           </button>
         </div>
       </div>

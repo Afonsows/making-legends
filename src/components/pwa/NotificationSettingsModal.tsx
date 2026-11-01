@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useUserStore } from '../../state/useUserStore';
 import { X, Bell, Clock, Volume2, Check, Smartphone } from 'lucide-react';
+import { requestNotificationPermission, notificationsSupported, showShinobiNotification } from '../../utils/reminders';
+import { soundFx } from '../../utils/audio';
 
 interface NotificationSettingsModalProps {
   isOpen: boolean;
@@ -19,16 +21,28 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
   const [eveningTime, setEveningTime] = useState(profile.notificationSettings.eveningTime);
   const [enabled, setEnabled] = useState(profile.notificationSettings.enabled);
   const [soundEnabled, setSoundEnabled] = useState(profile.notificationSettings.soundEnabled);
+  const [permissionNote, setPermissionNote] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
-  const handleSave = () => {
-    updateNotifications({
-      morningTime,
-      eveningTime,
-      enabled,
-      soundEnabled,
-    });
+  const handleSave = async () => {
+    let finalEnabled = enabled;
+    if (enabled) {
+      const permission = await requestNotificationPermission();
+      if (permission !== 'granted') {
+        finalEnabled = false;
+        setPermissionNote(
+          permission === 'unsupported'
+            ? 'Este navegador não suporta notificações. No iPhone, instale o app na tela inicial primeiro.'
+            : 'Permissão de notificação negada. Libere nas configurações do navegador para receber os lembretes.'
+        );
+        updateNotifications({ morningTime, eveningTime, enabled: false, soundEnabled });
+        return;
+      }
+      showShinobiNotification('Lembretes ativados 🍃', `Vou te chamar às ${morningTime} e às ${eveningTime}.`);
+    }
+    updateNotifications({ morningTime, eveningTime, enabled: finalEnabled, soundEnabled });
+    if (soundEnabled) soundFx.playButtonClick();
     onClose();
   };
 
@@ -98,7 +112,7 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
           {/* Alternadores */}
           <div className="bg-shinobi-bg p-3 rounded-xl border border-shinobi-border space-y-2">
             <label className="flex items-center justify-between text-xs text-slate-300 cursor-pointer">
-              <span>Ativar Notificações Push</span>
+              <span>Ativar lembretes (manhã e noite)</span>
               <input
                 type="checkbox"
                 checked={enabled}
@@ -116,6 +130,14 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
               />
             </label>
           </div>
+
+          <p className="text-[10px] text-slate-500 leading-relaxed">
+            Os lembretes funcionam enquanto o app estiver aberto ou em segundo plano no aparelho.
+            {!notificationsSupported() && ' Seu navegador atual não oferece notificações.'}
+          </p>
+          {permissionNote && (
+            <div className="p-2.5 rounded-xl bg-amber-950/50 border border-amber-500/40 text-[11px] text-amber-200">{permissionNote}</div>
+          )}
 
           {/* Atalho Guia iPhone */}
           <button

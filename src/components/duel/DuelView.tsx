@@ -30,6 +30,7 @@ export const DuelView: React.FC<DuelViewProps> = () => {
     lastDamageDealt,
     selectAdversary,
     getCurrentAdversary,
+    getTargetAdversary,
     isAdversaryUnlocked
   } = useDuelStore();
 
@@ -38,6 +39,8 @@ export const DuelView: React.FC<DuelViewProps> = () => {
 
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const activeBoss = getCurrentAdversary();
+  const targetBoss = getTargetAdversary();
+  const isViewingTarget = activeBoss.id === targetBoss.id;
 
   const defeatedCount = adversaries.filter((a) => a.isDefeated).length;
 
@@ -55,8 +58,9 @@ export const DuelView: React.FC<DuelViewProps> = () => {
             </span>
           </div>
 
-          <h2 className="font-cinzel text-lg sm:text-xl font-bold text-slate-100 flex items-center gap-2">
-            <span>Duelo de Treinamento Diário</span>
+          <h2 className="font-cinzel text-lg sm:text-xl text-slate-100 flex items-center gap-2">
+            <span className="font-kanji text-shinobi-orange text-2xl">決闘</span>
+            <span>Arena de Treinamento</span>
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
             Cada missão concluída converte seu XP em dano físico e mental contra o oponente ativo.
@@ -75,7 +79,15 @@ export const DuelView: React.FC<DuelViewProps> = () => {
       </div>
 
       {/* Card do Chefe Ativo */}
-      <BossCard adversary={activeBoss} lastDamage={lastDamageDealt} />
+      {!isViewingTarget && (
+        <button
+          onClick={() => selectAdversary(adversaries.findIndex((a) => a.id === targetBoss.id))}
+          className="w-full text-xs font-bold px-3 py-2 rounded-xl bg-shinobi-orange/15 border border-shinobi-orange/50 text-shinobi-orange hover:bg-shinobi-orange/25 transition-colors"
+        >
+          Você está revendo um adversário já derrotado. Seus golpes vão para {targetBoss.name} — toque para voltar ao combate.
+        </button>
+      )}
+      <BossCard adversary={activeBoss} lastDamage={lastDamageDealt} isTarget={isViewingTarget} />
 
       {/* Seletor dos 30 Adversários com Bloqueio Sequencial */}
       <div className="bg-slate-900 border-2 border-slate-700/80 rounded-3xl p-5 shadow-2xl">
@@ -83,7 +95,7 @@ export const DuelView: React.FC<DuelViewProps> = () => {
           <div>
             <h3 className="font-cinzel text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
               <Swords className="w-4 h-4 text-rose-400" />
-              Trilha dos 30 Adversários Shinobi
+              Trilha dos 30 Adversários
             </h3>
             <p className="text-[11px] text-slate-400">
               Progressão linear: derrote o oponente anterior para desbloquear o próximo.
@@ -129,8 +141,9 @@ export const DuelView: React.FC<DuelViewProps> = () => {
                   )}
                 </div>
 
-                <div className="text-xs font-bold text-slate-100 mt-1 truncate">
-                  {adv.name}
+                <div className="text-xs font-bold text-slate-100 mt-1 truncate flex items-center gap-1">
+                  <span className={isUnlocked ? '' : 'grayscale opacity-60'}>{isUnlocked ? adv.avatarEmoji : '❔'}</span>
+                  <span className="truncate">{isUnlocked ? adv.name : '???'}</span>
                 </div>
 
                 <div className="flex items-center gap-1 mt-1 text-[10px] font-semibold" style={{ color: isUnlocked ? weakness.color : '#64748b' }}>
@@ -158,10 +171,10 @@ export const DuelView: React.FC<DuelViewProps> = () => {
                 className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs"
               >
                 <div className="flex items-center gap-2">
-                  <span className={`font-mono font-bold ${
-                    log.isCritical ? 'text-amber-400' : 'text-rose-400'
+                  <span className={`font-mono font-bold whitespace-nowrap ${
+                    log.reverted ? 'text-emerald-400' : log.isCritical ? 'text-amber-400' : 'text-rose-400'
                   }`}>
-                    -{log.damage} Dano
+                    {log.reverted ? `+${Math.abs(log.damage)} HP` : `-${log.damage}`}
                   </span>
                   <span className="text-slate-200">{log.message}</span>
                 </div>

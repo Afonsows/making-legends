@@ -3,109 +3,70 @@ import { persist } from 'zustand/middleware';
 import { Mission, MissionLogEntry, TimeOfDay } from '../core/types';
 import { PillarId, MissionRank } from '../theme/types';
 import { shinobiTheme } from '../theme/shinobi.theme';
-import { getTodayString, isValidDateString, calculateDailyXpProgress } from '../core/streakEngine';
-import { getLevelFromTotalXp, getRankIdFromLevel } from '../core/xpEngine';
-import { getDefaultRyoReward, calculateRyoGainWithBuffs, getDailyCheckInRyoBonus, getLevelUpRyoReward } from '../core/ryoEngine';
+import { getTodayString, isValidDateString } from '../core/dateUtils';
+import { getDefaultRyoReward, calculateRyoGainWithBuffs } from '../core/ryoEngine';
 import { useUserStore } from './useUserStore';
-import { useDuelStore } from './useDuelStore';
 import { syncService } from '../services/syncService';
 import { soundFx } from '../utils/audio';
 import { triggerMissionConfetti } from '../utils/confetti';
 
 export { getDefaultRyoReward, calculateRyoGainWithBuffs };
 
-const initialMissions: Mission[] = [
-  {
-    id: 'mis_01',
-    title: 'Despertar Sem Telas & Hidratação',
-    description: 'Beber 500ml de água e passar 15 minutos sem redes sociais após acordar.',
-    pillarId: 'chakra',
-    rank: 'E',
-    xpReward: 25,
-    ryoReward: 15,
-    timeOfDay: 'morning',
-    isCompletedToday: false,
-    completedDates: [],
-    isCustom: false,
-    order: 1,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'mis_02',
-    title: 'Treinamento de Taijutsu (Corpo)',
-    description: '30 a 45 minutos de treino de força, corrida ou calistenia com postura correta.',
-    pillarId: 'taijutsu',
-    rank: 'C',
-    xpReward: 85,
-    ryoReward: 70,
-    timeOfDay: 'morning',
-    isCompletedToday: false,
-    completedDates: [],
-    isCustom: false,
-    order: 2,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'mis_03',
-    title: 'Estudo dos Pergaminhos (Ninjutsu)',
-    description: 'Ler 10 a 20 páginas de um livro de não-ficção ou estudo técnico com anotações.',
-    pillarId: 'ninjutsu',
-    rank: 'D',
-    xpReward: 50,
-    ryoReward: 35,
-    timeOfDay: 'afternoon',
-    isCompletedToday: false,
-    completedDates: [],
-    isCustom: false,
-    order: 3,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'mis_04',
-    title: 'Sessão de Deep Work (Genjutsu)',
-    description: '45 minutos de trabalho focado com celular em outro cômodo e zero abas inúteis.',
-    pillarId: 'genjutsu',
-    rank: 'B',
-    xpReward: 140,
-    ryoReward: 130,
-    timeOfDay: 'afternoon',
-    isCompletedToday: false,
-    completedDates: [],
-    isCustom: false,
-    order: 4,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'mis_05',
-    title: 'Ato de Coragem e Superação (Espírito)',
-    description: 'Resolver a tarefa mais desconfortável da lista sem procrastinar.',
-    pillarId: 'espirito',
-    rank: 'D',
-    xpReward: 50,
-    ryoReward: 35,
-    timeOfDay: 'evening',
-    isCompletedToday: false,
-    completedDates: [],
-    isCustom: false,
-    order: 5,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'mis_06',
-    title: 'Desligamento Noturno & Preparação',
-    description: 'Ajustar as missões de amanhã e desligar aparelhos 30 minutos antes do descanso.',
-    pillarId: 'chakra',
-    rank: 'E',
-    xpReward: 25,
-    ryoReward: 15,
-    timeOfDay: 'evening',
-    isCompletedToday: false,
-    completedDates: [],
-    isCustom: false,
-    order: 6,
-    createdAt: new Date().toISOString(),
-  },
+export function getRankRewards(rank: MissionRank): { xp: number; ryo: number } {
+  const info = shinobiTheme.missionRanks[rank] || shinobiTheme.missionRanks.D;
+  return { xp: info.xpReward, ryo: info.ryoReward || getDefaultRyoReward(rank) };
+}
+
+const mk = (
+  id: string,
+  title: string,
+  description: string,
+  pillarId: PillarId,
+  rank: MissionRank,
+  timeOfDay: TimeOfDay,
+  order: number
+): Mission => ({
+  id,
+  title,
+  description,
+  pillarId,
+  rank,
+  xpReward: getRankRewards(rank).xp,
+  ryoReward: getRankRewards(rank).ryo,
+  timeOfDay,
+  isCompletedToday: false,
+  completedDates: [],
+  isCustom: false,
+  order,
+  createdAt: new Date().toISOString(),
+});
+
+export const initialMissions: Mission[] = [
+  mk('mis_01', 'Despertar Sem Telas & Hidratação', 'Beber 500ml de água e passar 15 minutos sem redes sociais após acordar.', 'chakra', 'E', 'morning', 1),
+  mk('mis_02', 'Treinamento de Taijutsu (Corpo)', '30 a 45 minutos de treino de força, corrida ou calistenia com postura correta.', 'taijutsu', 'C', 'morning', 2),
+  mk('mis_03', 'Estudo dos Pergaminhos (Ninjutsu)', 'Ler 10 a 20 páginas de um livro de não-ficção ou estudo técnico com anotações.', 'ninjutsu', 'D', 'afternoon', 3),
+  mk('mis_04', 'Sessão de Foco Profundo (Genjutsu)', '45 minutos de trabalho focado com celular em outro cômodo e zero abas inúteis.', 'genjutsu', 'B', 'afternoon', 4),
+  mk('mis_05', 'Ato de Coragem (Espírito)', 'Resolver a tarefa mais desconfortável da lista sem procrastinar.', 'espirito', 'D', 'evening', 5),
+  mk('mis_06', 'Desligamento Noturno & Preparação', 'Ajustar as missões de amanhã e desligar aparelhos 30 minutos antes do descanso.', 'chakra', 'E', 'evening', 6),
 ];
+
+/** Normaliza datas, recompensas e o status de hoje de uma missão. */
+function sanitizeMission(m: Mission, todayStr: string): Mission {
+  const validDates = Array.from(
+    new Set((m.completedDates || []).filter((d) => isValidDateString(d) && d <= todayStr))
+  ).sort();
+  const rewards = getRankRewards(m.rank);
+  return {
+    ...m,
+    xpReward: m.xpReward > 0 ? m.xpReward : rewards.xp,
+    ryoReward: m.ryoReward && m.ryoReward > 0 ? m.ryoReward : rewards.ryo,
+    timeOfDay: m.timeOfDay || 'anytime',
+    completedDates: validDates,
+    isCompletedToday: validDates.includes(todayStr),
+  };
+}
+
+export const missionGrantKey = (missionId: string, date: string) => `mission:${missionId}:${date}`;
 
 interface HabitStoreState {
   missions: Mission[];
@@ -113,13 +74,12 @@ interface HabitStoreState {
   filterPillar: PillarId | 'all';
   filterTimeOfDay: TimeOfDay | 'all';
   searchQuery: string;
+  lastCompletion: { id: string; at: number } | null;
 
-  // Actions
   setFilterPillar: (pillar: PillarId | 'all') => void;
   setFilterTimeOfDay: (time: TimeOfDay | 'all') => void;
   setSearchQuery: (query: string) => void;
-  
-  // Mission CRUD
+
   toggleCompleteMission: (missionId: string) => void;
   addMission: (mission: Omit<Mission, 'id' | 'isCompletedToday' | 'completedDates' | 'order' | 'createdAt'>) => void;
   updateMission: (id: string, updates: Partial<Mission>) => void;
@@ -127,9 +87,8 @@ interface HabitStoreState {
   resetDailyMissionsIfNewDay: () => void;
   setCustomMissionList: (missions: Mission[]) => void;
   reorderMissions: (newMissions: Mission[]) => void;
-  moveMission: (missionId: string, direction: 'up' | 'down') => void;
-  
-  // Logs & Reconcile
+  moveMission: (missionId: string, direction: 'up' | 'down', visibleIds?: string[]) => void;
+
   addMissionLog: (log: MissionLogEntry) => void;
   clearLogs: () => void;
   recalibrateFromMissions: () => { totalXp: number; level: number; ryo: number };
@@ -137,372 +96,234 @@ interface HabitStoreState {
 
 export const useHabitStore = create<HabitStoreState>()(
   persist(
-    (set, get) => ({
-      missions: initialMissions,
-      missionLogs: [],
-      filterPillar: 'all',
-      filterTimeOfDay: 'all',
-      searchQuery: '',
-
-      setFilterPillar: (pillar) => set({ filterPillar: pillar }),
-      setFilterTimeOfDay: (time) => set({ filterTimeOfDay: time }),
-      setSearchQuery: (query) => set({ searchQuery: query }),
-
-      toggleCompleteMission: (missionId: string) => {
-        const { missions, missionLogs } = get();
-        const mission = missions.find((m) => m.id === missionId);
-        if (!mission) return;
-
-        const todayStr = getTodayString();
-        const willBeCompleted = !mission.isCompletedToday;
-        const userStore = useUserStore.getState();
-        const equippedItems = userStore.getEquippedItems();
-
-        const baseRyo = (mission.ryoReward !== undefined && mission.ryoReward !== null && mission.ryoReward > 0)
-          ? mission.ryoReward
-          : getDefaultRyoReward(mission.rank);
-        const { finalRyo } = calculateRyoGainWithBuffs(
-          baseRyo,
-          userStore.profile.currentStreak,
-          userStore.profile.level,
-          equippedItems,
-          mission.pillarId
-        );
-        const ryoAmount = finalRyo;
-
-        const updatedMissions = missions.map((m) => {
-          if (m.id === missionId) {
-            const completedDates = willBeCompleted
-              ? Array.from(new Set([...m.completedDates, todayStr]))
-              : m.completedDates.filter((d) => d !== todayStr);
-
-            return {
-              ...m,
-              isCompletedToday: willBeCompleted,
-              completedDates,
-            };
-          }
-          return m;
-        });
-
-        // Cria o registro no histórico de missões
-        const newLogEntry: MissionLogEntry = {
-          id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+    (set, get) => {
+      const log = (mission: Mission, xp: number, ryo: number, action: MissionLogEntry['action']) => {
+        const entry: MissionLogEntry = {
+          id: `log_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
           missionId: mission.id,
           missionTitle: mission.title,
           pillarId: mission.pillarId,
           rank: mission.rank,
-          xp: willBeCompleted ? mission.xpReward : -mission.xpReward,
-          ryo: willBeCompleted ? ryoAmount : -ryoAmount,
-          action: willBeCompleted ? 'completed' : 'reverted',
+          xp,
+          ryo,
+          action,
           createdAt: new Date().toISOString(),
         };
+        set((state) => ({ missionLogs: [entry, ...state.missionLogs].slice(0, 150) }));
+      };
 
-        set({ 
-          missions: updatedMissions,
-          missionLogs: [newLogEntry, ...missionLogs].slice(0, 100), // Mantém os últimos 100 registros
-        });
-
-        if (willBeCompleted) {
-          soundFx.playMissionComplete();
-          triggerMissionConfetti();
-
-          const { finalXp } = userStore.addXp(mission.xpReward, mission.pillarId);
-          userStore.addRyo(ryoAmount);
-
-          const duelStore = useDuelStore.getState();
-          duelStore.dealDamageFromMission(finalXp, mission.pillarId, equippedItems);
-
-          // Auto check-in: ao atingir 50% de XP das missões, confirma automaticamente a presença do dia
-          const currentDay = userStore.profile.activeChallenge?.currentDay || userStore.profile.currentProtocolDay || 1;
-          const isAlreadyChecked = Boolean(userStore.profile.activeChallenge?.checkIns?.[currentDay]?.checked);
-          if (!isAlreadyChecked) {
-            const xpProg = calculateDailyXpProgress(updatedMissions);
-            if (xpProg.isUnlocked) {
-              userStore.toggleDailyCheckIn(currentDay);
-            }
-          }
-        } else {
-          userStore.removeXp(mission.xpReward, mission.pillarId);
-          userStore.removeRyo(ryoAmount);
-        }
-
-        userStore.recalculateStreak();
-      },
-
-      addMission: (missionData) => {
-        const { missions } = get();
-        const rankInfo = shinobiTheme.missionRanks[missionData.rank] || shinobiTheme.missionRanks.D;
-        
-        const newMission: Mission = {
-          ...missionData,
-          id: `mis_custom_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
-          xpReward: missionData.xpReward || rankInfo.xpReward,
-          ryoReward: missionData.ryoReward || rankInfo.ryoReward || getDefaultRyoReward(missionData.rank),
-          isCompletedToday: false,
-          completedDates: [],
-          order: missions.length + 1,
-          createdAt: new Date().toISOString(),
-        };
-
-        set({ missions: [...missions, newMission] });
-      },
-
-      updateMission: (id, updates) => {
-        const { missions } = get();
-        set({
-          missions: missions.map((m) => {
-            if (m.id !== id) return m;
-            const newRank = updates.rank || m.rank;
-            const rankInfo = shinobiTheme.missionRanks[newRank] || shinobiTheme.missionRanks.D;
-            const newXpReward = updates.xpReward ?? (updates.rank ? rankInfo.xpReward : m.xpReward);
-            const newRyoReward = updates.ryoReward ?? (updates.rank ? (rankInfo.ryoReward || getDefaultRyoReward(newRank)) : (m.ryoReward || getDefaultRyoReward(newRank)));
-            return {
-              ...m,
-              ...updates,
-              xpReward: newXpReward,
-              ryoReward: newRyoReward,
-            };
-          }),
-        });
-      },
-
-      deleteMission: (id) => {
-        const { missions } = get();
-        const mission = missions.find((m) => m.id === id);
-        if (!mission) return;
-
-        // Se a missão estava concluída hoje, reverte os ganhos de XP e Ryō com cálculo exato de bônus
-        if (mission.isCompletedToday) {
-          const userStore = useUserStore.getState();
-          const equippedItems = userStore.getEquippedItems();
-          const baseRyo = (mission.ryoReward !== undefined && mission.ryoReward !== null && mission.ryoReward > 0)
-            ? mission.ryoReward
-            : getDefaultRyoReward(mission.rank);
-          const { finalRyo } = calculateRyoGainWithBuffs(
-            baseRyo,
-            userStore.profile.currentStreak,
-            userStore.profile.level,
-            equippedItems,
-            mission.pillarId
-          );
-          userStore.removeXp(mission.xpReward, mission.pillarId);
-          userStore.removeRyo(finalRyo);
-        }
-
-        const remainingMissions = missions.filter((m) => m.id !== id);
-        set({
-          missions: remainingMissions,
-        });
-
-        // Deleta imediatamente da nuvem (Supabase)
-        syncService.deleteMission(id);
-      },
-
-      resetDailyMissionsIfNewDay: () => {
-        const { missions } = get();
-        const todayStr = getTodayString();
-
-        const updated = missions.map((m) => {
-          const validDates = (m.completedDates || []).filter(
-            (d) => typeof d === 'string' && isValidDateString(d) && d <= todayStr
-          );
-          const isCompletedToday = validDates.includes(todayStr);
-          const defaultRankRyo = getDefaultRyoReward(m.rank);
-          const ryoReward = (m.ryoReward !== undefined && m.ryoReward !== null && m.ryoReward > 0)
-            ? m.ryoReward
-            : defaultRankRyo;
-
-          return {
-            ...m,
-            ryoReward,
-            completedDates: validDates,
-            isCompletedToday,
-          };
-        });
-
-        set({ missions: updated });
-      },
-
-      setCustomMissionList: (newMissions) => {
-        const todayStr = getTodayString();
-        const sanitized = newMissions.map((m) => {
-          const validDates = (m.completedDates || []).filter(
-            (d) => typeof d === 'string' && isValidDateString(d) && d <= todayStr
-          );
-          const defaultRankRyo = getDefaultRyoReward(m.rank);
-          const ryoReward = (m.ryoReward !== undefined && m.ryoReward !== null && m.ryoReward > 0)
-            ? m.ryoReward
-            : defaultRankRyo;
-
-          return {
-            ...m,
-            ryoReward,
-            completedDates: validDates,
-            isCompletedToday: validDates.includes(todayStr),
-          };
-        });
-        set({ missions: sanitized });
-      },
-
-      reorderMissions: (newMissions) => {
-        const withOrder = newMissions.map((m, idx) => ({ ...m, order: idx + 1 }));
-        set({ missions: withOrder });
-      },
-
-      moveMission: (missionId, direction) => {
-        const { missions } = get();
-        const index = missions.findIndex((m) => m.id === missionId);
-        if (index === -1) return;
-        const targetIndex = direction === 'up' ? index - 1 : index + 1;
-        if (targetIndex < 0 || targetIndex >= missions.length) return;
-
-        const newMissions = [...missions];
-        const [removed] = newMissions.splice(index, 1);
-        newMissions.splice(targetIndex, 0, removed);
-
-        const withOrder = newMissions.map((m, idx) => ({ ...m, order: idx + 1 }));
-        set({ missions: withOrder });
-      },
-
-      addMissionLog: (log) => {
-        set((state) => ({
-          missionLogs: [log, ...state.missionLogs].slice(0, 100),
-        }));
-      },
-
-      clearLogs: () => {
-        set({ missionLogs: [] });
-      },
-
-      recalibrateFromMissions: () => {
-        const { missions } = get();
+      /** Estorna a recompensa de hoje de uma missão (usado ao desmarcar, editar rank ou excluir). */
+      const revertTodayReward = (mission: Mission) => {
         const userStore = useUserStore.getState();
-        const todayStr = getTodayString();
+        const key = missionGrantKey(mission.id, getTodayString());
+        const grant = userStore.revokeReward(key);
+        if (grant) {
+          log(mission, -grant.xp, -grant.ryo, 'reverted');
+          return;
+        }
+        // Conclusão vinda de outro aparelho (sem registro local): estorna o valor base.
+        const base = getRankRewards(mission.rank);
+        const xp = mission.xpReward || base.xp;
+        const ryo = mission.ryoReward || base.ryo;
+        userStore.adjustProgress(-xp, -ryo, mission.pillarId);
+        log(mission, -xp, -ryo, 'reverted');
+      };
 
-        let totalCalculatedXp = 0;
-        let totalCalculatedRyo = 0;
-        const pillarXpMap: Record<PillarId, number> = {
-          taijutsu: 0,
-          ninjutsu: 0,
-          chakra: 0,
-          espirito: 0,
-          genjutsu: 0,
-        };
+      return {
+        missions: initialMissions,
+        missionLogs: [],
+        filterPillar: 'all',
+        filterTimeOfDay: 'all',
+        searchQuery: '',
+        lastCompletion: null,
 
-        // 1. Processa e higieniza estritamente as conclusões de cada missão.
-        //    FONTE DA VERDADE ÚNICA: completedDates (NÃO usa isCompletedToday para evitar flag stale de dia anterior)
-        const sanitizedMissions: Mission[] = missions.map((m) => {
-          const rankInfo = shinobiTheme.missionRanks[m.rank] || shinobiTheme.missionRanks.D;
-          const ryoPerCompletion = (m.ryoReward !== undefined && m.ryoReward !== null && m.ryoReward > 0)
-            ? m.ryoReward
-            : (rankInfo.ryoReward || getDefaultRyoReward(m.rank));
-          const xpPerCompletion = (m.xpReward !== undefined && m.xpReward !== null && m.xpReward > 0)
-            ? m.xpReward
-            : rankInfo.xpReward;
+        setFilterPillar: (pillar) => set({ filterPillar: pillar }),
+        setFilterTimeOfDay: (time) => set({ filterTimeOfDay: time }),
+        setSearchQuery: (query) => set({ searchQuery: query }),
 
-          // Filtra estritamente apenas strings que sejam datas ISO válidas no formato YYYY-MM-DD (<= todayStr)
-          const validDates = (m.completedDates || []).filter(
-            (d) => typeof d === 'string' && isValidDateString(d) && d <= todayStr
-          );
+        toggleCompleteMission: (missionId) => {
+          // Garante que o dia virou antes de registrar (app aberto após a meia-noite)
+          useUserStore.getState().checkDayTransition();
 
-          // Deduplicação estrita por Set (protege contra duplicatas no array)
-          const uniqueDates = Array.from(new Set<string>(validDates)).sort();
+          const mission = get().missions.find((m) => m.id === missionId);
+          if (!mission) return;
+          const todayStr = getTodayString();
+          const willBeCompleted = !(mission.completedDates || []).includes(todayStr);
 
-          // isCompletedToday é derivado exclusivamente das datas limpas
-          const isTodayCompleted = uniqueDates.includes(todayStr);
-          const netCompletions = uniqueDates.length;
+          set((state) => ({
+            missions: state.missions.map((m) => {
+              if (m.id !== missionId) return m;
+              const completedDates = willBeCompleted
+                ? Array.from(new Set([...(m.completedDates || []), todayStr])).sort()
+                : (m.completedDates || []).filter((d) => d !== todayStr);
+              return { ...m, completedDates, isCompletedToday: willBeCompleted };
+            }),
+            lastCompletion: willBeCompleted ? { id: missionId, at: Date.now() } : state.lastCompletion,
+          }));
 
-          if (netCompletions > 0) {
-            const missionXp = xpPerCompletion * netCompletions;
-            const missionRyo = ryoPerCompletion * netCompletions;
-
-            totalCalculatedXp += missionXp;
-            totalCalculatedRyo += missionRyo;
-            pillarXpMap[m.pillarId] = (pillarXpMap[m.pillarId] || 0) + missionXp;
+          const userStore = useUserStore.getState();
+          if (willBeCompleted) {
+            soundFx.playMissionComplete();
+            triggerMissionConfetti();
+            const base = getRankRewards(mission.rank);
+            const grant = userStore.grantReward({
+              key: missionGrantKey(mission.id, todayStr),
+              label: mission.title,
+              baseXp: mission.xpReward || base.xp,
+              baseRyo: mission.ryoReward || base.ryo,
+              pillarId: mission.pillarId,
+              dealDamage: true,
+            });
+            if (grant) {
+              log(mission, grant.xp, grant.ryo, 'completed');
+              userStore.updateProfile({ missionsCompletedTotal: (userStore.profile.missionsCompletedTotal || 0) + 1 });
+            }
+          } else {
+            soundFx.playMissionUndo();
+            revertTodayReward(mission);
+            const p = useUserStore.getState().profile;
+            useUserStore.getState().updateProfile({ missionsCompletedTotal: Math.max(0, (p.missionsCompletedTotal || 0) - 1) });
           }
 
-          return {
-            ...m,
-            ryoReward: ryoPerCompletion,
-            xpReward: xpPerCompletion,
-            isCompletedToday: isTodayCompleted,
-            completedDates: uniqueDates,
+          useUserStore.getState().refreshToday();
+        },
+
+        addMission: (missionData) => {
+          const rewards = getRankRewards(missionData.rank);
+          const newMission: Mission = {
+            ...missionData,
+            id: `mis_custom_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            xpReward: rewards.xp,
+            ryoReward: rewards.ryo,
+            isCompletedToday: false,
+            completedDates: [],
+            order: get().missions.length + 1,
+            createdAt: new Date().toISOString(),
           };
-        });
+          set((state) => ({ missions: [...state.missions, newMission] }));
+          soundFx.playScrollOpen();
+          useUserStore.getState().refreshToday({ silent: true });
+        },
 
-        // 2. Calcula o Nível e Rank oficiais exatos baseados no XP acumulado
-        const newLevel = getLevelFromTotalXp(totalCalculatedXp);
-        const newRank = getRankIdFromLevel(newLevel);
+        updateMission: (id, updates) => {
+          const before = get().missions.find((m) => m.id === id);
+          if (!before) return;
+          const newRank = updates.rank || before.rank;
+          const rankChanged = newRank !== before.rank;
+          const rewards = getRankRewards(newRank);
+          const pillarChanged = updates.pillarId !== undefined && updates.pillarId !== before.pillarId;
 
-        // Log de auditoria detalhado para depuração
-        console.log('[Recalibração] Auditoria completa de saldo:', {
-          missões: sanitizedMissions.map((m) => ({
-            titulo: m.title,
-            rank: m.rank,
-            xpPorConclusao: m.xpReward,
-            ryoPorConclusao: m.ryoReward,
-            datasValidas: m.completedDates,
-            conclusoes: m.completedDates.length,
-            concluidoHoje: m.isCompletedToday,
-            subtotalRyo: (m.ryoReward || 0) * m.completedDates.length,
-          })),
-          xpTotal: totalCalculatedXp,
-          ryoTotal: totalCalculatedRyo,
-          nivel: newLevel,
-          rank: newRank,
-        });
+          // Se a recompensa de hoje muda, estorna o valor antigo e concede o novo.
+          const completedToday = (before.completedDates || []).includes(getTodayString());
+          if (completedToday && (rankChanged || pillarChanged)) revertTodayReward(before);
 
-        const syncLog: MissionLogEntry = {
-          id: `log_sync_${Date.now()}`,
-          missionId: 'recalibrate',
-          missionTitle: 'Recalibração & Auditoria de Saldo Real',
-          pillarId: 'chakra',
-          rank: 'E',
-          xp: totalCalculatedXp,
-          ryo: totalCalculatedRyo,
-          action: 'synced',
-          createdAt: new Date().toISOString(),
-        };
+          set((state) => ({
+            missions: state.missions.map((m) =>
+              m.id === id
+                ? {
+                    ...m,
+                    ...updates,
+                    rank: newRank,
+                    xpReward: rankChanged ? rewards.xp : m.xpReward || rewards.xp,
+                    ryoReward: rankChanged ? rewards.ryo : m.ryoReward || rewards.ryo,
+                    completedDates: m.completedDates,
+                    isCompletedToday: m.isCompletedToday,
+                  }
+                : m
+            ),
+          }));
 
-        userStore.updateProfile({
-          totalXp: totalCalculatedXp,
-          level: newLevel,
-          currentRankId: newRank,
-          ryo: totalCalculatedRyo,
-          pillarXp: pillarXpMap,
-        });
+          if (completedToday && (rankChanged || pillarChanged)) {
+            const after = get().missions.find((m) => m.id === id)!;
+            const grant = useUserStore.getState().grantReward({
+              key: missionGrantKey(after.id, getTodayString()),
+              label: after.title,
+              baseXp: after.xpReward,
+              baseRyo: after.ryoReward || rewards.ryo,
+              pillarId: after.pillarId,
+              dealDamage: true,
+            });
+            if (grant) log(after, grant.xp, grant.ryo, 'completed');
+          }
+          useUserStore.getState().refreshToday({ silent: true });
+        },
 
-        set((state) => ({
-          missions: sanitizedMissions,
-          missionLogs: [syncLog, ...state.missionLogs].slice(0, 100),
-        }));
+        deleteMission: (id) => {
+          const mission = get().missions.find((m) => m.id === id);
+          if (!mission) return;
+          if ((mission.completedDates || []).includes(getTodayString())) revertTodayReward(mission);
+          set((state) => ({
+            missions: state.missions.filter((m) => m.id !== id).map((m, idx) => ({ ...m, order: idx + 1 })),
+          }));
+          syncService.deleteMission(id);
+          useUserStore.getState().refreshToday({ silent: true });
+        },
 
-        return { totalXp: totalCalculatedXp, level: newLevel, ryo: totalCalculatedRyo };
-      },
-    }),
+        resetDailyMissionsIfNewDay: () => {
+          const todayStr = getTodayString();
+          set((state) => ({ missions: state.missions.map((m) => sanitizeMission(m, todayStr)) }));
+        },
+
+        setCustomMissionList: (newMissions) => {
+          const todayStr = getTodayString();
+          set({
+            missions: newMissions.map((m, idx) => sanitizeMission({ ...m, order: m.order || idx + 1 }, todayStr)),
+          });
+        },
+
+        reorderMissions: (newMissions) => {
+          set({ missions: newMissions.map((m, idx) => ({ ...m, order: idx + 1 })) });
+        },
+
+        /**
+         * Move a missão uma posição entre as missões VISÍVEIS (ex.: só as pendentes),
+         * trocando de lugar com a vizinha visível na lista completa.
+         */
+        moveMission: (missionId, direction, visibleIds) => {
+          const missions = [...get().missions];
+          const visible = visibleIds && visibleIds.length ? visibleIds : missions.map((m) => m.id);
+          const pos = visible.indexOf(missionId);
+          const neighborId = visible[direction === 'up' ? pos - 1 : pos + 1];
+          if (pos === -1 || !neighborId) return;
+          const a = missions.findIndex((m) => m.id === missionId);
+          const b = missions.findIndex((m) => m.id === neighborId);
+          [missions[a], missions[b]] = [missions[b], missions[a]];
+          set({ missions: missions.map((m, idx) => ({ ...m, order: idx + 1 })) });
+        },
+
+        addMissionLog: (entry) => set((state) => ({ missionLogs: [entry, ...state.missionLogs].slice(0, 150) })),
+        clearLogs: () => set({ missionLogs: [] }),
+
+        /**
+         * Verificação de integridade NÃO destrutiva: normaliza missões e recalcula
+         * nível, patente, sequência e inventário a partir dos dados existentes.
+         */
+        recalibrateFromMissions: () => {
+          get().resetDailyMissionsIfNewDay();
+          const userStore = useUserStore.getState();
+          userStore.syncInventory();
+          userStore.adjustProgress(0, 0);
+          userStore.refreshToday({ silent: true });
+          const p = useUserStore.getState().profile;
+          return { totalXp: p.totalXp, level: p.level, ryo: p.ryo };
+        },
+      };
+    },
     {
       name: 'shinobi_habit_store_v1',
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          const todayStr = getTodayString();
-          state.missions = (state.missions || []).map((m) => {
-            const validDates = (m.completedDates || []).filter(
-              (d) => typeof d === 'string' && isValidDateString(d) && d <= todayStr
-            );
-            const defaultRankRyo = getDefaultRyoReward(m.rank);
-            const ryoReward = (m.ryoReward !== undefined && m.ryoReward !== null && m.ryoReward > 0)
-              ? m.ryoReward
-              : defaultRankRyo;
-
-            return {
-              ...m,
-              ryoReward,
-              completedDates: validDates,
-              isCompletedToday: validDates.includes(todayStr),
-            };
-          });
-        }
+      version: 2,
+      partialize: (state) =>
+        ({ missions: state.missions, missionLogs: state.missionLogs }) as unknown as HabitStoreState,
+      migrate: (persisted) => persisted as HabitStoreState,
+      merge: (persisted, current) => {
+        const saved = (persisted || {}) as Partial<HabitStoreState>;
+        const todayStr = getTodayString();
+        const missions = Array.isArray(saved.missions) ? saved.missions : current.missions;
+        return {
+          ...current,
+          missions: missions.map((m) => sanitizeMission(m, todayStr)),
+          missionLogs: Array.isArray(saved.missionLogs) ? saved.missionLogs : [],
+        };
       },
     }
   )

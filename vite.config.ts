@@ -9,23 +9,23 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      includeAssets: ['favicon.png', 'logo.png', 'icon-192.png', 'icon-512.png'],
       manifest: {
         name: 'Making Legends — Shinobi Habit RPG',
         short_name: 'Making Legends',
-        description: 'Forje seus hábitos e alcance o rank Kage no protocolo dos 66 dias.',
+        description: 'Hábitos e performance no caminho ninja: missões diárias, desafios, duelos e a jornada até Kage.',
         theme_color: '#0a0c12',
         background_color: '#0a0c12',
         display: 'standalone',
         orientation: 'portrait',
         icons: [
           {
-            src: 'pwa-192x192.png',
+            src: 'icon-192.png',
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: 'pwa-512x512.png',
+            src: 'icon-512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'

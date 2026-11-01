@@ -288,8 +288,8 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
                 onToggle={() => toggleCompleteMission(mission.id)}
                 onEdit={() => handleEdit(mission)}
                 onDelete={() => deleteMission(mission.id)}
-                onMoveUp={() => moveMission(mission.id, 'up')}
-                onMoveDown={() => moveMission(mission.id, 'down')}
+                onMoveUp={() => moveMission(mission.id, 'up', pendingMissions.map((m) => m.id))}
+                onMoveDown={() => moveMission(mission.id, 'down', pendingMissions.map((m) => m.id))}
                 canMoveUp={idx > 0}
                 canMoveDown={idx < pendingMissions.length - 1}
                 draggable={true}

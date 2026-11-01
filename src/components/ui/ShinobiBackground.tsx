@@ -71,13 +71,25 @@ export const ShinobiBackground: React.FC<ShinobiBackgroundProps> = ({ opacity = 
         swingAngle: Math.random() * Math.PI * 2,
         swingSpeed: Math.random() * 0.025 + 0.01,
         alpha: isForeground ? Math.random() * 0.4 + 0.4 : Math.random() * 0.3 + 0.2,
+        // Metade são folhas verdes ao vento, metade pétalas de sakura
+        isLeaf: Math.random() > 0.5,
         color: Math.random() > 0.3 ? '#e11d48' : '#be123c',
+        leafColor: ['#4d7c0f', '#65a30d', '#84cc16', '#a16207'][Math.floor(Math.random() * 4)],
       };
     });
 
     let frame = 0;
+    let lastDraw = 0;
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const frameInterval = isMobile ? 1000 / 30 : 1000 / 60;
 
-    const render = () => {
+    const render = (time: number = 0) => {
+      // Economia de bateria: pausa em segundo plano e limita o FPS no celular
+      if (document.hidden || time - lastDraw < frameInterval) {
+        animationFrameId = requestAnimationFrame(render);
+        return;
+      }
+      lastDraw = time;
       frame++;
       ctx.clearRect(0, 0, width, height);
 
@@ -180,20 +192,37 @@ export const ShinobiBackground: React.FC<ShinobiBackgroundProps> = ({ opacity = 
         ctx.rotate(petal.rotation);
         ctx.globalAlpha = petal.alpha;
 
-        ctx.fillStyle = petal.color;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.quadraticCurveTo(petal.size, -petal.size * 0.6, petal.size * 1.5, 0);
-        ctx.quadraticCurveTo(petal.size, petal.size * 0.6, 0, 0);
-        ctx.fill();
+        if (petal.isLeaf) {
+          // Folha: corpo alongado com nervura central
+          const s2 = petal.size * 1.3;
+          ctx.fillStyle = petal.leafColor;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.quadraticCurveTo(s2 * 0.9, -s2 * 0.55, s2 * 2, 0);
+          ctx.quadraticCurveTo(s2 * 0.9, s2 * 0.55, 0, 0);
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(20, 40, 10, 0.55)';
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          ctx.moveTo(-s2 * 0.25, 0);
+          ctx.lineTo(s2 * 1.8, 0);
+          ctx.stroke();
+        } else {
+          ctx.fillStyle = petal.color;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.quadraticCurveTo(petal.size, -petal.size * 0.6, petal.size * 1.5, 0);
+          ctx.quadraticCurveTo(petal.size, petal.size * 0.6, 0, 0);
+          ctx.fill();
+        }
 
         ctx.restore();
       });
 
-      animationFrameId = requestAnimationFrame(render);
+      if (!reducedMotion) animationFrameId = requestAnimationFrame(render);
     };
 
-    render();
+    render(1000);
 
     return () => {
       window.removeEventListener('resize', handleResize);

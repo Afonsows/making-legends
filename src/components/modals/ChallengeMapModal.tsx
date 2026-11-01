@@ -1,11 +1,8 @@
 import React from 'react';
 import { useUserStore } from '../../state/useUserStore';
 import { useHabitStore } from '../../state/useHabitStore';
-import { 
-  evaluateProtocolStatus, 
-  getChallengeWeekNumber,
-  getWeekDayRange
-} from '../../core/streakEngine';
+import { evaluateProtocolStatus, getPhaseBounds } from '../../core/streakEngine';
+import { addDaysToDateString, formatDateBR } from '../../core/dateUtils';
 import { 
   X, 
   Map, 
@@ -24,7 +21,7 @@ interface ChallengeMapModalProps {
 }
 
 export const ChallengeMapModal: React.FC<ChallengeMapModalProps> = ({ isOpen, onClose }) => {
-  const { profile, toggleDailyCheckIn } = useUserStore();
+  const { profile } = useUserStore();
   const { missions } = useHabitStore();
 
   if (!isOpen) return null;
@@ -67,9 +64,9 @@ export const ChallengeMapModal: React.FC<ChallengeMapModalProps> = ({ isOpen, on
     );
   }
 
-  const targetDays = activeChallenge.targetDays || 66;
-  const p1 = Math.max(1, Math.floor(targetDays / 3));
-  const p2 = Math.max(p1 + 1, Math.floor((targetDays * 2) / 3));
+  const targetDays = protocolStatus.targetDays;
+  const { p1, p2 } = getPhaseBounds(targetDays);
+  const shielded = new Set(profile.shieldedDates || []);
 
   const phases = [
     { name: 'Fase 1: Despertar', range: `Dias 1 a ${p1}`, start: 1, end: p1, color: 'text-rose-400', border: 'border-rose-500/40' },
@@ -151,7 +148,7 @@ export const ChallengeMapModal: React.FC<ChallengeMapModalProps> = ({ isOpen, on
             </div>
             <div className="flex items-center gap-1.5">
               <div className="w-4 h-4 rounded-md bg-amber-500/40 border-2 border-shinobi-gold animate-pulse" />
-              <span>Dia de Hoje</span>
+              <span>Hoje (presença automática)</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="w-4 h-4 rounded-md bg-slate-900 border border-slate-700 flex items-center justify-center text-[10px] text-slate-500">🔒</div>
@@ -179,36 +176,29 @@ export const ChallengeMapModal: React.FC<ChallengeMapModalProps> = ({ isOpen, on
                     const isPast = dayNum < currentDay;
                     const isToday = dayNum === currentDay;
                     const isFuture = dayNum > currentDay;
-                    const isChecked = Boolean(record?.checked);
+                    const isChecked = isToday ? xpProgress.isUnlocked : Boolean(record?.checked);
+                    const dayDate = addDaysToDateString(activeChallenge.startDate, dayNum - 1);
+                    const wasShielded = isPast && !isChecked && shielded.has(dayDate);
 
                     return (
-                      <button
+                      <div
                         key={dayNum}
-                        type="button"
-                        onClick={() => {
-                          if (isToday) {
-                            toggleDailyCheckIn(dayNum);
-                          }
-                        }}
-                        disabled={!isToday}
                         title={
                           isToday
                             ? xpProgress.isUnlocked
-                              ? `Dia ${dayNum} (Hoje): Clique para marcar presença!`
-                              : `Dia ${dayNum} (Hoje): Bloqueado (Requer 50% de XP)`
+                              ? `Dia ${dayNum} (hoje): cumprido ✓`
+                              : `Dia ${dayNum} (hoje): faltam ${xpProgress.remainingXpToUnlock} XP`
                             : isPast
                             ? isChecked
-                              ? `Dia ${dayNum}: Presença confirmada ✓`
-                              : `Dia ${dayNum}: Falta registrada ✗`
-                            : `Dia ${dayNum}: Bloqueado (Futuro)`
+                              ? `Dia ${dayNum} (${formatDateBR(dayDate)}): presença confirmada`
+                              : `Dia ${dayNum} (${formatDateBR(dayDate)}): falta${wasShielded ? ' — sequência protegida pelo Escudo de Chakra' : ''}`
+                            : `Dia ${dayNum} (${formatDateBR(dayDate)})`
                         }
                         className={`h-11 sm:h-12 rounded-xl flex flex-col items-center justify-center text-xs font-mono font-bold transition-all relative select-none ${
                           isToday
                             ? isChecked
                               ? 'bg-emerald-600 border-2 border-emerald-300 text-white shadow-glow-jade scale-105 z-10'
-                              : xpProgress.isUnlocked
-                              ? 'bg-amber-950/50 border-2 border-shinobi-gold text-shinobi-gold animate-pulse shadow-glow-gold hover:scale-105 z-10 cursor-pointer'
-                              : 'bg-slate-900 border-2 border-slate-700 text-slate-400 hover:border-slate-500'
+                              : 'bg-orange-950/40 border-2 border-shinobi-orange text-shinobi-orange z-10'
                             : isPast
                             ? isChecked
                               ? 'bg-emerald-950/40 border border-emerald-500/50 text-emerald-300'
@@ -222,7 +212,7 @@ export const ChallengeMapModal: React.FC<ChallengeMapModalProps> = ({ isOpen, on
                           ) : isToday ? (
                             dayNum
                           ) : isPast ? (
-                            isChecked ? '✓' : '✗'
+                            isChecked ? '✓' : wasShielded ? '🛡' : '✗'
                           ) : (
                             dayNum
                           )}
@@ -233,9 +223,9 @@ export const ChallengeMapModal: React.FC<ChallengeMapModalProps> = ({ isOpen, on
                         </span>
 
                         {isToday && (
-                          <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-shinobi-gold rounded-full shadow" />
+                          <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-shinobi-orange rounded-full shadow" />
                         )}
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -247,7 +237,9 @@ export const ChallengeMapModal: React.FC<ChallengeMapModalProps> = ({ isOpen, on
         {/* Footer */}
         <div className="p-4 sm:p-5 border-t-2 border-slate-800 bg-slate-950 flex items-center justify-between gap-3">
           <span className="text-[11px] text-slate-400 font-mono hidden sm:inline">
-            Regra semanal: 2 faltas na mesma semana encerram o ciclo e reiniciam em 1/66.
+            {protocolStatus.allowedMissesPerWeek === 0
+              ? 'Modo Elite: qualquer falta encerra o ciclo.'
+              : 'Regra semanal: 1 falta é tolerada; a 2ª falta na mesma semana encerra o ciclo.'}
           </span>
           <button
             onClick={onClose}

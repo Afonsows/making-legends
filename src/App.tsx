@@ -23,6 +23,10 @@ import { NotificationSettingsModal } from './components/pwa/NotificationSettings
 import { AuthModal } from './components/auth/AuthModal';
 import { ShinobiBackground } from './components/ui/ShinobiBackground';
 
+import { ToastHost } from './components/ui/ToastHost';
+import { useChallengeStore } from './state/useChallengeStore';
+import { soundFx } from './utils/audio';
+import { initReminderScheduler } from './utils/reminders';
 import { initDailyResetEngine } from './core/dailyResetEngine';
 
 export const AppContent: React.FC = () => {
@@ -35,12 +39,16 @@ export const AppContent: React.FC = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ email?: string; id?: string } | null>(null);
 
-  // Inicialização do Motor de Renovação Diária (00:00, Visibilidade, Foco e Intervalo)
+  // Motor de renovação diária (00:00, visibilidade, foco e intervalo) + lembretes
   useEffect(() => {
-    useUserStore.getState().reconcileChallengeFromMissions();
-    useUserStore.getState().recalculateStreak();
+    soundFx.setSoundEnabled(useUserStore.getState().profile.notificationSettings.soundEnabled !== false);
+    useUserStore.getState().syncInventory();
     const cleanupDailyEngine = initDailyResetEngine();
-    return cleanupDailyEngine;
+    const cleanupReminders = initReminderScheduler();
+    return () => {
+      cleanupDailyEngine();
+      cleanupReminders();
+    };
   }, []);
 
   // Inicialização de Auth do Supabase e sincronização automática
@@ -64,18 +72,11 @@ export const AppContent: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Sincronização em background quando missões ou perfil mudam (se autenticado e hidratado)
+  // Sincronização em segundo plano (agrupada) quando perfil, missões ou desafios mudam
+  const challenges = useChallengeStore((s) => s.challenges);
   useEffect(() => {
-    if (currentUser?.id && syncService.isHydrated) {
-      syncService.pushUserProfile(profile, currentUser.id);
-    }
-  }, [profile, currentUser]);
-
-  useEffect(() => {
-    if (currentUser?.id && syncService.isHydrated) {
-      syncService.pushMissions(missions, currentUser.id);
-    }
-  }, [missions, currentUser]);
+    if (currentUser?.id) syncService.schedulePush(currentUser.id);
+  }, [profile, missions, challenges, currentUser]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -121,6 +122,9 @@ export const AppContent: React.FC = () => {
         onSelectTab={setActiveTab}
         pendingMissionsCount={pendingMissionsCount}
       />
+
+      {/* Avisos de jogo */}
+      <ToastHost />
 
       {/* Modais Globais do Sistema */}
       <LevelUpModal />

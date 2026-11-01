@@ -2,11 +2,22 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { UserChallenge, ChallengeHabit, UserProfile, Mission } from '../core/types';
 import { PillarId } from '../theme/types';
-import { getTodayString } from '../core/streakEngine';
+import { getTodayString } from '../core/dateUtils';
+import { getCycleTargetDays } from '../core/streakEngine';
+import { addDaysToDateString } from '../core/dateUtils';
 import { soundFx } from '../utils/audio';
 import { triggerMissionConfetti } from '../utils/confetti';
 import { useUserStore } from './useUserStore';
 import { useHabitStore } from './useHabitStore';
+
+export const HABIT_XP_REWARD = 25;
+export const HABIT_RYO_REWARD = 15;
+
+/** Estorna as recompensas de hoje dos hábitos informados (hábito ou desafio excluído). */
+function revokeTodayHabitGrants(challengeId: string, habitIds: string[]) {
+  const todayStr = getTodayString();
+  habitIds.forEach((habitId) => useUserStore.getState().revokeReward(`habit:${challengeId}:${habitId}:${todayStr}`));
+}
 
 export interface DayStripInfo {
   date: string; // YYYY-MM-DD
@@ -258,17 +269,18 @@ export function buildSyncedOfficial66Challenge(profile: UserProfile, missions: M
   const cycleNumber = cycle?.cycleNumber || (history.length + 1);
   const isActive = Boolean(cycle && cycle.status === 'active');
 
+  const targetDays = cycle ? getCycleTargetDays(cycle) : 66;
   return {
     id: 'challenge_official_66',
-    title: `Desafio 66 Dias — Ciclo #${cycleNumber}`,
+    title: cycle?.title || `Desafio ${targetDays} Dias — Ciclo #${cycleNumber}`,
     description: isActive
-      ? 'O protocolo supremo de neuroplasticidade e formação de hábitos lendários. 100% sincronizado com a tela inicial.'
-      : 'Sugestão de protocolo: Monte suas missões de forma personalizada e inicie quando estiver pronto.',
+      ? 'Seu desafio principal: as missões diárias da tela inicial. Cumpra 50% do XP do dia para marcar presença.'
+      : 'Sugestão de protocolo: monte suas missões e inicie quando estiver pronto.',
     category: 'Neuroplasticidade & Hábitos',
     icon: '⚡',
-    targetDays: 66,
+    targetDays,
     startDate: cycle?.startDate || getTodayString(),
-    status: isActive ? (cycle?.status === 'completed' ? 'completed' : 'active') : 'paused',
+    status: isActive ? 'active' : 'paused',
     isOfficial66: true,
     habits,
     createdAt: cycle?.createdAt || profile.createdAt || new Date().toISOString(),
@@ -313,7 +325,9 @@ interface ChallengeStoreState {
     challengeId: string,
     habitId: string,
     dateStr: string
-  ) => { isCompleted: boolean; currentStreak: number; bestStreak: number };
+  ) => { isCompleted: boolean; currentStreak: number; bestStreak: number; blockedReason?: string };
+
+  autoCompleteExpiredChallenges: () => void;
 }
 
 export const useChallengeStore = create<ChallengeStoreState>()(
@@ -420,7 +434,7 @@ export const useChallengeStore = create<ChallengeStoreState>()(
           isDetailModalOpen: true,
         }));
 
-        soundFx.playLevelUp();
+        soundFx.playChallengeStart();
         triggerMissionConfetti();
 
         return { success: true, challenge: newChallenge };
@@ -446,6 +460,8 @@ export const useChallengeStore = create<ChallengeStoreState>()(
       },
 
       deleteChallenge: (challengeId) => {
+        const target = get().challenges.find((c) => c.id === challengeId);
+        if (target) revokeTodayHabitGrants(challengeId, target.habits.map((h) => h.id));
         set((state) => {
           const remaining = state.challenges.filter((c) => c.id !== challengeId);
           return {
@@ -542,6 +558,7 @@ export const useChallengeStore = create<ChallengeStoreState>()(
           return;
         }
 
+        revokeTodayHabitGrants(challengeId, [habitId]);
         set((state) => {
           const updated = state.challenges.map((c) => {
             if (c.id === challengeId) {
@@ -611,46 +628,42 @@ export const useChallengeStore = create<ChallengeStoreState>()(
           const habitStore = useHabitStore.getState();
           const mission = habitStore.missions.find((m) => m.id === habitId);
 
-          if (dateStr === todayStr) {
-            // Alterna a missão de hoje no motor oficial de missões (garante sincronia com a home)
-            habitStore.toggleCompleteMission(habitId);
-            const updatedMission = useHabitStore.getState().missions.find((m) => m.id === habitId);
-            const streaks = calculateHabitStreaks(updatedMission?.completedDates || []);
+          if (dateStr !== todayStr) {
+            // Missões do desafio principal só podem ser marcadas no próprio dia.
+            const streaks = calculateHabitStreaks(mission?.completedDates || []);
+            soundFx.playError();
             return {
-              isCompleted: Boolean(updatedMission?.isCompletedToday),
+              isCompleted: Boolean(mission?.completedDates?.includes(dateStr)),
               currentStreak: streaks.currentStreak,
               bestStreak: streaks.bestStreak,
-            };
-          } else {
-            // Alterna data no histórico da missão
-            const currentDates = mission?.completedDates || [];
-            const willBeCompleted = !currentDates.includes(dateStr);
-            const updatedDates = willBeCompleted
-              ? Array.from(new Set([...currentDates, dateStr])).sort()
-              : currentDates.filter((d) => d !== dateStr);
-
-            const updatedMissions = habitStore.missions.map((m) =>
-              m.id === habitId ? { ...m, completedDates: updatedDates } : m
-            );
-            habitStore.setCustomMissionList(updatedMissions);
-
-            const streaks = calculateHabitStreaks(updatedDates);
-            if (willBeCompleted) {
-              soundFx.playMissionComplete();
-            }
-            useUserStore.getState().recalculateStreak();
-            return {
-              isCompleted: willBeCompleted,
-              currentStreak: streaks.currentStreak,
-              bestStreak: streaks.bestStreak,
+              blockedReason: 'As missões do desafio principal só podem ser marcadas no próprio dia.',
             };
           }
+          // Alterna a missão de hoje no motor oficial (mesma regra da tela inicial)
+          habitStore.toggleCompleteMission(habitId);
+          const updatedMission = useHabitStore.getState().missions.find((m) => m.id === habitId);
+          const streaks = calculateHabitStreaks(updatedMission?.completedDates || []);
+          return {
+            isCompleted: Boolean(updatedMission?.isCompletedToday),
+            currentStreak: streaks.currentStreak,
+            bestStreak: streaks.bestStreak,
+          };
         }
 
         // Desafio Personalizado
         const { challenges } = get();
         const challenge = challenges.find((c) => c.id === challengeId);
         const habit = challenge?.habits.find((h) => h.id === habitId);
+
+        if (dateStr > todayStr || (challenge && dateStr < challenge.startDate)) {
+          const streaks = calculateHabitStreaks(habit?.completedDates || []);
+          return {
+            isCompleted: false,
+            currentStreak: streaks.currentStreak,
+            bestStreak: streaks.bestStreak,
+            blockedReason: 'Só é possível marcar dias entre o início do desafio e hoje.',
+          };
+        }
 
         const currentDates = habit?.completedDates || [];
         const isCompleted = currentDates.includes(dateStr);
@@ -698,17 +711,25 @@ export const useChallengeStore = create<ChallengeStoreState>()(
           };
         });
 
+        // Recompensa apenas para o dia de hoje — e estornável ao desmarcar.
+        const grantKey = `habit:${challengeId}:${habitId}:${dateStr}`;
+        const userStore = useUserStore.getState();
         if (willBeCompleted) {
           soundFx.playMissionComplete();
           if (dateStr === todayStr) {
             triggerMissionConfetti();
-            useUserStore.getState().addXp(25, habit?.pillarId || 'chakra');
-            useUserStore.getState().addRyo(15);
+            userStore.grantReward({
+              key: grantKey,
+              label: habit?.title || 'Hábito do desafio',
+              baseXp: HABIT_XP_REWARD,
+              baseRyo: HABIT_RYO_REWARD,
+              pillarId: habit?.pillarId || 'chakra',
+            });
           }
+        } else {
+          soundFx.playMissionUndo();
+          userStore.revokeReward(grantKey);
         }
-
-        // Reconcilia a sequência global do usuário a partir de todos os desafios
-        useUserStore.getState().recalculateStreak();
 
         return {
           isCompleted: willBeCompleted,
@@ -716,9 +737,36 @@ export const useChallengeStore = create<ChallengeStoreState>()(
           bestStreak: streaks.bestStreak,
         };
       },
+
+      autoCompleteExpiredChallenges: () => {
+        const todayStr = getTodayString();
+        let changed = false;
+        const updated = get().challenges.map((c) => {
+          if (c.status !== 'active' || c.isOfficial66) return c;
+          const endDate = c.endDate || addDaysToDateString(c.startDate, c.targetDays - 1);
+          if (todayStr > endDate) {
+            changed = true;
+            return { ...c, status: 'completed' as const, endDate, completedAt: new Date().toISOString() };
+          }
+          return c;
+        });
+        if (changed) set({ challenges: updated });
+      },
     }),
     {
       name: 'shinobi_challenge_store_v1',
+      version: 2,
+      partialize: (state) => ({ challenges: state.challenges }) as unknown as ChallengeStoreState,
+      migrate: (persisted) => persisted as ChallengeStoreState,
+      merge: (persisted, current) => {
+        const saved = (persisted || {}) as Partial<ChallengeStoreState>;
+        return {
+          ...current,
+          challenges: (Array.isArray(saved.challenges) ? saved.challenges : []).filter(
+            (c) => c && !c.isOfficial66 && c.id !== 'challenge_official_66'
+          ),
+        };
+      },
     }
   )
 );

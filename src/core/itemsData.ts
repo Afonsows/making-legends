@@ -196,4 +196,55 @@ export const allGameItems: Record<string, Item> = {
     buffType: 'damage_boost',
     buffValue: 30,
   },
+  // ── Itens exclusivos da Loja Shinobi (comprados com Ryō) ──
+  kunai_de_aco_polido: {
+    id: 'kunai_de_aco_polido',
+    name: 'Kunai de Aço Polido',
+    type: 'gear',
+    description: 'Lâmina de arremesso balanceada pelo ferreiro da vila. Golpes mais precisos na Arena.',
+    icon: '🔪',
+    rarity: 'rare',
+    buffType: 'damage_boost',
+    buffValue: 15,
+    shopPrice: 2500,
+  },
+  elixir_de_ervas_da_montanha: {
+    id: 'elixir_de_ervas_da_montanha',
+    name: 'Elixir de Ervas da Montanha',
+    type: 'elixir',
+    description: 'Tônico amargo dos ermitões. Concede 1 Escudo de Chakra extra por semana.',
+    icon: '🍵',
+    rarity: 'rare',
+    buffType: 'extra_shield',
+    buffValue: 1,
+    shopPrice: 4500,
+  },
+  bandana_do_juramento: {
+    id: 'bandana_do_juramento',
+    name: 'Bandana do Juramento',
+    type: 'relic',
+    description: 'Placa de metal gravada com o seu juramento ninja. +10% de XP em todas as missões.',
+    icon: '🎗️',
+    rarity: 'epic',
+    buffType: 'xp_boost_all',
+    buffValue: 10,
+    shopPrice: 6000,
+  },
+  pergaminho_das_cinco_naturezas: {
+    id: 'pergaminho_das_cinco_naturezas',
+    name: 'Pergaminho das Cinco Naturezas',
+    type: 'scroll',
+    description: 'Fogo, água, vento, terra e raio em equilíbrio. +12% de XP em todas as missões.',
+    icon: '🌀',
+    rarity: 'epic',
+    buffType: 'xp_boost_all',
+    buffValue: 12,
+    shopPrice: 9000,
+  },
 };
+
+/** Itens iniciais de todo shinobi. */
+export const STARTER_ITEMS = ['pesos_ferro_negro', 'pergaminho_da_sabedoria_antiga'];
+
+/** Itens vendidos na Loja Shinobi. */
+export const SHOP_ITEMS = Object.values(allGameItems).filter((i) => (i.shopPrice || 0) > 0);

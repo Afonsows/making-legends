@@ -26,8 +26,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     { id: 'challenges', label: 'Desafios', icon: Trophy },
     { id: 'duel', label: 'Duelo', icon: Swords },
     { id: 'status', label: 'Status', icon: User },
-    { id: 'tools', label: '7 Ferramentas', icon: Wrench },
-    { id: 'cards', label: 'Pergaminhos', icon: BookOpen },
+    { id: 'tools', label: 'Dojo', icon: Wrench },
+    { id: 'cards', label: 'Sabedoria', icon: BookOpen },
   ];
 
   return (

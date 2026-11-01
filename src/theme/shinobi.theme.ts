@@ -24,7 +24,8 @@ export const shinobiTheme: ThemeConfig = {
       description: 'Treino físico, postura, atividade e vigor corporal',
       color: '#FF1341', // Carmesim Neon da Máscara Anbu
       iconName: 'Flame',
-      badgeIcon: '🥋'
+      badgeIcon: '🥋',
+      kanji: '体'
     },
     ninjutsu: {
       id: 'ninjutsu',
@@ -33,7 +34,8 @@ export const shinobiTheme: ThemeConfig = {
       description: 'Leitura, estudo, aquisição de habilidades e retenção',
       color: '#06b6d4', // Cyan Chakra
       iconName: 'BookOpen',
-      badgeIcon: '📜'
+      badgeIcon: '📜',
+      kanji: '忍'
     },
     chakra: {
       id: 'chakra',
@@ -42,7 +44,8 @@ export const shinobiTheme: ThemeConfig = {
       description: 'Constância, rotina inegociável, cumprimento de prazos',
       color: '#18F689', // Verde Esmeralda dos Olhos Anbu
       iconName: 'Zap',
-      badgeIcon: '⚡'
+      badgeIcon: '⚡',
+      kanji: '気'
     },
     espirito: {
       id: 'espirito',
@@ -51,7 +54,8 @@ export const shinobiTheme: ThemeConfig = {
       description: 'Superação, coragem, autoconfiança e resiliência',
       color: '#eab308', // Gold
       iconName: 'Shield',
-      badgeIcon: '🛡️'
+      badgeIcon: '🛡️',
+      kanji: '魂'
     },
     genjutsu: {
       id: 'genjutsu',
@@ -60,7 +64,8 @@ export const shinobiTheme: ThemeConfig = {
       description: 'Deep work, concentração imersiva, meditação e presença',
       color: '#8b5cf6', // Mystic Violet
       iconName: 'Target',
-      badgeIcon: '👁️'
+      badgeIcon: '👁️',
+      kanji: '幻'
     }
   },
   ranks: {
@@ -70,7 +75,9 @@ export const shinobiTheme: ThemeConfig = {
       minLevel: 1,
       description: 'O início da jornada. O corpo e a mente ainda aprendem os primeiros fundamentos.',
       badge: '🥷',
-      titleColor: '#94a3b8'
+      titleColor: '#94a3b8',
+      kanji: '学',
+      reading: 'gaku'
     },
     genin: {
       id: 'genin',
@@ -78,7 +85,9 @@ export const shinobiTheme: ThemeConfig = {
       minLevel: 5,
       description: 'Primeiros passos firmes. Hábitos diários começam a criar raízes sólidas.',
       badge: '🗡️',
-      titleColor: '#38bdf8'
+      titleColor: '#38bdf8',
+      kanji: '下忍',
+      reading: 'ge-nin'
     },
     chunin: {
       id: 'chunin',
@@ -86,7 +95,9 @@ export const shinobiTheme: ThemeConfig = {
       minLevel: 12,
       description: 'Liderança pessoal e disciplina comprovada sob pressão.',
       badge: '⚔️',
-      titleColor: '#18F689'
+      titleColor: '#18F689',
+      kanji: '中忍',
+      reading: 'chū-nin'
     },
     jonin: {
       id: 'jonin',
@@ -94,7 +105,9 @@ export const shinobiTheme: ThemeConfig = {
       minLevel: 22,
       description: 'Mestria sobre os próprios impulsos. A curva exige consistência diária inabalável.',
       badge: '🎖️',
-      titleColor: '#fbbf24'
+      titleColor: '#fbbf24',
+      kanji: '上忍',
+      reading: 'jō-nin'
     },
     anbu: {
       id: 'anbu',
@@ -102,7 +115,9 @@ export const shinobiTheme: ThemeConfig = {
       minLevel: 35,
       description: 'Guerreiro das sombras. Disciplina silenciosa, sem necessidade de validação externa.',
       badge: '🎭',
-      titleColor: '#FF1341'
+      titleColor: '#FF1341',
+      kanji: '暗部',
+      reading: 'an-bu'
     },
     sannin: {
       id: 'sannin',
@@ -110,7 +125,9 @@ export const shinobiTheme: ThemeConfig = {
       minLevel: 50,
       description: 'Lenda viva entre os shinobi. Força, mente e espírito em harmonia absoluta.',
       badge: '🐉',
-      titleColor: '#c084fc'
+      titleColor: '#c084fc',
+      kanji: '三忍',
+      reading: 'san-nin'
     },
     kage: {
       id: 'kage',
@@ -118,7 +135,9 @@ export const shinobiTheme: ThemeConfig = {
       minLevel: 66,
       description: 'O ápice da maestria. A lenda definitiva foi forjada através dos 66 dias.',
       badge: '👑',
-      titleColor: '#FF1341'
+      titleColor: '#FF1341',
+      kanji: '影',
+      reading: 'kage'
     }
   },
   missionRanks: {

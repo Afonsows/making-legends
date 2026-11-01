@@ -1,4 +1,4 @@
-import { getTodayString } from './streakEngine';
+import { getTodayString } from './dateUtils';
 import { useUserStore } from '../state/useUserStore';
 import { useHabitStore } from '../state/useHabitStore';
 import { useToolStore } from '../state/useToolStore';
@@ -41,13 +41,13 @@ export function runDailyMaintenance(): void {
   try {
     const today = getTodayString();
 
-    // 1. Manutenção do Perfil e Protocolo de 66 Dias
-    useUserStore.getState().checkDayTransition();
-
-    // 2. Manutenção das Missões Diárias
+    // 1. Missões: recalcula o status "concluída hoje" a partir das datas reais
     useHabitStore.getState().resetDailyMissionsIfNewDay();
 
-    // 3. Manutenção das Ferramentas Shinobi
+    // 2. Perfil: fecha os dias anteriores, aplica Escudos de Chakra, avalia o desafio
+    useUserStore.getState().checkDayTransition();
+
+    // 3. Ferramentas: zera os contadores diários
     useToolStore.getState().resetDailyToolsIfNewDay();
 
     // Notifica ouvintes que uma transição de dia ocorreu

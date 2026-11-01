@@ -7,13 +7,13 @@ import { getTodayString } from '../../core/streakEngine';
 import { syncService } from '../../services/syncService';
 import { supabase } from '../../services/supabase';
 import { soundFx } from '../../utils/audio';
-import { 
-  X, 
-  History, 
-  RotateCcw, 
-  CheckCircle2, 
-  Coins, 
-  Sparkles, 
+import {
+  X,
+  History,
+  RotateCcw,
+  CheckCircle2,
+  Coins,
+  Sparkles,
   Trash2,
   Filter
 } from 'lucide-react';
@@ -32,24 +32,10 @@ export const MissionHistoryModal: React.FC<MissionHistoryModalProps> = ({ isOpen
 
   if (!isOpen) return null;
 
-  const handleRecalibrate = async () => {
+  const handleRecalibrate = () => {
     const result = recalibrateFromMissions();
     soundFx.playScrollOpen();
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const targetUserId = session?.user?.id || profile.id;
-      if (targetUserId) {
-        const freshProfile = useUserStore.getState().profile;
-        const freshMissions = useHabitStore.getState().missions;
-        await syncService.pushUserProfile(freshProfile, targetUserId);
-        await syncService.pushMissions(freshMissions, targetUserId);
-      }
-    } catch (err) {
-      console.warn('Recalibrado localmente.', err);
-    }
-
-    setRecalibrateNotice(`Ficha recalculada e sincronizada: ${result.totalXp} XP Total, Nível ${result.level} e ${result.ryo} Ryō.`);
+    setRecalibrateNotice(`Ficha verificada: ${result.totalXp} XP, Nível ${result.level}, ${result.ryo} Ryō. Nada foi apagado.`);
     setTimeout(() => {
       setRecalibrateNotice(null);
     }, 4000);
@@ -60,8 +46,8 @@ export const MissionHistoryModal: React.FC<MissionHistoryModalProps> = ({ isOpen
   const todayXp = completedTodayMissions.reduce((acc, m) => acc + m.xpReward, 0);
   const todayRyo = completedTodayMissions.reduce((acc, m) => acc + (m.ryoReward || getDefaultRyoReward(m.rank)), 0);
 
-  const filteredLogs = filterAction === 'all' 
-    ? missionLogs 
+  const filteredLogs = filterAction === 'all'
+    ? missionLogs
     : missionLogs.filter((l) => l.action === filterAction);
 
   return (
@@ -98,7 +84,7 @@ export const MissionHistoryModal: React.FC<MissionHistoryModalProps> = ({ isOpen
               <div>
                 <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-shinobi-gold" />
-                  Auditoria & Recalibração de Ficha
+                  Histórico & Verificação da Ficha
                 </span>
                 <p className="text-[11px] text-slate-400">
                   Consolida todo o histórico de conclusões acumuladas, check-ins e bônus.
@@ -111,7 +97,7 @@ export const MissionHistoryModal: React.FC<MissionHistoryModalProps> = ({ isOpen
                 title="Recalcular e sincronizar todo o histórico acumulado"
               >
                 <RotateCcw className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span>Sincronizar / Recalibrar Ficha</span>
+                <span>Verificar Ficha</span>
               </button>
             </div>
 

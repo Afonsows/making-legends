@@ -1,19 +1,20 @@
 import React, { useState } from 'react';
 import { useUserStore } from '../../state/useUserStore';
 import { useHabitStore } from '../../state/useHabitStore';
+import { generateStarterMissions } from '../../core/missionGenerator';
 import { useTheme } from '../../theme/ThemeContext';
 import { soundFx } from '../../utils/audio';
 import { ShinobiBackground } from '../ui/ShinobiBackground';
 import { supabase } from '../../services/supabase';
 import { syncService } from '../../services/syncService';
-import { 
-  Sparkles, 
-  ChevronRight, 
-  Check, 
-  ShieldCheck, 
-  Flame, 
-  Zap, 
-  Lock, 
+import {
+  Sparkles,
+  ChevronRight,
+  Check,
+  ShieldCheck,
+  Flame,
+  Zap,
+  Lock,
   ArrowRight,
   User,
   Mail,
@@ -58,6 +59,31 @@ export const OnboardingQuiz: React.FC<OnboardingQuizProps> = ({ onFinishOnboardi
   const [loginPassword, setLoginPassword] = useState('');
 
   const totalSteps = 6;
+
+  /** Aplica o Pergaminho de Missões gerado a partir das respostas do quiz. */
+  const applyQuizMissions = () => {
+    const generated = generateStarterMissions({
+      goal: selectedGoal,
+      screenTime: screenTimeLevel,
+      workout: workoutFrequency,
+      reading: readingHabit,
+      obstacle: biggestObstacle,
+    });
+    setCustomMissionList(generated);
+    return generated;
+  };
+
+  /** Começar sem conta: progresso salvo apenas neste aparelho (pode sincronizar depois). */
+  const handleStartOffline = () => {
+    if (!userName.trim()) {
+      setErrorMessage('Informe seu nome ou codinome shinobi para começar.');
+      return;
+    }
+    applyQuizMissions();
+    completeOnboarding(userName.trim(), userGender, userEmail.trim() || undefined, userWhatsapp.trim() || undefined);
+    soundFx.playChallengeStart();
+    onFinishOnboarding();
+  };
 
   const handleNext = () => {
     soundFx.playScrollOpen();
@@ -128,16 +154,18 @@ export const OnboardingQuiz: React.FC<OnboardingQuizProps> = ({ onFinishOnboardi
 
       const user = data.user;
       if (user) {
-        // 2. Atualiza estado local do usuário
+        // 2. Gera as missões do quiz e atualiza o estado local
+        const generated = applyQuizMissions();
         completeOnboarding(userName.trim(), userGender, userEmail.trim(), userWhatsapp.trim());
 
-        // 3. Sincroniza dados iniciais no Supabase PostgreSQL
+        // 3. Sincroniza dados iniciais no Supabase
+        syncService.isHydrated = true;
         const updatedProfile = useUserStore.getState().profile;
         await syncService.pushUserProfile(updatedProfile, user.id);
-        await syncService.pushMissions(missions, user.id);
+        await syncService.pushMissions(generated, user.id, true);
       }
 
-      soundFx.playLevelUp();
+      soundFx.playChallengeStart();
       onFinishOnboarding();
     } catch (err: any) {
       setErrorMessage(err.message || 'Erro ao criar conta. Tente novamente.');
@@ -564,8 +592,32 @@ export const OnboardingQuiz: React.FC<OnboardingQuizProps> = ({ onFinishOnboardi
               </div>
             )}
 
+            {step === totalSteps && (
+              <button
+                type="button"
+                onClick={handleStartOffline}
+                disabled={isLoading}
+                className="w-full py-2.5 rounded-xl border border-slate-700 bg-slate-900/80 text-slate-300 hover:text-white hover:border-shinobi-orange/60 text-xs font-semibold transition-all"
+              >
+                Começar sem conta (salvo só neste aparelho — dá para conectar depois)
+              </button>
+            )}
+
             {/* Botões de Ação */}
             <div className="pt-3 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-shinobi-border">
+              {step > 1 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    soundFx.playButtonClick();
+                    setErrorMessage(null);
+                    setStep(step - 1);
+                  }}
+                  className="text-xs text-slate-400 hover:text-slate-200 transition-colors"
+                >
+                  ← Voltar
+                </button>
+              )}
               {/* Link para quem já tem conta */}
               <button
                 type="button"
