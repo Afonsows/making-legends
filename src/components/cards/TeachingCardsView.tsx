@@ -210,7 +210,7 @@ export const TeachingCardsView: React.FC = () => {
 
                       {isUnlocked ? (
                         <span className="text-[9px] font-mono font-bold text-emerald-400 flex items-center gap-0.5">
-                          <CheckCircle2 className="w-3 h-3" /> Dia Cumprido #{card.unlockedDay}
+                          <CheckCircle2 className="w-3 h-3" /> Dia de Perseverança #{card.unlockedDay}
                         </span>
                       ) : (
                         <span className="text-[9px] font-mono text-slate-500 flex items-center gap-0.5">

@@ -97,7 +97,7 @@ function checkReminders() {
         `Faltam ${progress.remainingXpToUnlock} XP para garantir a presença e proteger sua sequência de ${profile.currentStreak} dias.`
       );
     } else if (pending > 0) {
-      showShinobiNotification('Dia cumprido! 完', `Ainda dá tempo de concluir mais ${pending} ${pending === 1 ? 'missão' : 'missões'} e fortalecer seu chakra.`);
+      showShinobiNotification('Sequência garantida! 🔥', `Você atingiu 50% do XP diário. Ainda dá tempo de concluir mais ${pending} ${pending === 1 ? 'missão' : 'missões'} e fortalecer seu chakra.`);
     }
   }
 }

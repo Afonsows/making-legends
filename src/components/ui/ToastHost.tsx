@@ -11,7 +11,7 @@ const KIND_STYLE: Record<ToastKind, { kanji: string; ring: string; color: string
   warning: { kanji: '警', ring: 'border-rose-500/70 shadow-glow-crimson', color: 'text-rose-300' },
 };
 
-/** Avisos flutuantes de jogo (Dia Cumprido, Escudo de Chakra, novos pergaminhos...). */
+/** Avisos flutuantes de jogo (sequência, Escudo de Chakra, novos pergaminhos...). */
 export const ToastHost: React.FC = () => {
   const { toasts, dismissToast } = useUserStore();
   if (toasts.length === 0) return null;

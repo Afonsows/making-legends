@@ -147,7 +147,7 @@ export const TeachingCardModal: React.FC<TeachingCardModalProps> = ({ card, onCl
 
             {/* Dia */}
             <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-black/50 border border-white/10 text-slate-200">
-              DIA CUMPRIDO #{card.unlockedDay}
+              DIA DE PERSEVERANÇA #{card.unlockedDay}
             </span>
           </div>
 

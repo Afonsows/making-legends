@@ -707,7 +707,7 @@ export const useUserStore = create<UserStoreState>()(
             const stipend = getDailyCheckInRyoBonus(after.currentStreak, after.level);
             get().grantReward({
               key,
-              label: 'Dia Cumprido — estipêndio da vila',
+              label: 'Sequência de perseverança — estipêndio da vila',
               baseXp: 0,
               baseRyo: stipend,
               applyRyoBuffs: false,
@@ -717,8 +717,8 @@ export const useUserStore = create<UserStoreState>()(
               triggerDayCompleteConfetti();
               get().pushToast({
                 kind: 'success',
-                title: 'Dia Cumprido! 完',
-                message: `Meta diária alcançada. +${stipend} Ryō de estipêndio e sequência de ${after.currentStreak} ${after.currentStreak === 1 ? 'dia' : 'dias'}.`,
+                title: 'Sequência de Perseverança Garantida! 🔥',
+                message: `Você atingiu 50% do XP diário e ganhou +1 dia na sequência. +${stipend} Ryō de estipêndio; sequência atual: ${after.currentStreak} ${after.currentStreak === 1 ? 'dia' : 'dias'}.`,
               });
             }
           } else if (!record.completed && hasStipend) {

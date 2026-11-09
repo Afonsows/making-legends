@@ -98,7 +98,7 @@ describe('missões: concluir e desfazer', () => {
     expect(totalDamage).toBeLessThanOrEqual(Math.ceil(missionXp * 1.35 * 1.5));
   });
 
-  it('atingir 50% do XP marca o Dia Cumprido e paga o estipêndio uma única vez', () => {
+  it('atingir 50% do XP acrescenta um dia à sequência e paga o estipêndio uma única vez', () => {
     const ms = useHabitStore.getState().missions;
     const today = getTodayString();
     useHabitStore.getState().toggleCompleteMission(ms[3].id); // B 140

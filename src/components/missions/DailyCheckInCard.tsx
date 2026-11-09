@@ -109,14 +109,14 @@ export const DailyCheckInCard: React.FC<DailyCheckInCardProps> = ({ onOpenMap, o
       <DaySeal percentOfGoal={percentOfGoal} done={xpProgress.isUnlocked} dayLabel="da meta" />
       <div className="min-w-0 flex-1 space-y-1.5">
         <div className="text-sm font-bold text-slate-100">
-          {xpProgress.isUnlocked ? 'Dia Cumprido!' : xpProgress.totalTargetXp === 0 ? 'Crie missões para começar' : 'Meta do dia em andamento'}
+          {xpProgress.isUnlocked ? 'Sequência de perseverança garantida!' : xpProgress.totalTargetXp === 0 ? 'Crie missões para começar' : 'Meta do dia em andamento'}
         </div>
         <p className="text-xs text-slate-400 leading-snug">
           {xpProgress.isUnlocked
-            ? `Presença garantida com ${xpProgress.currentXp} XP. Cada missão a mais fortalece seu chakra e causa dano no Duelo.`
+            ? `Você atingiu 50% do XP diário e acrescentou 1 dia à sua sequência de perseverança. Cada missão a mais fortalece seu chakra.`
             : xpProgress.totalTargetXp === 0
             ? 'Adicione missões diárias para definir sua meta.'
-            : `Faltam ${xpProgress.remainingXpToUnlock} XP para cumprir o dia (50% de ${xpProgress.totalTargetXp} XP). A presença é marcada automaticamente.`}
+            : `Faltam ${xpProgress.remainingXpToUnlock} XP para acrescentar 1 dia à sequência (50% de ${xpProgress.totalTargetXp} XP).`}
         </p>
         <div className="relative w-full h-2.5 bg-slate-900 rounded-full overflow-hidden border border-slate-700/80">
           <div
