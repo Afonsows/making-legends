@@ -43,7 +43,9 @@ export const ToolsHub: React.FC = () => {
     meditationMinutesToday,
     logMeditationSession,
     sealLockActive,
+    sealEndsAt,
     setSealLock,
+    completeSealIfDue,
     bodyJournal,
     addWaterGlass,
     removeWaterGlass,
@@ -64,6 +66,9 @@ export const ToolsHub: React.FC = () => {
   const pomoSeconds = isPomoRunning
     ? Math.max(0, Math.ceil(((pomodoro.endsAt || 0) - Date.now()) / 1000))
     : pomodoro.remainingSeconds;
+  const sealSeconds = sealLockActive && sealEndsAt
+    ? Math.max(0, Math.ceil((sealEndsAt - Date.now()) / 1000))
+    : 0;
 
   // Estado Meditação
   const [breathPhase, setBreathPhase] = useState<'Inspire' | 'Segure' | 'Expire' | 'Vazio'>('Inspire');
@@ -118,6 +123,25 @@ export const ToolsHub: React.FC = () => {
     }, 1000);
     return () => clearInterval(interval);
   }, [isPomoRunning]);
+
+  // Sessão de desintoxicação: continua contando mesmo ao trocar de tela e só
+  // recompensa quando a janela inteira de foco termina.
+  useEffect(() => {
+    if (!sealLockActive) return;
+    const interval = setInterval(() => {
+      const result = completeSealIfDue();
+      if (result.completed) {
+        soundFx.playZenBell();
+        pushToast({
+          kind: result.rewarded ? 'reward' : 'info',
+          title: 'Sessão de foco concluída',
+          message: result.rewarded ? `+${TOOL_REWARDS.seal.xp} XP e +${TOOL_REWARDS.seal.ryo} Ryō pela desintoxicação.` : 'A sessão foi concluída; a recompensa vale uma vez ao dia.',
+        });
+      }
+      setTick((t) => t + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [sealLockActive, sealEndsAt, completeSealIfDue, pushToast]);
 
   // Meditação 4-4-4-4 Effect
   useEffect(() => {
@@ -556,10 +580,10 @@ export const ToolsHub: React.FC = () => {
           </div>
 
           <h3 className="font-cinzel text-lg font-bold text-slate-100">
-            Selo de Bloqueio & Desintoxicação Digital
+            Sessão de Foco & Desintoxicação Digital
           </h3>
           <p className="text-xs text-slate-300 max-w-md mx-auto">
-            Ative o selo para firmar um compromisso inegociável de foco. Bloqueie notificações, redes sociais e tempo de tela passivo durante a janela de treino.
+            Inicie uma sessão de 60 minutos com contagem regressiva e recompensa somente ao final. O app não tem permissão para bloquear outros aplicativos: ative o Não Perturbe e o bloqueio de apps do seu aparelho antes de começar.
           </p>
 
           <div className="bg-shinobi-bg p-4 rounded-xl border border-shinobi-border max-w-md mx-auto text-left space-y-2 text-xs">
@@ -574,12 +598,18 @@ export const ToolsHub: React.FC = () => {
             </div>
           </div>
 
+          {sealLockActive && (
+            <div className="font-mono text-3xl font-bold text-shinobi-gold" aria-live="polite">
+              {String(Math.floor(sealSeconds / 60)).padStart(2, '0')}:{String(sealSeconds % 60).padStart(2, '0')}
+            </div>
+          )}
+
           <button
             onClick={() => {
-              const { rewarded } = setSealLock(!sealLockActive, 60);
+              setSealLock(!sealLockActive, 60);
               if (!sealLockActive) {
                 soundFx.playShield();
-                if (!rewarded) pushToast({ kind: 'info', title: 'Selo reativado', message: 'A recompensa do Selo de Bloqueio é uma vez por dia.' });
+                pushToast({ kind: 'info', title: 'Sessão iniciada', message: 'Mantenha o foco por 60 minutos. A recompensa é liberada somente ao concluir.' });
               }
             }}
             className={`px-6 py-3 font-bold text-xs rounded-xl transition-all ${
@@ -588,7 +618,7 @@ export const ToolsHub: React.FC = () => {
                 : 'bg-shinobi-gold text-shinobi-bg shadow-glow-gold'
             }`}
           >
-            {sealLockActive ? 'Desativar Selo de Bloqueio' : `Ativar Selo de Bloqueio (+${TOOL_REWARDS.seal.xp} XP, 1x ao dia)`}
+            {sealLockActive ? 'Encerrar Sessão sem Recompensa' : `Iniciar Sessão de Foco (60 min • +${TOOL_REWARDS.seal.xp} XP)`}
           </button>
         </div>
       )}

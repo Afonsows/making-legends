@@ -9,6 +9,7 @@ import { useUserStore } from './useUserStore';
 import { syncService } from '../services/syncService';
 import { soundFx } from '../utils/audio';
 import { triggerMissionConfetti } from '../utils/confetti';
+import { buildDayRecord } from '../core/streakEngine';
 
 export { getDefaultRyoReward, calculateRyoGainWithBuffs };
 
@@ -81,6 +82,8 @@ interface HabitStoreState {
   setSearchQuery: (query: string) => void;
 
   toggleCompleteMission: (missionId: string) => void;
+  /** Marca uma missão em uma data já ocorrida, sem conceder recompensa retroativa. */
+  toggleMissionOnDate: (missionId: string, date: string) => { success: boolean; isCompleted: boolean; reason?: string };
   completeAllMissionsToday: () => void;
   uncompleteAllMissionsToday: () => void;
   addMission: (mission: Omit<Mission, 'id' | 'isCompletedToday' | 'completedDates' | 'order' | 'createdAt'>) => void;
@@ -188,6 +191,35 @@ export const useHabitStore = create<HabitStoreState>()(
           }
 
           useUserStore.getState().refreshToday();
+        },
+
+        toggleMissionOnDate: (missionId, date) => {
+          const todayStr = getTodayString();
+          const mission = get().missions.find((m) => m.id === missionId);
+          if (!mission || !isValidDateString(date) || date > todayStr) {
+            return { success: false, isCompleted: false, reason: 'Escolha uma data válida que não esteja no futuro.' };
+          }
+          if (date === todayStr) {
+            get().toggleCompleteMission(missionId);
+            return { success: true, isCompleted: Boolean(get().missions.find((m) => m.id === missionId)?.isCompletedToday) };
+          }
+
+          const willBeCompleted = !(mission.completedDates || []).includes(date);
+          set((state) => ({
+            missions: state.missions.map((m) => {
+              if (m.id !== missionId) return m;
+              const completedDates = willBeCompleted
+                ? Array.from(new Set([...(m.completedDates || []), date])).sort()
+                : (m.completedDates || []).filter((d) => d !== date);
+              return { ...m, completedDates };
+            }),
+          }));
+
+          const user = useUserStore.getState();
+          const record = buildDayRecord(get().missions, date, true, user.profile.dayLog[date]);
+          user.updateProfile({ dayLog: { ...user.profile.dayLog, [date]: record } });
+          user.refreshToday({ silent: true });
+          return { success: true, isCompleted: willBeCompleted };
         },
 
         completeAllMissionsToday: () => {

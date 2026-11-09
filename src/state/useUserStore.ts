@@ -713,12 +713,9 @@ export const useUserStore = create<UserStoreState>()(
           const { dayLog, closedDates } = closePastDays(profile.dayLog, missions, profile.lastActiveDate, today);
           const shields = applyShieldsToClosedDays(dayLog, profile.shieldedDates, closedDates, shieldContext(profile));
 
-          // Mantém só as recompensas que ainda podem ser desfeitas (hoje e ontem)
-          const minDate = addDaysToDateString(today, -1);
-          const grants: Record<string, RewardGrant> = {};
-          Object.values(profile.grants || {}).forEach((g) => {
-            if (g.date >= minDate) grants[g.key] = g;
-          });
+          // Livro-razão persistente: um desafio pode ser excluído semanas depois
+          // e todas as suas recompensas ainda precisam ser estornáveis.
+          const grants: Record<string, RewardGrant> = { ...(profile.grants || {}) };
 
           set((state) => ({
             profile: touch({
@@ -781,7 +778,6 @@ export const useUserStore = create<UserStoreState>()(
           const history = get().profile.challengeHistory || [];
           const targetDays = Math.min(365, Math.max(7, Math.round(params?.targetDays || 66)));
           let startDate = params?.startDate && isValidDateString(params.startDate) ? params.startDate : today;
-          if (startDate < today) startDate = today;
           if (daysBetween(today, startDate) > 30) startDate = addDaysToDateString(today, 30);
           const cycleNumber = history.length + 1;
           const isEliteMode = Boolean(params?.isEliteMode);
@@ -793,6 +789,7 @@ export const useUserStore = create<UserStoreState>()(
             targetDays,
             isEliteMode,
             startDate,
+            graceBefore: startDate < today ? today : undefined,
             status: 'active',
             currentDay: startDate === today ? 1 : 0,
             daysCompleted: 0,
@@ -845,16 +842,37 @@ export const useUserStore = create<UserStoreState>()(
         },
 
         deleteActiveChallenge: () => {
+          const cycle = get().profile.activeChallenge;
+          if (cycle) {
+            Object.values(get().profile.grants || {})
+              .filter((grant) => grant.date >= cycle.startDate)
+              .forEach((grant) => get().revokeReward(grant.key));
+            // O desafio oficial usa as missões diárias como atividades do ciclo.
+            // Ao apagá-lo, remove também essas marcações e os dias consolidados,
+            // evitando que uma reabertura/reload recrie XP ou Ryō automaticamente.
+            const today = getTodayString();
+            useHabitStore.setState((state) => ({
+              missions: state.missions.map((mission) => {
+                const completedDates = (mission.completedDates || []).filter((date) => date < cycle.startDate);
+                return { ...mission, completedDates, isCompletedToday: completedDates.includes(today) };
+              }),
+            }));
+          }
           set((state) => ({
             profile: touch({
               ...state.profile,
               activeChallenge: undefined,
               currentProtocolDay: 0,
+              dayLog: cycle
+                ? Object.fromEntries(Object.entries(state.profile.dayLog).filter(([date]) => date < cycle.startDate))
+                : state.profile.dayLog,
+              shieldedDates: cycle
+                ? state.profile.shieldedDates.filter((date) => date < cycle.startDate)
+                : state.profile.shieldedDates,
             }),
             activeResetModal: null,
             activeCompletionModal: null,
           }));
-          get().refreshToday({ silent: true });
         },
 
         updateActiveChallenge: (updates) => {
@@ -879,6 +897,7 @@ export const useUserStore = create<UserStoreState>()(
         },
 
         deleteHistoryCycle: (cycleId) => {
+          get().revokeReward(`challenge:${cycleId}`);
           set((state) => ({
             profile: touch({
               ...state.profile,
@@ -888,6 +907,7 @@ export const useUserStore = create<UserStoreState>()(
         },
 
         clearChallengeHistory: () => {
+          (get().profile.challengeHistory || []).forEach((cycle) => get().revokeReward(`challenge:${cycle.id}`));
           set((state) => ({
             profile: touch({
               ...state.profile,

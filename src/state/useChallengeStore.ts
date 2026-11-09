@@ -19,6 +19,13 @@ function revokeTodayHabitGrants(challengeId: string, habitIds: string[]) {
   habitIds.forEach((habitId) => useUserStore.getState().revokeReward(`habit:${challengeId}:${habitId}:${todayStr}`));
 }
 
+/** Remove todas as recompensas vinculadas a um desafio personalizado. */
+function revokeChallengeHabitGrants(challengeId: string) {
+  Object.keys(useUserStore.getState().profile.grants || {})
+    .filter((key) => key.startsWith(`habit:${challengeId}:`))
+    .forEach((key) => useUserStore.getState().revokeReward(key));
+}
+
 export interface DayStripInfo {
   date: string; // YYYY-MM-DD
   dayNumber: number; // dia do mês (ex: 29, 31)
@@ -461,7 +468,7 @@ export const useChallengeStore = create<ChallengeStoreState>()(
 
       deleteChallenge: (challengeId) => {
         const target = get().challenges.find((c) => c.id === challengeId);
-        if (target) revokeTodayHabitGrants(challengeId, target.habits.map((h) => h.id));
+        if (target) revokeChallengeHabitGrants(challengeId);
         set((state) => {
           const remaining = state.challenges.filter((c) => c.id !== challengeId);
           return {
@@ -628,19 +635,21 @@ export const useChallengeStore = create<ChallengeStoreState>()(
           const habitStore = useHabitStore.getState();
           const mission = habitStore.missions.find((m) => m.id === habitId);
 
-          if (dateStr !== todayStr) {
-            // Missões do desafio principal só podem ser marcadas no próprio dia.
+          if (dateStr > todayStr) {
             const streaks = calculateHabitStreaks(mission?.completedDates || []);
             soundFx.playError();
             return {
               isCompleted: Boolean(mission?.completedDates?.includes(dateStr)),
               currentStreak: streaks.currentStreak,
               bestStreak: streaks.bestStreak,
-              blockedReason: 'As missões do desafio principal só podem ser marcadas no próprio dia.',
+              blockedReason: 'Dias futuros ainda não podem ser marcados.',
             };
           }
-          // Alterna a missão de hoje no motor oficial (mesma regra da tela inicial)
-          habitStore.toggleCompleteMission(habitId);
+          const result = habitStore.toggleMissionOnDate(habitId, dateStr);
+          if (!result.success) {
+            const streaks = calculateHabitStreaks(mission?.completedDates || []);
+            return { isCompleted: false, currentStreak: streaks.currentStreak, bestStreak: streaks.bestStreak, blockedReason: result.reason };
+          }
           const updatedMission = useHabitStore.getState().missions.find((m) => m.id === habitId);
           const streaks = calculateHabitStreaks(updatedMission?.completedDates || []);
           return {

@@ -8,7 +8,6 @@ import { Navbar } from './components/layout/Navbar';
 import { BottomNav, TabType } from './components/layout/BottomNav';
 import { MissionsView } from './components/missions/MissionsView';
 import { ChallengesView } from './components/challenges/ChallengesView';
-import { DuelView } from './components/duel/DuelView';
 import { StatusWindow } from './components/status/StatusWindow';
 import { ToolsHub } from './components/tools/ToolsHub';
 import { TeachingCardsView } from './components/cards/TeachingCardsView';
@@ -110,7 +109,6 @@ export const AppContent: React.FC = () => {
           <MissionsView onOpenCard={() => setActiveTab('cards')} />
         )}
         {activeTab === 'challenges' && <ChallengesView />}
-        {activeTab === 'duel' && <DuelView />}
         {activeTab === 'status' && <StatusWindow />}
         {activeTab === 'tools' && <ToolsHub />}
         {activeTab === 'cards' && <TeachingCardsView />}

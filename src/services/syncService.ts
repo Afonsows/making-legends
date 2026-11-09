@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { UserProfile, Mission, ProtocolChallengeCycle, UserChallenge, DayRecord } from '../core/types';
+import { UserProfile, Mission, ProtocolChallengeCycle, UserChallenge, DayRecord, RewardGrant } from '../core/types';
 import { getTodayString } from '../core/dateUtils';
 import { getDefaultRyoReward } from '../core/ryoEngine';
 import { useUserStore, migrateProfile } from '../state/useUserStore';
@@ -19,6 +19,7 @@ interface CloudExtras {
   _soldierPillDates?: string[];
   _bossHp?: Record<string, number>;
   _missionsCompletedTotal?: number;
+  _grants?: Record<string, RewardGrant>;
   _updatedAt?: string;
 }
 
@@ -62,7 +63,7 @@ class SyncService {
       // 1. Perfil
       if (profileData && !profileErr && preferCloud) {
         const { _activeChallenge, _challengeHistory, _customChallenges, _dayLog, _shieldedDates, _purchasedItems,
-          _extraShieldWeeks, _soldierPillDates, _bossHp, _missionsCompletedTotal, _updatedAt, ...avatar } = extras;
+          _extraShieldWeeks, _soldierPillDates, _bossHp, _missionsCompletedTotal, _grants, _updatedAt, ...avatar } = extras;
         void _updatedAt;
 
         if (Array.isArray(_customChallenges)) useChallengeStore.setState({ challenges: _customChallenges });
@@ -103,6 +104,7 @@ class SyncService {
           extraShieldWeeks: _extraShieldWeeks || local.extraShieldWeeks,
           soldierPillDates: _soldierPillDates || local.soldierPillDates,
           missionsCompletedTotal: Math.max(_missionsCompletedTotal || 0, local.missionsCompletedTotal || 0),
+          grants: _grants || local.grants,
           updatedAt: cloudUpdatedAt || local.updatedAt,
         };
 
@@ -183,6 +185,7 @@ class SyncService {
         _soldierPillDates: profile.soldierPillDates,
         _bossHp: bossHp,
         _missionsCompletedTotal: profile.missionsCompletedTotal,
+        _grants: profile.grants,
         _updatedAt: profile.updatedAt || new Date().toISOString(),
       };
 

@@ -2,13 +2,12 @@ import React from 'react';
 import { 
   CheckSquare, 
   Trophy,
-  Swords, 
   User, 
   Wrench, 
   BookOpen
 } from 'lucide-react';
 
-export type TabType = 'missions' | 'challenges' | 'duel' | 'status' | 'tools' | 'cards';
+export type TabType = 'missions' | 'challenges' | 'status' | 'tools' | 'cards';
 
 interface BottomNavProps {
   activeTab: TabType;
@@ -24,7 +23,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   const navItems: { id: TabType; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: 'missions', label: 'Missões', icon: CheckSquare },
     { id: 'challenges', label: 'Desafios', icon: Trophy },
-    { id: 'duel', label: 'Duelo', icon: Swords },
     { id: 'status', label: 'Status', icon: User },
     { id: 'tools', label: 'Dojo', icon: Wrench },
     { id: 'cards', label: 'Sabedoria', icon: BookOpen },
@@ -39,7 +37,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         {/* Reflexo interno translúcido fosco */}
         <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] via-transparent to-black/20 pointer-events-none" />
 
-        <div className="grid grid-cols-6 h-16 relative z-10 px-1 py-1">
+        <div className="grid grid-cols-5 h-16 relative z-10 px-1 py-1">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;

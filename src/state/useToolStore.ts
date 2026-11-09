@@ -170,7 +170,9 @@ interface ToolStoreState {
   // 4. Selo de Bloqueio
   sealLockActive: boolean;
   sealMinutesRemaining: number;
+  sealEndsAt: number | null;
   setSealLock: (active: boolean, minutes?: number) => { rewarded: boolean };
+  completeSealIfDue: () => { completed: boolean; rewarded: boolean };
 
   // 5. Diário do Corpo (Sono & Água)
   bodyJournal: Record<string, BodyJournalEntry>;
@@ -222,6 +224,7 @@ export const useToolStore = create<ToolStoreState>()(
         meditationMinutesToday: 0,
         sealLockActive: false,
         sealMinutesRemaining: 0,
+        sealEndsAt: null,
         bodyJournal: {},
         trainingLogs: [],
 
@@ -241,6 +244,7 @@ export const useToolStore = create<ToolStoreState>()(
               meditationMinutesToday: 0,
               sealLockActive: false,
               sealMinutesRemaining: 0,
+              sealEndsAt: null,
             });
           }
         },
@@ -340,11 +344,24 @@ export const useToolStore = create<ToolStoreState>()(
         },
 
         setSealLock: (active, minutes = 0) => {
-          set({ sealLockActive: active, sealMinutesRemaining: active ? minutes : 0 });
-          if (!active) return { rewarded: false };
+          const duration = Math.max(1, Math.round(minutes || 60));
+          set({
+            sealLockActive: active,
+            sealMinutesRemaining: active ? duration : 0,
+            sealEndsAt: active ? Date.now() + duration * 60_000 : null,
+          });
+          // A recompensa só é entregue ao término da sessão, não na ativação.
+          return { rewarded: false };
+        },
+
+        completeSealIfDue: () => {
+          const { sealLockActive, sealEndsAt } = get();
+          if (!sealLockActive || !sealEndsAt || Date.now() < sealEndsAt) return { completed: false, rewarded: false };
           const todayStr = getTodayString();
+          set({ sealLockActive: false, sealMinutesRemaining: 0, sealEndsAt: null });
           return {
-            rewarded: grant(`tool:seal:${todayStr}`, 'Selo de Bloqueio ativado', TOOL_REWARDS.seal.xp, TOOL_REWARDS.seal.ryo, 'chakra'),
+            completed: true,
+            rewarded: grant(`tool:seal:${todayStr}`, 'Sessão de foco sem distrações concluída', TOOL_REWARDS.seal.xp, TOOL_REWARDS.seal.ryo, 'chakra'),
           };
         },
 
@@ -412,6 +429,7 @@ export const useToolStore = create<ToolStoreState>()(
           merged.meditationMinutesToday = 0;
           merged.sealLockActive = false;
           merged.sealMinutesRemaining = 0;
+          merged.sealEndsAt = null;
         }
         return merged;
       },

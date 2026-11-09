@@ -188,14 +188,18 @@ describe('ferramentas: limites diários', () => {
     expect(useToolStore.getState().countRewardedToday('tool:meal:')).toBe(TOOL_LIMITS.mealsRewarded);
   });
 
-  it('sono e selo pagam uma vez por dia', () => {
+  it('sono e sessão de foco pagam uma vez por dia, somente após o tempo terminar', () => {
     useToolStore.getState().logSleep(7, 4);
     const xp = useUserStore.getState().profile.totalXp;
     useToolStore.getState().logSleep(8, 5);
     useToolStore.getState().setSealLock(true, 60);
-    useToolStore.getState().setSealLock(false);
+    expect(useUserStore.getState().profile.totalXp).toBe(xp);
+    useToolStore.setState({ sealEndsAt: Date.now() - 1 });
+    useToolStore.getState().completeSealIfDue();
     const xp2 = useUserStore.getState().profile.totalXp;
     useToolStore.getState().setSealLock(true, 60);
+    useToolStore.setState({ sealEndsAt: Date.now() - 1 });
+    useToolStore.getState().completeSealIfDue();
     expect(useUserStore.getState().profile.totalXp).toBe(xp2);
     expect(xp2).toBeGreaterThan(xp);
   });
@@ -221,9 +225,9 @@ describe('desafios', () => {
     expect(useUserStore.getState().toggleHardMode().success).toBe(false);
   });
 
-  it('data de início no passado é ajustada para hoje', () => {
+  it('preserva a data de início no passado para permitir completar o histórico', () => {
     const cycle = useUserStore.getState().startChallenge({ startDate: addDaysToDateString(getTodayString(), -10) });
-    expect(cycle.startDate).toBe(getTodayString());
+    expect(cycle.startDate).toBe(addDaysToDateString(getTodayString(), -10));
   });
 
   it('hábito de desafio personalizado paga hoje e estorna ao desmarcar', () => {
@@ -236,13 +240,15 @@ describe('desafios', () => {
     expect(snapshot()).toEqual(before);
   });
 
-  it('missões do desafio principal não podem ser marcadas em dias passados', () => {
+  it('missões do desafio principal podem ser marcadas em dias passados, nunca no futuro', () => {
     const m = useHabitStore.getState().missions[0];
     const res = useChallengeStore
       .getState()
       .toggleHabitDay('challenge_official_66', m.id, addDaysToDateString(getTodayString(), -1));
-    expect(res.blockedReason).toBeDefined();
-    expect(useHabitStore.getState().missions[0].completedDates).toEqual([]);
+    expect(res.blockedReason).toBeUndefined();
+    expect(useHabitStore.getState().missions[0].completedDates).toContain(addDaysToDateString(getTodayString(), -1));
+    const future = useChallengeStore.getState().toggleHabitDay('challenge_official_66', m.id, addDaysToDateString(getTodayString(), 1));
+    expect(future.blockedReason).toBeDefined();
   });
 });
 
@@ -350,6 +356,17 @@ describe('liberdade do usuário: desafios, missões e clean mode', () => {
     useUserStore.getState().deleteActiveChallenge();
     expect(useUserStore.getState().profile.activeChallenge).toBeUndefined();
     expect(useUserStore.getState().profile.currentProtocolDay).toBe(0);
+  });
+
+  it('excluir o desafio ativo estorna XP e Ryō obtidos no ciclo', () => {
+    useUserStore.getState().startChallenge({ title: 'Desafio com recompensa', targetDays: 30 });
+    const before = snapshot();
+    useHabitStore.getState().toggleCompleteMission(useHabitStore.getState().missions[0].id);
+    expect(useUserStore.getState().profile.totalXp).toBeGreaterThan(before.totalXp);
+
+    useUserStore.getState().deleteActiveChallenge();
+    expect(snapshot()).toEqual(before);
+    expect(useHabitStore.getState().missions[0].completedDates).toEqual([]);
   });
 
   it('permite editar o desafio ativo (título e dias)', () => {

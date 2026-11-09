@@ -103,6 +103,8 @@ export interface ProtocolChallengeCycle {
   checkIns: Record<number, DailyCheckInRecord>;
   failedWeek?: number;
   failedReason?: string;
+  /** Dias anteriores a esta data não encerram o ciclo enquanto o histórico é preenchido. */
+  graceBefore?: string;
   totalXpEarned: number;
   createdAt: string;
   completedAt?: string;
