@@ -210,6 +210,8 @@ interface UserStoreState {
 
   // Perfil
   updateProfile: (updates: Partial<UserProfile>) => void;
+  /** Zera toda a progressão, preservando a identidade e as preferências do cadastro. */
+  resetProgress: () => void;
   setProfileName: (name: string) => void;
   updateAvatar: (config: Partial<AvatarConfig>) => void;
   updateNotifications: (settings: Partial<NotificationSettings>) => void;
@@ -429,6 +431,33 @@ export const useUserStore = create<UserStoreState>()(
         toasts: [],
 
         updateProfile: (updates) => set((state) => ({ profile: touch({ ...state.profile, ...updates }) })),
+
+        resetProgress: () => {
+          const current = get().profile;
+          const fresh = createDefaultProfile();
+          set({
+            profile: touch({
+              ...fresh,
+              id: current.id,
+              name: current.name,
+              email: current.email,
+              whatsapp: current.whatsapp,
+              gender: current.gender,
+              avatarConfig: current.avatarConfig,
+              notificationSettings: current.notificationSettings,
+              subscriptionStatus: current.subscriptionStatus,
+              hasCompletedOnboarding: true,
+              createdAt: current.createdAt,
+            }),
+            activeLevelUpModal: null,
+            activeResetModal: null,
+            activeCompletionModal: null,
+            isChallengeHistoryModalOpen: false,
+            isChallengeMapModalOpen: false,
+            isStartChallengeModalOpen: false,
+            toasts: [],
+          });
+        },
 
         setProfileName: (name) =>
           set((state) => ({ profile: touch({ ...state.profile, name: name.trim() || 'Aspirante Shinobi' }) })),

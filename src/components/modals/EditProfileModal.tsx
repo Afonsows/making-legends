@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useUserStore } from '../../state/useUserStore';
+import { useHabitStore, initialMissions } from '../../state/useHabitStore';
+import { useChallengeStore } from '../../state/useChallengeStore';
+import { useToolStore } from '../../state/useToolStore';
+import { useDuelStore } from '../../state/useDuelStore';
 import { useTheme } from '../../theme/ThemeContext';
 import { syncService } from '../../services/syncService';
 import { supabase } from '../../services/supabase';
@@ -15,7 +19,8 @@ import {
   CheckCircle2, 
   Shield, 
   Flame,
-  Check
+  Check,
+  Trash2,
 } from 'lucide-react';
 
 export interface AvatarOption {
@@ -77,7 +82,7 @@ interface EditProfileModalProps {
 }
 
 export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose }) => {
-  const { profile, updateProfile } = useUserStore();
+  const { profile, updateProfile, resetProgress } = useUserStore();
   const { getRankByLevel } = useTheme();
 
   const rankInfo = getRankByLevel(profile.level);
@@ -161,6 +166,46 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
       }, 1200);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleResetProgress = async () => {
+    if (!window.confirm('Isso apagará permanentemente XP, Ryō, desafios, histórico, missões concluídas, itens e registros do Dojo. Deseja continuar?')) return;
+    if (window.prompt('Para confirmar, digite RESETAR') !== 'RESETAR') return;
+
+    resetProgress();
+    useHabitStore.setState({
+      missions: initialMissions.map((mission) => ({ ...mission, completedDates: [], isCompletedToday: false })),
+      missionLogs: [],
+      lastCompletion: null,
+    });
+    useChallengeStore.setState({ challenges: [], isDetailModalOpen: false, selectedChallengeForModal: null });
+    useToolStore.setState({
+      nutritionLogs: {},
+      currentCalorieTarget: 2200,
+      currentProteinTarget: 140,
+      pomodoroSessionsCompletedToday: 0,
+      pomodoro: { mode: 'work', durationMinutes: 25, endsAt: null, remainingSeconds: 25 * 60 },
+      meditationMinutesToday: 0,
+      sealLockActive: false,
+      sealMinutesRemaining: 0,
+      sealEndsAt: null,
+      bodyJournal: {},
+      trainingLogs: [],
+    });
+    useDuelStore.getState().resetAdversariesProgress();
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        await syncService.pushUserProfile(useUserStore.getState().profile, session.user.id);
+        await syncService.pushMissions([], session.user.id, true);
+      }
+      soundFx.playMissionUndo();
+      onClose();
+    } catch (err) {
+      console.warn('O reset foi salvo localmente e será sincronizado quando a conexão voltar.', err);
+      onClose();
     }
   };
 
@@ -376,13 +421,23 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
 
         {/* Footer com Ações */}
         <div className="p-4 sm:p-5 border-t border-slate-800 bg-slate-950 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2.5 text-xs font-semibold text-slate-400 hover:text-slate-200 rounded-xl transition-colors"
-          >
-            Cancelar
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2.5 text-xs font-semibold text-slate-400 hover:text-slate-200 rounded-xl transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleResetProgress}
+              className="px-3 py-2.5 text-xs font-bold text-rose-300 hover:text-white bg-rose-950/40 hover:bg-rose-900/60 border border-rose-500/50 rounded-xl transition-colors flex items-center gap-1.5"
+              title="Apagar toda a progressão e recomeçar"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Resetar progresso
+            </button>
+          </div>
 
           <button
             type="submit"

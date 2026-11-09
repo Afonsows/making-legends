@@ -358,6 +358,27 @@ describe('liberdade do usuário: desafios, missões e clean mode', () => {
     expect(useUserStore.getState().profile.currentProtocolDay).toBe(0);
   });
 
+  it('reseta a progressão sem apagar a identidade do perfil', () => {
+    useUserStore.setState((state) => ({
+      profile: {
+        ...state.profile,
+        name: 'Afonso',
+        email: 'afonso@example.com',
+        totalXp: 900,
+        ryo: 450,
+        challengeHistory: [{ id: 'old', cycleNumber: 1, startDate: getTodayString(), status: 'failed', currentDay: 1, daysCompleted: 0, checkIns: {}, totalXpEarned: 0, createdAt: new Date().toISOString() }],
+      },
+    }));
+    useUserStore.getState().resetProgress();
+    const profile = useUserStore.getState().profile;
+    expect(profile.name).toBe('Afonso');
+    expect(profile.email).toBe('afonso@example.com');
+    expect(profile.totalXp).toBe(0);
+    expect(profile.ryo).toBe(0);
+    expect(profile.challengeHistory).toEqual([]);
+    expect(profile.hasCompletedOnboarding).toBe(true);
+  });
+
   it('excluir o desafio ativo estorna XP e Ryō obtidos no ciclo', () => {
     useUserStore.getState().startChallenge({ title: 'Desafio com recompensa', targetDays: 30 });
     const before = snapshot();
