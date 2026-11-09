@@ -33,6 +33,7 @@ import { useHabitStore, initialMissions } from '../state/useHabitStore';
 import { useDuelStore } from '../state/useDuelStore';
 import { useToolStore, TOOL_LIMITS } from '../state/useToolStore';
 import { useChallengeStore } from '../state/useChallengeStore';
+import { useUIStore } from '../state/useUIStore';
 import { originalAdversaries } from '../core/adversariesData';
 import { getTodayString, addDaysToDateString } from '../core/dateUtils';
 
@@ -334,5 +335,86 @@ describe('loja', () => {
     useHabitStore.getState().toggleCompleteMission(useHabitStore.getState().missions[2].id); // D 50 XP
     const grant = useUserStore.getState().profile.grants[`mission:${useHabitStore.getState().missions[2].id}:${getTodayString()}`];
     expect(grant.xp).toBeGreaterThan(50);
+  });
+});
+
+
+describe('liberdade do usuário: desafios, missões e clean mode', () => {
+  beforeEach(resetAll);
+
+  it('permite cancelar e excluir o desafio ativo livremente', () => {
+    useUserStore.getState().startChallenge({ title: 'Desafio Teste', targetDays: 30 });
+    expect(useUserStore.getState().profile.activeChallenge).toBeDefined();
+    expect(useUserStore.getState().profile.activeChallenge?.title).toBe('Desafio Teste');
+
+    useUserStore.getState().deleteActiveChallenge();
+    expect(useUserStore.getState().profile.activeChallenge).toBeUndefined();
+    expect(useUserStore.getState().profile.currentProtocolDay).toBe(0);
+  });
+
+  it('permite editar o desafio ativo (título e dias)', () => {
+    useUserStore.getState().startChallenge({ title: 'Desafio Original', targetDays: 21 });
+    useUserStore.getState().updateActiveChallenge({ title: 'Desafio Renomeado', targetDays: 45 });
+    expect(useUserStore.getState().profile.activeChallenge?.title).toBe('Desafio Renomeado');
+    expect(useUserStore.getState().profile.activeChallenge?.targetDays).toBe(45);
+  });
+
+  it('permite excluir ciclos individuais do histórico e limpar o histórico', () => {
+    useUserStore.getState().startChallenge({ targetDays: 21 });
+    useUserStore.getState().abandonChallenge();
+    expect(useUserStore.getState().profile.challengeHistory?.length).toBe(1);
+
+    const cycleId = useUserStore.getState().profile.challengeHistory![0].id;
+    useUserStore.getState().deleteHistoryCycle(cycleId);
+    expect(useUserStore.getState().profile.challengeHistory?.length).toBe(0);
+
+    useUserStore.setState((s) => ({
+      profile: {
+        ...s.profile,
+        challengeHistory: [
+          {
+            id: 'c1',
+            cycleNumber: 1,
+            startDate: '2026-01-01',
+            status: 'failed',
+            currentDay: 5,
+            daysCompleted: 4,
+            checkIns: {},
+            totalXpEarned: 100,
+            createdAt: '2026-01-01',
+          },
+        ],
+      },
+    }));
+    expect(useUserStore.getState().profile.challengeHistory?.length).toBe(1);
+    useUserStore.getState().clearChallengeHistory();
+    expect(useUserStore.getState().profile.challengeHistory?.length).toBe(0);
+  });
+
+  it('permite marcar todas e desmarcar todas as missões de hoje com liberdade', () => {
+    const store = useHabitStore.getState();
+    expect(store.missions.every((m) => !m.isCompletedToday)).toBe(true);
+
+    useHabitStore.getState().completeAllMissionsToday();
+    expect(useHabitStore.getState().missions.every((m) => m.isCompletedToday)).toBe(true);
+
+    useHabitStore.getState().uncompleteAllMissionsToday();
+    expect(useHabitStore.getState().missions.every((m) => !m.isCompletedToday)).toBe(true);
+  });
+
+  it('controla preferências de UI, modo clean e toggles de expansão/recolhimento', () => {
+    const ui = useUIStore.getState();
+    expect(ui.isCleanMode).toBe(false);
+    ui.toggleCleanMode();
+    expect(useUIStore.getState().isCleanMode).toBe(true);
+
+    ui.toggleDailyCheckIn();
+    expect(useUIStore.getState().isDailyCheckInCollapsed).toBe(true);
+
+    ui.toggleDailyScroll();
+    expect(useUIStore.getState().isDailyScrollCollapsed).toBe(true);
+
+    ui.togglePendingMissions();
+    expect(useUIStore.getState().isPendingMissionsCollapsed).toBe(true);
   });
 });

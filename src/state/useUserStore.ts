@@ -252,6 +252,10 @@ interface UserStoreState {
   startChallenge: (params?: { title?: string; targetDays?: number; startDate?: string; missions?: Mission[]; isEliteMode?: boolean }) => ProtocolChallengeCycle;
   startNewChallengeCycle: () => void;
   abandonChallenge: () => void;
+  deleteActiveChallenge: () => void;
+  updateActiveChallenge: (updates: { title?: string; targetDays?: number; isEliteMode?: boolean }) => void;
+  deleteHistoryCycle: (cycleId: string) => void;
+  clearChallengeHistory: () => void;
   restoreArchivedCycle: (cycleId: string) => boolean;
   reconcileChallengeFromMissions: () => void;
   dismissResetModal: () => void;
@@ -836,6 +840,58 @@ export const useUserStore = create<UserStoreState>()(
               activeChallenge: undefined,
               currentProtocolDay: 0,
               challengeHistory: [archived, ...(state.profile.challengeHistory || [])],
+            }),
+          }));
+        },
+
+        deleteActiveChallenge: () => {
+          set((state) => ({
+            profile: touch({
+              ...state.profile,
+              activeChallenge: undefined,
+              currentProtocolDay: 0,
+            }),
+            activeResetModal: null,
+            activeCompletionModal: null,
+          }));
+          get().refreshToday({ silent: true });
+        },
+
+        updateActiveChallenge: (updates) => {
+          const { profile } = get();
+          if (!profile.activeChallenge) return;
+          const current = profile.activeChallenge;
+          const nextDays = updates.targetDays !== undefined ? Math.max(7, Math.min(365, Math.round(updates.targetDays))) : (current.targetDays || 66);
+          const updatedCycle: ProtocolChallengeCycle = {
+            ...current,
+            title: updates.title !== undefined ? updates.title.trim() : current.title,
+            targetDays: nextDays,
+            isEliteMode: updates.isEliteMode !== undefined ? updates.isEliteMode : current.isEliteMode,
+          };
+          set((state) => ({
+            profile: touch({
+              ...state.profile,
+              activeChallenge: updatedCycle,
+              isHardModeEnabled: updatedCycle.isEliteMode ?? state.profile.isHardModeEnabled,
+            }),
+          }));
+          get().refreshToday({ silent: true });
+        },
+
+        deleteHistoryCycle: (cycleId) => {
+          set((state) => ({
+            profile: touch({
+              ...state.profile,
+              challengeHistory: (state.profile.challengeHistory || []).filter((c) => c.id !== cycleId),
+            }),
+          }));
+        },
+
+        clearChallengeHistory: () => {
+          set((state) => ({
+            profile: touch({
+              ...state.profile,
+              challengeHistory: [],
             }),
           }));
         },

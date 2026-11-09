@@ -13,7 +13,10 @@ import {
   Calendar, 
   Check, 
   ChevronDown, 
-  ChevronUp
+  ChevronUp,
+  Edit3,
+  Save,
+  X
 } from 'lucide-react';
 
 interface ChallengeHabitCardProps {
@@ -22,6 +25,8 @@ interface ChallengeHabitCardProps {
   startDate?: string;
   onToggleDay: (dateStr: string) => void;
   onDelete: () => void;
+  onEdit?: (updates: { title: string; description?: string; color?: string }) => void;
+  forceCollapseHistory?: boolean;
 }
 
 export const ChallengeHabitCard: React.FC<ChallengeHabitCardProps> = ({
@@ -30,8 +35,14 @@ export const ChallengeHabitCard: React.FC<ChallengeHabitCardProps> = ({
   startDate,
   onToggleDay,
   onDelete,
+  onEdit,
+  forceCollapseHistory,
 }) => {
   const [showHistory, setShowHistory] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(habit.title);
+  const [editDesc, setEditDesc] = useState(habit.description || '');
+  const [editColor, setEditColor] = useState(habit.color || '#10b981');
 
   const streaks = calculateHabitStreaks(habit.completedDates);
   const recent7Days = getRecent7Days(habit.completedDates);
@@ -41,6 +52,20 @@ export const ChallengeHabitCard: React.FC<ChallengeHabitCardProps> = ({
   const progressPercent = Math.min(100, Math.round((completedCount / targetDays) * 100));
 
   const accentColor = habit.color || '#10b981';
+  const shouldShowHistory = forceCollapseHistory !== undefined ? !forceCollapseHistory : showHistory;
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTitle.trim()) return;
+    if (onEdit) {
+      onEdit({
+        title: editTitle.trim(),
+        description: editDesc.trim(),
+        color: editColor,
+      });
+    }
+    setIsEditing(false);
+  };
 
   return (
     <div className="liquid-glass-card rounded-2xl p-4 sm:p-4.5 relative overflow-hidden transition-all duration-300 group shadow-lg flex flex-col justify-between space-y-3.5">
@@ -59,29 +84,87 @@ export const ChallengeHabitCard: React.FC<ChallengeHabitCardProps> = ({
 
       {/* Parte Superior: Título, Badges e Régua dos 7 Dias */}
       <div className="space-y-2.5 relative z-10 pl-1.5">
-        {/* Topo do Card: Nome e Subtítulo */}
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <h3 className="font-bold text-slate-100 text-sm sm:text-base tracking-tight truncate group-hover:text-shinobi-gold transition-colors">
-              {habit.title}
-            </h3>
+        {isEditing ? (
+          <form onSubmit={handleSaveEdit} className="p-2.5 rounded-xl bg-slate-950/80 border border-shinobi-gold/60 space-y-2 animate-in fade-in">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-shinobi-gold">Editar Missão</span>
+              <button
+                type="button"
+                onClick={() => setIsEditing(false)}
+                className="text-slate-400 hover:text-slate-200 text-xs"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <input
+              type="text"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              placeholder="Título"
+              required
+              className="w-full bg-slate-900 border border-white/20 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-shinobi-gold"
+            />
+            <input
+              type="text"
+              value={editDesc}
+              onChange={(e) => setEditDesc(e.target.value)}
+              placeholder="Descrição"
+              className="w-full bg-slate-900 border border-white/20 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-shinobi-gold"
+            />
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={editColor}
+                onChange={(e) => setEditColor(e.target.value)}
+                className="w-7 h-7 rounded border-0 bg-transparent cursor-pointer"
+                title="Cor"
+              />
+              <button
+                type="submit"
+                className="flex-1 py-1.5 bg-shinobi-gold text-slate-950 font-bold text-xs rounded-lg flex items-center justify-center gap-1 shadow-glow-gold"
+              >
+                <Save className="w-3 h-3" />
+                Salvar
+              </button>
+            </div>
+          </form>
+        ) : (
+          /* Topo do Card: Nome e Subtítulo */
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <h3 className="font-bold text-slate-100 text-sm sm:text-base tracking-tight truncate group-hover:text-shinobi-gold transition-colors">
+                {habit.title}
+              </h3>
 
-            {habit.description && (
-              <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
-                {habit.description}
-              </p>
-            )}
+              {habit.description && (
+                <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
+                  {habit.description}
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1 shrink-0">
+              {onEdit && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(true)}
+                  className="p-1 text-slate-400 hover:text-shinobi-gold rounded-lg hover:bg-white/10 transition-colors"
+                  title="Editar este hábito"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onDelete}
+                className="p-1 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-950/30 transition-colors"
+                title="Excluir este hábito do desafio"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
-
-          <button
-            type="button"
-            onClick={onDelete}
-            className="p-1 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-950/30 transition-colors flex-shrink-0"
-            title="Excluir este hábito do desafio"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
+        )}
 
         {/* Badges de Ofensiva, Recorde e Alternância de Histórico */}
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -102,9 +185,10 @@ export const ChallengeHabitCard: React.FC<ChallengeHabitCardProps> = ({
             type="button"
             onClick={() => setShowHistory(!showHistory)}
             className="text-[10px] text-slate-400 hover:text-slate-200 transition-colors font-medium ml-auto flex items-center gap-0.5"
+            title={shouldShowHistory ? 'Recolher matriz de consistência' : 'Expandir matriz de consistência'}
           >
-            <span>{showHistory ? 'Ocultar' : 'Histórico'}</span>
-            {showHistory ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            <span>{shouldShowHistory ? 'Recolher' : 'Consistência'}</span>
+            {shouldShowHistory ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
           </button>
         </div>
 
@@ -157,7 +241,7 @@ export const ChallengeHabitCard: React.FC<ChallengeHabitCardProps> = ({
       </div>
 
       {/* Seção Inferior: Quadrinhos Pequeninhos com o Total do Desafio (ex: 66 quadrinhos) */}
-      {showHistory && (
+      {shouldShowHistory && (
         <div className="pt-2.5 border-t border-slate-800/80 relative z-10 space-y-2 animate-in fade-in duration-200 pl-1.5">
           <div className="flex items-center justify-between text-[11px] text-slate-400">
             <div className="flex items-center gap-1.5 font-mono font-bold text-[11px] text-slate-300">

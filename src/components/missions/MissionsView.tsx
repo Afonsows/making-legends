@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useHabitStore } from '../../state/useHabitStore';
 import { useUserStore } from '../../state/useUserStore';
+import { useUIStore } from '../../state/useUIStore';
 import { useTheme } from '../../theme/ThemeContext';
 import { evaluateProtocolStatus } from '../../core/streakEngine';
 import { getTimeUntilMidnightString } from '../../core/dailyResetEngine';
@@ -16,14 +17,16 @@ import { PillarId } from '../../theme/types';
 import { 
   Plus, 
   Search, 
-  Flame, 
-  ShieldCheck, 
   Sparkles, 
   Compass, 
-  Calendar,
-  CheckCircle2,
-  History,
-  Clock
+  CheckCircle2, 
+  History, 
+  Clock,
+  ChevronDown,
+  ChevronUp,
+  LayoutGrid,
+  CheckCheck,
+  RotateCcw
 } from 'lucide-react';
 
 interface MissionsViewProps {
@@ -44,7 +47,9 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
     updateMission,
     deleteMission,
     reorderMissions,
-    moveMission 
+    moveMission,
+    completeAllMissionsToday,
+    uncompleteAllMissionsToday,
   } = useHabitStore();
 
   const { 
@@ -54,6 +59,16 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
     isChallengeHistoryModalOpen,
     closeChallengeHistoryModal 
   } = useUserStore();
+
+  const {
+    isCleanMode,
+    toggleCleanMode,
+    isPendingMissionsCollapsed,
+    togglePendingMissions,
+    isCompletedMissionsCollapsed,
+    toggleCompletedMissions,
+  } = useUIStore();
+
   const { getPhaseInfo, theme } = useTheme();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -125,6 +140,18 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
     }
   };
 
+  const handleBatchCompleteAll = () => {
+    if (window.confirm('Deseja marcar todas as missões pendentes como concluídas hoje?')) {
+      completeAllMissionsToday();
+    }
+  };
+
+  const handleBatchUncompleteAll = () => {
+    if (window.confirm('Deseja desmarcar todas as missões concluídas de hoje?')) {
+      uncompleteAllMissionsToday();
+    }
+  };
+
   const pillars: { id: PillarId | 'all'; label: string; shortLabel: string; icon?: string }[] = [
     { id: 'all', label: 'Todos os Pilares', shortLabel: 'Todos' },
     { id: 'taijutsu', label: 'Taijutsu (Corpo)', shortLabel: 'Taijutsu', icon: '🥋' },
@@ -142,7 +169,7 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
   ];
 
   return (
-    <div className="pb-24 pt-3 max-w-4xl mx-auto px-4 space-y-4">
+    <div className="pb-24 pt-3 max-w-4xl mx-auto px-3 sm:px-4 space-y-3.5">
       {/* Card Principal: Presença Diária dos 66 Dias com Validação de 50% de XP */}
       <DailyCheckInCard />
 
@@ -150,7 +177,7 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
       <DailyScrollWidget />
 
       {/* Cartão de Progresso Diário e Chamada para Ação */}
-      <div className="bg-slate-900 border-2 border-slate-700/80 rounded-2xl p-4 shadow-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-slate-900 border-2 border-slate-700/80 rounded-2xl p-3.5 sm:p-4 shadow-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-shinobi-jade" />
@@ -158,7 +185,7 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
               Missões de Hoje ({completedCount}/{totalCount})
             </h3>
           </div>
-          <div className="flex items-center gap-3 mt-2">
+          <div className="flex items-center gap-3 mt-1.5">
             <div className="w-36 sm:w-48 h-2.5 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
               <div
                 className="h-full bg-gradient-to-r from-shinobi-chakra to-shinobi-jade transition-all duration-300 rounded-full"
@@ -169,16 +196,16 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
               {completionPercentage}% Concluído
             </span>
           </div>
-          <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-mono mt-1.5">
+          <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-mono mt-1">
             <Clock className="w-3 h-3 text-shinobi-gold" />
-            <span>Ciclo diário fecha às 00:00 • Próxima renovação em <strong className="text-shinobi-gold">{timeUntilReset}</strong></span>
+            <span>Ciclo diário fecha às 00:00 • Renovação em <strong className="text-shinobi-gold">{timeUntilReset}</strong></span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-center">
+        <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
           <button
             onClick={() => setIsHistoryModalOpen(true)}
-            className="p-2.5 bg-slate-800 hover:bg-slate-700 text-amber-300 border-2 border-amber-500/60 rounded-xl transition-all shadow-md flex items-center justify-center"
+            className="p-2.5 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/60 rounded-xl transition-all shadow-md flex items-center justify-center"
             title="Histórico & Sincronizar"
             aria-label="Histórico & Sincronizar"
           >
@@ -188,7 +215,7 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
           {onOpenCard && (
             <button
               onClick={onOpenCard}
-              className="p-2.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 border-2 border-cyan-500/50 rounded-xl transition-all shadow-md flex items-center justify-center"
+              className="p-2.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/50 rounded-xl transition-all shadow-md flex items-center justify-center"
               title="Ensinamento Shinobi"
               aria-label="Ensinamento Shinobi"
             >
@@ -201,18 +228,64 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
               setEditingMission(null);
               setIsModalOpen(true);
             }}
-            className="p-2.5 bg-gradient-to-r from-shinobi-crimson to-rose-600 text-white rounded-xl shadow-glow-crimson hover:opacity-95 transition-all flex items-center justify-center"
+            className="px-3.5 py-2.5 bg-gradient-to-r from-shinobi-crimson to-rose-600 text-white font-bold text-xs rounded-xl shadow-glow-crimson hover:opacity-95 transition-all flex items-center gap-1.5"
             title="Nova Missão"
             aria-label="Nova Missão"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
+            <span>Nova Missão</span>
           </button>
         </div>
       </div>
 
+      {/* Barra de Controles: Modo Clean e Ações Rápidas de Liberdade */}
+      <div className="flex items-center justify-between gap-2 p-2.5 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md flex-wrap">
+        <div className="flex items-center gap-2">
+          {/* Toggle Modo Clean */}
+          <button
+            type="button"
+            onClick={toggleCleanMode}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
+              isCleanMode
+                ? 'bg-shinobi-gold text-slate-950 border-shinobi-gold shadow-glow-gold/40'
+                : 'bg-slate-800/80 text-slate-300 border-slate-700 hover:border-slate-500'
+            }`}
+            title={isCleanMode ? 'Desativar Modo Clean' : 'Ativar Modo Clean (Visual Compacto)'}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{isCleanMode ? 'Modo Clean: ON' : 'Modo Clean'}</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          {pendingMissions.length > 0 && (
+            <button
+              type="button"
+              onClick={handleBatchCompleteAll}
+              className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/40 rounded-xl text-xs font-semibold transition-all flex items-center gap-1"
+              title="Concluir todas as missões pendentes de hoje"
+            >
+              <CheckCheck className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Concluir Todas</span>
+            </button>
+          )}
+
+          {completedMissions.length > 0 && (
+            <button
+              type="button"
+              onClick={handleBatchUncompleteAll}
+              className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition-all flex items-center gap-1"
+              title="Desmarcar todas as missões concluídas de hoje"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span className="hidden sm:inline">Desmarcar Todas</span>
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Filtros e Busca */}
-      <div className="space-y-2.5">
-        {/* Barra de Busca e Filtro de Horário */}
+      <div className="space-y-2">
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -221,7 +294,7 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
               placeholder="Buscar missões e jutsus..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-900 border-2 border-slate-700 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-shinobi-crimson transition-colors shadow-md"
+              className="w-full bg-slate-900 border-2 border-slate-700 rounded-xl pl-9 pr-3.5 py-2 text-xs text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-shinobi-crimson transition-colors shadow-md"
             />
           </div>
 
@@ -230,7 +303,7 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
               <button
                 key={t.id}
                 onClick={() => setFilterTimeOfDay(t.id)}
-                className={`px-3 py-2 rounded-xl text-xs whitespace-nowrap transition-all font-bold border ${
+                className={`px-3 py-1.5 rounded-xl text-xs whitespace-nowrap transition-all font-bold border ${
                   filterTimeOfDay === t.id
                     ? 'bg-rose-950/90 border-2 border-rose-500 text-rose-300 shadow-glow-crimson/30'
                     : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500'
@@ -242,7 +315,7 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
           </div>
         </div>
 
-        {/* Filtro de Pilares: 3 em cima, 3 embaixo sem barra de rolagem (100% responsivo para Mobile PWA e Desktop) */}
+        {/* Filtro de Pilares */}
         <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
           {pillars.map((p) => {
             const isSelected = filterPillar === p.id;
@@ -250,13 +323,13 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
               <button
                 key={p.id}
                 onClick={() => setFilterPillar(p.id)}
-                className={`py-2 px-1.5 sm:px-2.5 rounded-xl text-[11px] sm:text-xs transition-all flex items-center justify-center gap-1 sm:gap-1.5 border font-semibold select-none active:scale-[0.98] ${
+                className={`py-1.5 px-1.5 sm:px-2 rounded-xl text-[11px] sm:text-xs transition-all flex items-center justify-center gap-1 sm:gap-1.5 border font-semibold select-none active:scale-[0.98] ${
                   isSelected
                     ? 'bg-slate-900 border-2 border-shinobi-gold text-shinobi-gold font-bold shadow-glow-gold/30 scale-[1.02]'
                     : 'bg-slate-900/80 backdrop-blur-md border border-slate-700/80 text-slate-300 hover:text-white hover:border-slate-500 hover:bg-slate-800/80'
                 }`}
               >
-                {p.icon && <span className="flex-shrink-0 text-xs sm:text-sm">{p.icon}</span>}
+                {p.icon && <span className="shrink-0 text-xs sm:text-sm">{p.icon}</span>}
                 <span className="hidden sm:inline truncate">{p.label}</span>
                 <span className="sm:hidden truncate">{p.shortLabel}</span>
               </button>
@@ -266,74 +339,88 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
       </div>
 
       {/* Seção 1: Missões Pendentes / Em Andamento */}
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         <div className="flex items-center justify-between pt-1">
-          <h3 className="text-xs sm:text-sm font-bold text-slate-200 flex items-center gap-2 font-cinzel">
-            <span className="w-2.5 h-2.5 rounded-full bg-shinobi-crimson animate-pulse shadow-glow-crimson" />
-            <span>Missões em Andamento ({pendingMissions.length})</span>
-          </h3>
-          {pendingMissions.length > 1 && (
+          <div className="flex items-center gap-2">
+            <h3 className="text-xs sm:text-sm font-bold text-slate-200 flex items-center gap-2 font-cinzel">
+              <span className="w-2.5 h-2.5 rounded-full bg-shinobi-crimson animate-pulse shadow-glow-crimson" />
+              <span>Missões em Andamento ({pendingMissions.length})</span>
+            </h3>
+            <button
+              type="button"
+              onClick={togglePendingMissions}
+              className="p-1 text-slate-400 hover:text-slate-200"
+              title={isPendingMissionsCollapsed ? 'Expandir missões pendentes' : 'Recolher missões pendentes'}
+            >
+              {isPendingMissionsCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+
+          {pendingMissions.length > 1 && !isCleanMode && (
             <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">
-              Arraste ou use as setas para definir suas prioridades
+              Arraste ou use setas para priorizar
             </span>
           )}
         </div>
 
-        {pendingMissions.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            {pendingMissions.map((mission, idx) => (
-              <MissionCard
-                key={mission.id}
-                mission={mission}
-                onToggle={() => toggleCompleteMission(mission.id)}
-                onEdit={() => handleEdit(mission)}
-                onDelete={() => deleteMission(mission.id)}
-                onMoveUp={() => moveMission(mission.id, 'up', pendingMissions.map((m) => m.id))}
-                onMoveDown={() => moveMission(mission.id, 'down', pendingMissions.map((m) => m.id))}
-                canMoveUp={idx > 0}
-                canMoveDown={idx < pendingMissions.length - 1}
-                draggable={true}
-                onDragStart={() => handleDragStart(mission.id)}
-                onDragOver={handleDragOver}
-                onDragEnd={() => setDraggedMissionId(null)}
-                onDrop={() => handleDrop(mission.id)}
-                isDragging={draggedMissionId === mission.id}
-              />
-            ))}
-          </div>
-        ) : filteredMissions.length > 0 ? (
-          <div className="p-6 rounded-3xl bg-emerald-950/20 border border-emerald-500/30 text-center space-y-1.5 backdrop-blur-md">
-            <div className="text-2xl animate-bounce">🏆</div>
-            <h4 className="font-cinzel text-sm font-bold text-emerald-300">
-              Todas as Missões Foram Concluídas!
-            </h4>
-            <p className="text-xs text-slate-300 max-w-md mx-auto">
-              Parabéns, guerreiro! Seu protocolo diário foi cumprido e as missões concluídas estão organizadas na seção abaixo.
-            </p>
-          </div>
-        ) : (
-          <div className="text-center py-10 bg-slate-900/70 backdrop-blur-md rounded-3xl border border-slate-800 p-6">
-            <p className="text-sm text-slate-400 mb-3">
-              Nenhuma missão encontrada para os filtros selecionados.
-            </p>
-            <button
-              onClick={() => {
-                setFilterPillar('all');
-                setFilterTimeOfDay('all');
-                setSearchQuery('');
-              }}
-              className="px-4 py-2 bg-slate-800 border border-slate-700 text-xs text-shinobi-gold font-bold rounded-xl hover:bg-slate-700 transition-colors"
-            >
-              Limpar Filtros
-            </button>
-          </div>
+        {!isPendingMissionsCollapsed && (
+          pendingMissions.length > 0 ? (
+            <div className={`grid gap-2.5 sm:gap-3 ${isCleanMode ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2'}`}>
+              {pendingMissions.map((mission, idx) => (
+                <MissionCard
+                  key={mission.id}
+                  mission={mission}
+                  onToggle={() => toggleCompleteMission(mission.id)}
+                  onEdit={() => handleEdit(mission)}
+                  onDelete={() => deleteMission(mission.id)}
+                  onMoveUp={() => moveMission(mission.id, 'up', pendingMissions.map((m) => m.id))}
+                  onMoveDown={() => moveMission(mission.id, 'down', pendingMissions.map((m) => m.id))}
+                  canMoveUp={idx > 0}
+                  canMoveDown={idx < pendingMissions.length - 1}
+                  draggable={true}
+                  onDragStart={() => handleDragStart(mission.id)}
+                  onDragOver={handleDragOver}
+                  onDragEnd={() => setDraggedMissionId(null)}
+                  onDrop={() => handleDrop(mission.id)}
+                  isDragging={draggedMissionId === mission.id}
+                  isCleanMode={isCleanMode}
+                />
+              ))}
+            </div>
+          ) : filteredMissions.length > 0 ? (
+            <div className="p-5 rounded-2xl bg-emerald-950/20 border border-emerald-500/30 text-center space-y-1 backdrop-blur-md">
+              <div className="text-2xl animate-bounce">🏆</div>
+              <h4 className="font-cinzel text-xs sm:text-sm font-bold text-emerald-300">
+                Todas as Missões Concluídas!
+              </h4>
+              <p className="text-[11px] text-slate-300 max-w-md mx-auto">
+                Parabéns! Seu protocolo diário foi cumprido com honra.
+              </p>
+            </div>
+          ) : (
+            <div className="text-center py-8 bg-slate-900/70 backdrop-blur-md rounded-2xl border border-slate-800 p-5">
+              <p className="text-xs text-slate-400 mb-2.5">
+                Nenhuma missão encontrada para os filtros selecionados.
+              </p>
+              <button
+                onClick={() => {
+                  setFilterPillar('all');
+                  setFilterTimeOfDay('all');
+                  setSearchQuery('');
+                }}
+                className="px-3.5 py-1.5 bg-slate-800 border border-slate-700 text-xs text-shinobi-gold font-bold rounded-xl hover:bg-slate-700 transition-colors"
+              >
+                Limpar Filtros
+              </button>
+            </div>
+          )
         )}
       </div>
 
-      {/* Seção 2: Missões Concluídas Hoje (Movimentadas Automaticamente para Baixo) */}
+      {/* Seção 2: Missões Concluídas Hoje */}
       {completedMissions.length > 0 && (
-        <div className="space-y-3 pt-3">
-          <div className="flex items-center justify-between border-t-2 border-slate-800/80 pt-4">
+        <div className="space-y-2.5 pt-2">
+          <div className="flex items-center justify-between border-t-2 border-slate-800/80 pt-3">
             <div className="flex items-center gap-2">
               <div className="w-5 h-5 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
                 <CheckCircle2 className="w-3.5 h-3.5" />
@@ -342,24 +429,33 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
                 <h3 className="text-xs sm:text-sm font-bold text-emerald-300 font-cinzel">
                   Missões Concluídas Hoje ({completedMissions.length}/{totalCount})
                 </h3>
-                <p className="text-[10px] text-slate-400">
-                  Desmarque o card a qualquer momento para reabrir e retornar à lista de pendentes
-                </p>
               </div>
             </div>
+
+            <button
+              type="button"
+              onClick={toggleCompletedMissions}
+              className="p-1 text-slate-400 hover:text-slate-200"
+              title={isCompletedMissionsCollapsed ? 'Expandir missões concluídas' : 'Recolher missões concluídas'}
+            >
+              {isCompletedMissionsCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            {completedMissions.map((mission) => (
-              <MissionCard
-                key={mission.id}
-                mission={mission}
-                onToggle={() => toggleCompleteMission(mission.id)}
-                onEdit={() => handleEdit(mission)}
-                onDelete={() => deleteMission(mission.id)}
-              />
-            ))}
-          </div>
+          {!isCompletedMissionsCollapsed && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+              {completedMissions.map((mission) => (
+                <MissionCard
+                  key={mission.id}
+                  mission={mission}
+                  onToggle={() => toggleCompleteMission(mission.id)}
+                  onEdit={() => handleEdit(mission)}
+                  onDelete={() => deleteMission(mission.id)}
+                  isCleanMode={isCleanMode}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 

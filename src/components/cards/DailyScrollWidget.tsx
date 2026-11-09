@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { teachingCards } from '../../core/cardsData';
 import { useUserStore } from '../../state/useUserStore';
+import { useUIStore } from '../../state/useUIStore';
 import { useTheme } from '../../theme/ThemeContext';
 import { TeachingCardModal } from './TeachingCardModal';
 import {
@@ -8,8 +9,8 @@ import {
   Sparkles,
   ChevronRight,
   Zap,
-  Share2,
-  Award
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { soundFx } from '../../utils/audio';
 
@@ -20,13 +21,9 @@ interface DailyScrollWidgetProps {
 export const DailyScrollWidget: React.FC<DailyScrollWidgetProps> = ({ onNavigateToScrolls }) => {
   const { profile } = useUserStore();
   const { getPillar } = useTheme();
+  const { isDailyScrollCollapsed, toggleDailyScroll } = useUIStore();
   const [selectedCard, setSelectedCard] = useState<typeof teachingCards[0] | null>(null);
 
-  // Determina o pergaminho mais relevante:
-  // 1. O cartão com unlockedDay mais próximo ou igual ao dia atual do protocolo
-  // 2. Ou o último cartão desbloqueado até o dia atual
-  // 3. Ou o primeiro cartão (Dia 1)
-  // O pergaminho em destaque é o último liberado pelos Dias Cumpridos
   const completedDays = Object.values(profile.dayLog || {}).filter((d) => d.completed).length;
   const reached = Math.max(1, completedDays);
   const sorted = [...teachingCards].sort((a, b) => a.unlockedDay - b.unlockedDay);
@@ -40,6 +37,65 @@ export const DailyScrollWidget: React.FC<DailyScrollWidgetProps> = ({ onNavigate
     rare: 'border-cyan-500/60 bg-gradient-to-r from-slate-900 via-cyan-950/30 to-slate-900 shadow-glow-chakra/20',
     legendary: 'border-2 border-shinobi-gold bg-gradient-to-r from-slate-900 via-amber-950/40 to-slate-900 shadow-glow-gold/30',
   }[dailyCard.rarity];
+
+  if (isDailyScrollCollapsed) {
+    return (
+      <>
+        <div
+          className={`rounded-2xl border p-2.5 sm:p-3 flex items-center justify-between gap-2.5 cursor-pointer transition-all hover:border-shinobi-gold ${rarityStyles}`}
+          onClick={() => {
+            soundFx.playButtonClick();
+            setSelectedCard(dailyCard);
+          }}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-shinobi-gold/20 border border-shinobi-gold/40 flex items-center justify-center text-shinobi-gold shrink-0">
+              <BookOpen className="w-3.5 h-3.5" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-xs font-cinzel font-bold text-slate-100 truncate block">
+                Pergaminho: {dailyCard.title}
+              </span>
+              <span className="text-[10px] text-slate-400 font-mono">
+                {dailyCard.actionTip}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span
+              className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border hidden sm:inline"
+              style={{
+                color: pillar.color,
+                borderColor: `${pillar.color}40`,
+                backgroundColor: `${pillar.color}15`,
+              }}
+            >
+              {pillar.name}
+            </span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleDailyScroll();
+              }}
+              className="p-1 text-slate-400 hover:text-slate-100 rounded-lg hover:bg-white/10"
+              title="Expandir pergaminho"
+            >
+              <ChevronDown className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {selectedCard && (
+          <TeachingCardModal
+            card={selectedCard}
+            onClose={() => setSelectedCard(null)}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
     <>
@@ -58,26 +114,40 @@ export const DailyScrollWidget: React.FC<DailyScrollWidgetProps> = ({ onNavigate
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="space-y-1.5 flex-1 min-w-0">
             {/* Top Bar do Card */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-shinobi-gold/20 text-shinobi-gold font-bold border border-shinobi-gold/40 flex items-center gap-1">
-                <BookOpen className="w-3 h-3" />
-                Pergaminho #{sorted.indexOf(dailyCard) + 1} de {sorted.length}
-              </span>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-shinobi-gold/20 text-shinobi-gold font-bold border border-shinobi-gold/40 flex items-center gap-1">
+                  <BookOpen className="w-3 h-3" />
+                  Pergaminho #{sorted.indexOf(dailyCard) + 1} de {sorted.length}
+                </span>
 
-              <span
-                className="text-[10px] font-mono font-bold px-2 py-0.5 rounded border flex items-center gap-1"
-                style={{
-                  color: pillar.color,
-                  borderColor: `${pillar.color}40`,
-                  backgroundColor: `${pillar.color}15`,
+                <span
+                  className="text-[10px] font-mono font-bold px-2 py-0.5 rounded border flex items-center gap-1"
+                  style={{
+                    color: pillar.color,
+                    borderColor: `${pillar.color}40`,
+                    backgroundColor: `${pillar.color}15`,
+                  }}
+                >
+                  {pillar.badgeIcon} {pillar.name}
+                </span>
+
+                <span className="text-[10px] font-mono text-slate-400 capitalize">
+                  • {dailyCard.rarity}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleDailyScroll();
                 }}
+                className="p-1 text-slate-400 hover:text-slate-100 rounded-lg hover:bg-white/10"
+                title="Recolher pergaminho (Modo Clean)"
               >
-                {pillar.badgeIcon} {pillar.name}
-              </span>
-
-              <span className="text-[10px] font-mono text-slate-400 capitalize">
-                • {dailyCard.rarity}
-              </span>
+                <ChevronUp className="w-4 h-4" />
+              </button>
             </div>
 
             {/* Título Principal */}
@@ -98,32 +168,26 @@ export const DailyScrollWidget: React.FC<DailyScrollWidgetProps> = ({ onNavigate
               <Zap className="w-3 h-3 flex-shrink-0" />
               <span className="truncate">Ação do dia: {dailyCard.actionTip}</span>
             </div>
-            {nextCard && (
-              <div className="text-[10px] font-mono text-slate-500">
-                Próximo pergaminho em {daysToNext} {daysToNext === 1 ? 'Dia Cumprido' : 'Dias Cumpridos'}
-              </div>
-            )}
           </div>
 
-          {/* Botão de Ação */}
-          <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 flex-shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800">
+          <div className="flex items-center gap-2 sm:flex-col sm:items-end justify-between sm:justify-center border-t sm:border-t-0 border-slate-800 pt-2 sm:pt-0 shrink-0">
+            {nextCard && daysToNext > 0 && (
+              <span className="text-[10px] font-mono text-slate-400">
+                Próximo em: <strong className="text-shinobi-gold">{daysToNext} {daysToNext === 1 ? 'dia' : 'dias'}</strong>
+              </span>
+            )}
+
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                soundFx.playButtonClick();
-                setSelectedCard(dailyCard);
-              }}
-              className="px-3 py-1.5 bg-shinobi-gold text-slate-950 font-bold text-xs rounded-xl shadow-glow-gold hover:bg-shinobi-goldHover transition-all flex items-center gap-1.5 cursor-pointer"
+              type="button"
+              className="px-3 py-1.5 rounded-xl bg-shinobi-gold/20 hover:bg-shinobi-gold/30 text-shinobi-gold text-xs font-bold border border-shinobi-gold/50 flex items-center gap-1 transition-all group-hover:shadow-glow-gold/40"
             >
-              <BookOpen className="w-3.5 h-3.5" />
               <span>Abrir Pergaminho</span>
-              <ChevronRight className="w-3.5 h-3.5" />
+              <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Modal Instagram / Sabedoria */}
       {selectedCard && (
         <TeachingCardModal
           card={selectedCard}

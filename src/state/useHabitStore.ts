@@ -81,6 +81,8 @@ interface HabitStoreState {
   setSearchQuery: (query: string) => void;
 
   toggleCompleteMission: (missionId: string) => void;
+  completeAllMissionsToday: () => void;
+  uncompleteAllMissionsToday: () => void;
   addMission: (mission: Omit<Mission, 'id' | 'isCompletedToday' | 'completedDates' | 'order' | 'createdAt'>) => void;
   updateMission: (id: string, updates: Partial<Mission>) => void;
   deleteMission: (id: string) => void;
@@ -186,6 +188,22 @@ export const useHabitStore = create<HabitStoreState>()(
           }
 
           useUserStore.getState().refreshToday();
+        },
+
+        completeAllMissionsToday: () => {
+          const pending = get().missions.filter((m) => !m.isCompletedToday);
+          if (pending.length === 0) return;
+          pending.forEach((m) => {
+            get().toggleCompleteMission(m.id);
+          });
+        },
+
+        uncompleteAllMissionsToday: () => {
+          const completed = get().missions.filter((m) => m.isCompletedToday);
+          if (completed.length === 0) return;
+          completed.forEach((m) => {
+            get().toggleCompleteMission(m.id);
+          });
         },
 
         addMission: (missionData) => {
