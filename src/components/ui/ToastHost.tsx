@@ -17,7 +17,7 @@ export const ToastHost: React.FC = () => {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed top-24 sm:top-28 inset-x-0 z-[120] flex flex-col items-center gap-2 px-3 pointer-events-none" aria-live="polite">
+    <div className="toast-host z-[120] flex flex-col items-center gap-2 px-3 pointer-events-none" aria-live="polite">
       {toasts.map((toast) => {
         const style = KIND_STYLE[toast.kind] || KIND_STYLE.info;
         return (

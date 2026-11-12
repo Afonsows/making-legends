@@ -169,7 +169,7 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
   ];
 
   return (
-    <div className="pb-24 pt-3 max-w-4xl mx-auto px-3 sm:px-4 space-y-3.5">
+    <div className="pb-nav pt-3 max-w-4xl mx-auto px-3 sm:px-4 space-y-3.5">
       {/* Card Principal: Presença Diária dos 66 Dias com Validação de 50% de XP */}
       <DailyCheckInCard />
 

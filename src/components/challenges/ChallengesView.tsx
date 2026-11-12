@@ -100,7 +100,7 @@ export const ChallengesView: React.FC = () => {
     e.stopPropagation();
     if (
       window.confirm(
-        'Deseja realmente cancelar e excluir o Desafio Ativo atual? Seus dados diários e sequência continuarão salvos, e você poderá iniciar um novo ciclo quando desejar.'
+        'Excluir o desafio ativo? As marcações, os dias cumpridos e as recompensas (XP e Ryō) obtidos desde o início dele serão desfeitos. Esta ação não pode ser revertida.'
       )
     ) {
       deleteActiveChallenge();
@@ -113,7 +113,7 @@ export const ChallengesView: React.FC = () => {
   };
 
   return (
-    <div className="pb-28 pt-3 max-w-4xl mx-auto px-3 sm:px-4 space-y-4">
+    <div className="pb-nav pt-3 max-w-4xl mx-auto px-3 sm:px-4 space-y-4">
       {/* Banner / Cabeçalho Liquid Glass da Aba Desafio (com Toggle Clean) */}
       <div className="liquid-glass-nav rounded-3xl p-4 sm:p-5 relative overflow-hidden shadow-2xl border border-white/20 transition-all">
         <div className="absolute -top-12 -right-12 w-48 h-48 bg-shinobi-gold/15 rounded-full blur-3xl pointer-events-none" />

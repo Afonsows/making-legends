@@ -36,6 +36,12 @@ import { useChallengeStore } from '../state/useChallengeStore';
 import { useUIStore } from '../state/useUIStore';
 import { originalAdversaries } from '../core/adversariesData';
 import { getTodayString, addDaysToDateString } from '../core/dateUtils';
+import { deriveTotals } from '../core/ledger';
+
+/** Dá Ryō ao shinobi do jeito certo: com um lançamento no livro-razão. */
+function seedRyo(amount: number) {
+  useUserStore.getState().grantReward({ key: `test:ryo:${Math.random()}`, label: 'teste', baseXp: 0, baseRyo: amount, applyRyoBuffs: false });
+}
 
 function resetAll() {
   useUserStore.setState({
@@ -322,12 +328,150 @@ describe('virada de dia (viagem no tempo)', () => {
   });
 });
 
+describe('arquitetura: totais derivados e autocorreção', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 10, 9, 21, 0, 0)); // segunda, 09/11/2026, 21h
+    resetAll();
+  });
+
+  const tick = (...indexes: number[]) => {
+    const ms = useHabitStore.getState().missions;
+    indexes.forEach((i) => useHabitStore.getState().toggleCompleteMission(ms[i].id));
+  };
+  const goTo = (day: number, hour = 10) => {
+    vi.setSystemTime(new Date(2026, 10, day, hour, 0, 0));
+    useUserStore.getState().checkDayTransition();
+  };
+
+  it('XP, nível e Ryō sempre batem com o livro-razão', () => {
+    tick(0, 1, 2, 3, 4, 5);
+    tick(2);
+    seedRyo(700);
+    useUserStore.getState().buySoldierPill();
+    const p = useUserStore.getState().profile;
+    const derived = deriveTotals(p.grants);
+    expect({ totalXp: p.totalXp, ryo: p.ryo, level: p.level, pillarXp: p.pillarXp }).toEqual({
+      totalXp: derived.totalXp,
+      ryo: derived.ryo,
+      level: derived.level,
+      pillarXp: derived.pillarXp,
+    });
+    vi.useRealTimers();
+  });
+
+  it('reconciliar repetidas vezes não muda nada (nem regrava o perfil)', () => {
+    useUserStore.getState().startChallenge({ targetDays: 21 });
+    tick(3, 1);
+    useUserStore.getState().reconcile();
+    const before = useUserStore.getState().profile;
+    for (let i = 0; i < 5; i++) useUserStore.getState().reconcile();
+    expect(useUserStore.getState().profile).toBe(before);
+    vi.useRealTimers();
+  });
+
+  it('criar o desafio à noite e não cumprir o próprio dia não gera falta', () => {
+    useUserStore.getState().startChallenge({ targetDays: 66 }); // 09/11 às 21h, sem missões feitas
+    goTo(10);
+    tick(3, 1); // dia 10 cumprido
+    goTo(12); // dia 11 inteiro perdido
+    const state = useUserStore.getState();
+    expect(state.profile.activeChallenge?.status).toBe('active');
+    expect(state.activeResetModal).toBeNull();
+    expect(state.profile.activeChallenge?.daysCompleted).toBe(1);
+
+    goTo(14); // dias 12 e 13 perdidos: 2ª e 3ª faltas reais da semana → agora sim encerra
+    expect(useUserStore.getState().profile.activeChallenge).toBeUndefined();
+    expect(useUserStore.getState().profile.challengeHistory?.[0].endedBy).toBe('rule');
+    vi.useRealTimers();
+  });
+
+  it('aparelho atrasado: o ciclo encerrado por engano volta quando as marcações chegam', () => {
+    vi.setSystemTime(new Date(2026, 10, 8, 10, 0, 0));
+    resetAll();
+    useUserStore.getState().startChallenge({ targetDays: 66, startDate: '2026-11-09' }); // agendado: sem carência
+    goTo(9);
+    tick(3, 1);
+    // Este aparelho ficou fechado nos dias 10 e 11 (cumpridos no celular) e abre no dia 12
+    goTo(12);
+    expect(useUserStore.getState().profile.activeChallenge).toBeUndefined();
+    expect(useUserStore.getState().activeResetModal).not.toBeNull();
+
+    // A sincronização traz as marcações do celular
+    const merged = useHabitStore.getState().missions.map((m, i) =>
+      i === 3 || i === 1 ? { ...m, completedDates: [...m.completedDates, '2026-11-10', '2026-11-11'] } : m
+    );
+    useHabitStore.getState().replaceMissions(merged);
+    useUserStore.getState().checkDayTransition();
+
+    const state = useUserStore.getState();
+    expect(state.profile.activeChallenge?.status).toBe('active');
+    expect(state.profile.activeChallenge?.daysCompleted).toBe(3);
+    expect(state.profile.challengeHistory).toEqual([]);
+    expect(state.activeResetModal).toBeNull();
+    expect(state.profile.currentStreak).toBe(3);
+    vi.useRealTimers();
+  });
+
+  it('com a nuvem pendente, abrir o app no dia seguinte não fecha o dia anterior', () => {
+    useUserStore.getState().startChallenge({ targetDays: 66 });
+    useUserStore.getState().setCloudGate('pending');
+    goTo(13);
+    expect(useUserStore.getState().profile.activeChallenge?.status).toBe('active');
+    expect(useUserStore.getState().profile.dayLog['2026-11-10']).toBeUndefined();
+    useUserStore.getState().setCloudGate('open');
+    // Sem dados novos, as faltas reais (dias 10, 11 e 12) valem
+    expect(useUserStore.getState().profile.activeChallenge).toBeUndefined();
+    vi.useRealTimers();
+  });
+
+  it('corrigir um dia passado reavalia o desafio na hora', () => {
+    vi.setSystemTime(new Date(2026, 10, 8, 10, 0, 0));
+    resetAll();
+    useUserStore.getState().startChallenge({ targetDays: 66, startDate: '2026-11-09' });
+    goTo(9);
+    tick(3, 1);
+    goTo(12); // dias 10 e 11 perdidos → encerrado
+    expect(useUserStore.getState().profile.activeChallenge).toBeUndefined();
+
+    const ms = useHabitStore.getState().missions;
+    useHabitStore.getState().toggleMissionOnDate(ms[3].id, '2026-11-10');
+    useHabitStore.getState().toggleMissionOnDate(ms[1].id, '2026-11-10');
+    expect(useUserStore.getState().profile.dayLog['2026-11-10'].completed).toBe(true);
+    expect(useUserStore.getState().profile.activeChallenge?.status).toBe('active');
+    // Marcação retroativa não paga recompensa
+    expect(useUserStore.getState().profile.grants[`retro:${ms[3].id}:2026-11-10`].xp).toBe(0);
+
+    // Desfazer a correção volta a encerrar (o dia recalcula exatamente)
+    useHabitStore.getState().toggleMissionOnDate(ms[3].id, '2026-11-10');
+    expect(useUserStore.getState().profile.dayLog['2026-11-10'].completed).toBe(false);
+    expect(useUserStore.getState().profile.activeChallenge).toBeUndefined();
+    vi.useRealTimers();
+  });
+
+  it('excluir missão e desafio deixa lápides para os outros aparelhos', () => {
+    useUserStore.getState().startChallenge({ targetDays: 30 });
+    const cycleId = useUserStore.getState().profile.activeChallenge!.id;
+    const m = useHabitStore.getState().missions[0];
+    useHabitStore.getState().toggleCompleteMission(m.id);
+    useUserStore.getState().deleteActiveChallenge();
+    const p = useUserStore.getState().profile;
+    expect(p.deletedCycles[cycleId]).toBeDefined();
+    expect(p.revoked[`mission:${m.id}:2026-11-09`]).toBeDefined();
+    expect(p.dayWipe?.from).toBe('2026-11-09');
+
+    useHabitStore.getState().deleteMission(m.id);
+    expect(useUserStore.getState().profile.deletedMissions[m.id]).toBeDefined();
+    vi.useRealTimers();
+  });
+});
+
 describe('loja', () => {
   beforeEach(resetAll);
 
   it('compra exige Ryō suficiente e adiciona o item ao inventário', () => {
     expect(useUserStore.getState().buyItem('kunai_de_aco_polido').success).toBe(false);
-    useUserStore.setState((s) => ({ profile: { ...s.profile, ryo: 3000 } }));
+    seedRyo(3000);
     expect(useUserStore.getState().buyItem('kunai_de_aco_polido').success).toBe(true);
     expect(useUserStore.getState().profile.ryo).toBe(500);
     expect(useUserStore.getState().profile.inventory).toContain('kunai_de_aco_polido');
@@ -335,8 +479,9 @@ describe('loja', () => {
   });
 
   it('Pílula de Soldado vale uma vez por dia e aumenta o XP', () => {
-    useUserStore.setState((s) => ({ profile: { ...s.profile, ryo: 2000 } }));
+    seedRyo(2000);
     expect(useUserStore.getState().buySoldierPill().success).toBe(true);
+    expect(useUserStore.getState().profile.ryo).toBe(1400);
     expect(useUserStore.getState().buySoldierPill().success).toBe(false);
     useHabitStore.getState().toggleCompleteMission(useHabitStore.getState().missions[2].id); // D 50 XP
     const grant = useUserStore.getState().profile.grants[`mission:${useHabitStore.getState().missions[2].id}:${getTodayString()}`];
@@ -364,13 +509,16 @@ describe('liberdade do usuário: desafios, missões e clean mode', () => {
         ...state.profile,
         name: 'Afonso',
         email: 'afonso@example.com',
-        totalXp: 900,
-        ryo: 450,
         challengeHistory: [{ id: 'old', cycleNumber: 1, startDate: getTodayString(), status: 'failed', currentDay: 1, daysCompleted: 0, checkIns: {}, totalXpEarned: 0, createdAt: new Date().toISOString() }],
       },
     }));
+    seedRyo(450);
+    useHabitStore.getState().toggleCompleteMission(useHabitStore.getState().missions[3].id);
+    expect(useUserStore.getState().profile.totalXp).toBeGreaterThan(0);
     useUserStore.getState().resetProgress();
     const profile = useUserStore.getState().profile;
+    expect(profile.resetEpoch).toBeDefined();
+    expect(profile.grants).toEqual({});
     expect(profile.name).toBe('Afonso');
     expect(profile.email).toBe('afonso@example.com');
     expect(profile.totalXp).toBe(0);

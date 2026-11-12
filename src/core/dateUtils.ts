@@ -15,6 +15,13 @@ export function getTodayString(): string {
   return toDateString(new Date());
 }
 
+/** Data local (YYYY-MM-DD) de um instante ISO; `undefined` se o valor for inválido. */
+export function localDateFromIso(iso?: string): string | undefined {
+  if (!iso) return undefined;
+  const ms = Date.parse(iso);
+  return Number.isFinite(ms) ? toDateString(new Date(ms)) : undefined;
+}
+
 export function isValidDateString(dateStr: unknown): dateStr is string {
   if (typeof dateStr !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
   const [y, m, d] = dateStr.split('-').map(Number);

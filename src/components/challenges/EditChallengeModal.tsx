@@ -127,7 +127,7 @@ export const EditChallengeModal: React.FC<EditChallengeModalProps> = ({
     if (isOfficial) {
       if (
         window.confirm(
-          'Deseja realmente cancelar e excluir o Desafio Ativo atual? Seus dados diários e sequência continuarão salvos, e você poderá iniciar um novo desafio quando desejar.'
+          'Excluir o desafio ativo? As marcações, os dias cumpridos e as recompensas (XP e Ryō) obtidos desde o início dele serão desfeitos. Esta ação não pode ser revertida.'
         )
       ) {
         deleteActiveChallenge();
@@ -150,8 +150,8 @@ export const EditChallengeModal: React.FC<EditChallengeModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-xl animate-in fade-in duration-200">
-      <div className="liquid-glass-card bg-slate-900/90 border-2 border-shinobi-gold/60 w-full max-w-xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh] my-auto relative z-[121]">
+    <div className="modal-overlay z-[120] bg-slate-950/80 backdrop-blur-xl animate-in fade-in duration-200">
+      <div className="liquid-glass-card bg-slate-900/90 border-2 border-shinobi-gold/60 w-full max-w-xl rounded-3xl overflow-hidden shadow-2xl flex flex-col modal-panel my-auto relative z-[121]">
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
           <div className="flex items-center gap-2.5">

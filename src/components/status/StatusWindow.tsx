@@ -94,7 +94,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
   };
 
   return (
-    <div className="pb-24 pt-3 max-w-4xl mx-auto px-4 space-y-4">
+    <div className="pb-nav pt-3 max-w-4xl mx-auto px-4 space-y-4">
       {/* Cabeçalho do Pergaminho de Status */}
       <div className="pergaminho-bg rounded-2xl border border-shinobi-border p-5 shadow-2xl relative overflow-hidden">
         <div className="flex flex-col sm:flex-row items-center gap-5 relative z-10">

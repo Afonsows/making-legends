@@ -144,8 +144,8 @@ export const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-slate-950/40 backdrop-blur-xl animate-in fade-in duration-300">
-      <div className="liquid-glass-card bg-slate-900/45 backdrop-blur-2xl border border-white/20 w-full max-w-2xl rounded-3xl overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7),inset_0_1px_2px_rgba(255,255,255,0.35)] flex flex-col max-h-[90vh] my-auto relative z-[101]">
+    <div className="modal-overlay z-[100] bg-slate-950/40 backdrop-blur-xl animate-in fade-in duration-300">
+      <div className="liquid-glass-card bg-slate-900/45 backdrop-blur-2xl border border-white/20 w-full max-w-2xl rounded-3xl overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7),inset_0_1px_2px_rgba(255,255,255,0.35)] flex flex-col modal-panel my-auto relative z-[101]">
         {/* Sheen superior */}
         <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/60 via-shinobi-gold/50 to-transparent pointer-events-none" />
         <div className="absolute inset-0 bg-gradient-to-br from-white/[0.06] via-transparent to-black/30 pointer-events-none" />

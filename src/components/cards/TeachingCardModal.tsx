@@ -74,7 +74,7 @@ export const TeachingCardModal: React.FC<TeachingCardModalProps> = ({ card, onCl
         soundFx.playButtonClick();
         onClose();
       }}
-      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 bg-black/50 backdrop-blur-[3px] animate-in fade-in duration-200"
+      className="modal-overlay z-[100] bg-black/50 backdrop-blur-[3px] animate-in fade-in duration-200"
     >
       {/* Container Centralizado do Pergaminho - Cabe 100% na tela sem rolagem */}
       <div

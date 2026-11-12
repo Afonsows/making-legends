@@ -221,7 +221,7 @@ export const ToolsHub: React.FC = () => {
   ];
 
   return (
-    <div className="pb-24 pt-3 max-w-4xl mx-auto px-4 space-y-4">
+    <div className="pb-nav pt-3 max-w-4xl mx-auto px-4 space-y-4">
       {/* Header do Hub com Selo Oficial */}
       <div className="pergaminho-bg rounded-2xl border border-shinobi-border p-4 shadow-xl">
         <div className="flex items-center justify-between gap-4">

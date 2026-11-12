@@ -59,14 +59,14 @@ export const ChallengeHistoryModal: React.FC<ChallengeHistoryModalProps> = ({ is
   };
 
   const handleDeleteActiveCycle = () => {
-    if (window.confirm('Deseja realmente cancelar e excluir o Desafio Ativo atual? Seus dados diários e sequência continuarão salvos.')) {
+    if (window.confirm('Excluir o desafio ativo? As marcações, os dias cumpridos e as recompensas (XP e Ryō) obtidos desde o início dele serão desfeitos. Esta ação não pode ser revertida.')) {
       deleteActiveChallenge();
     }
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-slate-900 border-2 border-shinobi-gold/60 w-full max-w-3xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] my-auto relative z-[101]">
+    <div className="modal-overlay z-[100] bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-slate-900 border-2 border-shinobi-gold/60 w-full max-w-3xl rounded-3xl overflow-hidden shadow-2xl flex flex-col modal-panel my-auto relative z-[101]">
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-slate-800 bg-slate-950/90">
           <div className="flex items-center gap-2.5">

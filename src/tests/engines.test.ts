@@ -10,7 +10,7 @@ import { calculateRyoGainWithBuffs, getLevelUpRyoBetween, getLevelUpRyoReward } 
 import {
   calculateDailyXpProgress,
   buildDayRecord,
-  closePastDays,
+  settleDayLog,
   computeCurrentStreak,
   computeBestStreak,
   applyShieldsToClosedDays,
@@ -150,8 +150,9 @@ describe('progresso diário', () => {
 
   it('fecha dias passados e os congela', () => {
     const ms = [mission('a', 100, ['2026-11-08']), mission('b', 100)];
-    const { dayLog, closedDates } = closePastDays({}, ms, '2026-11-07', today);
-    expect(closedDates).toEqual(['2026-11-07', '2026-11-08', '2026-11-09']);
+    const seed = { '2026-11-07': buildDayRecord(ms, '2026-11-07', false) };
+    const { dayLog, changedDates } = settleDayLog(seed, ms, today);
+    expect(changedDates).toEqual(['2026-11-07', '2026-11-08', '2026-11-09', today]);
     expect(dayLog['2026-11-08'].completed).toBe(true);
     expect(dayLog['2026-11-09'].completed).toBe(false);
     expect(dayLog['2026-11-09'].closed).toBe(true);

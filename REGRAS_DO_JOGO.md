@@ -1,6 +1,6 @@
 # 📜 Regras do Jogo — Making Legends
 
-Referência rápida de como cada sistema funciona depois da revisão de novembro/2026.
+Referência rápida de como cada sistema funciona depois da revisão de arquitetura de novembro/2026.
 Todos os números abaixo vêm do código (`src/core/*`) e são cobertos por testes (`npm test`).
 
 ---
@@ -19,7 +19,7 @@ Todos os números abaixo vêm do código (`src/core/*`) e são cobertos por test
 - **Bônus de XP** (somados, nunca multiplicados entre si): relíquias equipadas (+15% a +40%), **Modo Elite** (+20%) e **Pílula de Soldado** (+25% no dia).
 - **Bônus de Ryō**: sequência (+5% com 3 dias … +66% com 66 dias), patente (+5% Genin … +35% Kage) e metade do bônus das relíquias.
 - **Desmarcar uma missão devolve exatamente o que ela deu** (XP, Ryō, XP do pilar e o dano no chefe). Editar o rank ou excluir uma missão concluída hoje também acerta a conta. Marcar/desmarcar várias vezes não gera nada extra.
-- Missões só podem ser marcadas **no próprio dia**.
+- Recompensa só no **próprio dia**. Pelo detalhe do desafio dá para corrigir um dia passado (esqueci de marcar): a correção conta para a presença e para o desafio, mas não paga XP nem Ryō.
 
 ## 2. Dia Cumprido (presença)
 
@@ -31,14 +31,18 @@ Todos os números abaixo vêm do código (`src/core/*`) e são cobertos por test
 
 - **Sequência** = Dias Cumpridos seguidos. O dia de hoje, ainda em andamento, nunca quebra a sequência.
 - **Escudo de Chakra**: 1 por semana (segunda a domingo). Quando um dia termina sem ser cumprido e você tem uma sequência ativa, o escudo é usado automaticamente e a sequência **não quebra** (o dia protegido não soma, mas também não zera).
+- Se um dia protegido depois se revelar cumprido (os dados chegaram de outro aparelho ou você corrigiu o dia), o escudo é **devolvido**.
 - Escudos extras: relíquia *Pedra de Selamento Ancestral*, *Elixir de Ervas da Montanha* (loja) ou *Pergaminho de Proteção* (loja, 1 por semana).
 - **Modo Elite**: sem escudos.
 
 ## 4. Desafio (ciclo de 21 a 365 dias)
 
-- Começa hoje ou em uma data futura (até 30 dias). Nunca no passado.
+- Começa hoje ou em uma data futura (até 30 dias).
 - O dia N do desafio é sempre a data de início + (N − 1).
 - **Regra semanal**: 1 falta por semana do desafio é tolerada; **a 2ª falta na mesma semana encerra o ciclo**. No **Modo Elite**, qualquer falta encerra.
+- **Falta** = um dia do desafio que **já terminou** sem ser cumprido. O dia de hoje nunca é falta.
+- **O dia em que você cria o desafio nunca conta como falta** (nem os dias anteriores a ele). Criar um desafio às 22h não te deixa devendo nada. Desafios agendados para o futuro valem a partir do primeiro dia.
+- **O desafio se corrige sozinho**: se ele foi encerrado pela regra e depois os registros mostrarem que não deveria (marcações que chegaram de outro aparelho, ou um dia corrigido por você), ele **volta de onde parou** — desde que você ainda não tenha iniciado outro. Desafios encerrados por você não voltam sozinhos (dá para restaurar pelo histórico).
 - O Escudo de Chakra protege a **sequência**, não as faltas do desafio.
 - O desafio é **concluído depois do último dia** (o último dia é jogado). Recompensa: **+10 XP e +15 Ryō por dia de duração** (ex.: 66 dias = +660 XP e +990 Ryō).
 - O Modo Elite é escolhido no início e fica travado até o desafio terminar.
@@ -94,5 +98,29 @@ Registrar além do limite continua salvando os dados, só não paga XP. O Pomodo
 
 ## 10. Dados e sincronização
 
-- Tudo funciona offline (salvo no aparelho). Com conta, a sincronização com a nuvem é agrupada (1,5 s após a última ação), vence o lado mais recente e as datas de conclusão das missões são sempre unidas.
-- Dados antigos são migrados automaticamente na primeira abertura. Faltas registradas **antes** da atualização não encerram o desafio em andamento.
+- Tudo funciona offline (salvo no aparelho). Com conta, cada sincronização **baixa, mescla e só então envia** — um aparelho nunca sobrescreve o progresso feito em outro:
+  - XP e Ryō: soma do que cada aparelho ganhou (e do que foi desfeito);
+  - missões marcadas: união, respeitando o que foi desmarcado;
+  - dias: um Dia Cumprido em qualquer aparelho vale em todos — nunca vira falta;
+  - nome, avatar, preferências e textos: vale a edição mais recente;
+  - reset completo: o mais recente zera todos os aparelhos.
+- Ao abrir o app (ou na virada do dia), **nenhum dia é fechado antes de os dados da nuvem chegarem**. Sem internet, o app decide com o que tem e se corrige quando a conexão voltar.
+- A sincronização acontece ao abrir, ao voltar para o app, ~1 s depois de qualquer alteração e ao sair.
+- Dados antigos são migrados automaticamente na primeira abertura, preservando XP, Ryō, nível e histórico.
+
+## 11. Como o sistema é construído (para manutenção)
+
+A regra de ouro: **nada é somado "na mão" nem decidido no momento em que o app abriu.** Tudo é recalculado a partir de fatos, por funções puras e testadas.
+
+| Módulo (`src/core`) | Responsabilidade |
+| :-- | :-- |
+| `ledger.ts` | Livro-razão: cada ganho ou gasto é um lançamento com chave única. XP, nível, patente e Ryō são **derivados** dele. |
+| `dayLog.ts` | Registro diário: um dia é calculado pelas missões marcadas. Dia passado só melhora, nunca piora sozinho. |
+| `streak.ts` | Sequência e Escudo de Chakra. |
+| `cycle.ts` | Desafio: faltas por semana, carência do dia de criação, conclusão e restauração. |
+| `progression.ts` | `reconcileProgression`: o **único** lugar que decide dias, escudos, sequência e desafio. |
+| `syncMerge.ts` | Regras de mesclagem entre aparelhos. |
+
+- Os stores (`src/state`) só guardam dados e chamam `reconcile()` depois de qualquer mudança. Rodar `reconcile()` várias vezes não altera nada.
+- `src/services/syncService.ts` só transporta dados; as regras ficam em `syncMerge.ts`.
+- Testes (`npm test`): regras puras (`engines`, `progression`), stores com viagem no tempo (`stores`) e dois aparelhos sincronizando contra uma nuvem em memória (`sync`).

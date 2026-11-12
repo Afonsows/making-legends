@@ -146,8 +146,8 @@ export const StartChallengeModal: React.FC<StartChallengeModalProps> = ({ isOpen
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3.5 sm:p-6 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-slate-900 border-2 border-shinobi-gold/80 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] my-auto relative z-[101]">
+    <div className="modal-overlay z-[100] bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-slate-900 border-2 border-shinobi-gold/80 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col modal-panel my-auto relative z-[101]">
         {/* Top Header */}
         <div className="p-5 sm:p-6 bg-gradient-to-r from-amber-950/60 via-slate-950 to-slate-950 border-b border-shinobi-gold/30 flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">

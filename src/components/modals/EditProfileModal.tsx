@@ -147,7 +147,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
       const targetUserId = session?.user?.id || profile.id;
 
       if (targetUserId) {
-        await syncService.pushUserProfile({ ...profile, ...updatedData }, targetUserId);
+        void targetUserId;
+        await syncService.sync();
       }
       soundFx.playLevelUp();
       triggerLevelUpConfetti();
@@ -198,8 +199,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user?.id) {
-        await syncService.pushUserProfile(useUserStore.getState().profile, session.user.id);
-        await syncService.pushMissions([], session.user.id, true);
+        await syncService.sync(session.user.id);
       }
       soundFx.playMissionUndo();
       onClose();
@@ -210,8 +210,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3.5 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-slate-900 border-2 border-shinobi-gold/60 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[88vh] my-auto relative z-[101]">
+    <div className="modal-overlay z-[100] bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-slate-900 border-2 border-shinobi-gold/60 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col modal-panel my-auto relative z-[101]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-shinobi-border bg-slate-950/80">
           <div className="flex items-center gap-2.5">

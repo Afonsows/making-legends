@@ -29,7 +29,10 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   ];
 
   return (
-    <div className="fixed bottom-2 sm:bottom-4 inset-x-2 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-xl z-40 pointer-events-none pb-safe">
+    <>
+    {/* Esmaece o conteúdo que rola por trás da barra, mantendo os rótulos legíveis */}
+    <div className="bottom-nav-scrim" aria-hidden="true" />
+    <div className="bottom-nav z-40 pointer-events-none">
       <nav className="pointer-events-auto liquid-glass-nav rounded-2xl sm:rounded-3xl relative overflow-hidden transition-all duration-300">
         {/* Filete de Brilho Especular Superior (Liquid Glass Sheen) */}
         <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/50 via-shinobi-gold/30 to-transparent pointer-events-none" />
@@ -82,5 +85,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         </div>
       </nav>
     </div>
+    </>
   );
 };

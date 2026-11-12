@@ -54,7 +54,9 @@ export interface DayRecord {
   xpEarned: number;    // XP base das missões concluídas no dia
   xpTarget: number;    // XP base total das missões do dia
   completed: boolean;  // true = atingiu a meta mínima (50% do XP previsto)
-  closed: boolean;     // true = o dia já terminou e o registro está congelado
+  closed: boolean;     // true = o dia já terminou (a meta fica congelada)
+  /** ISO — preenchido quando o shinobi corrige manualmente um dia passado (vence na mesclagem). */
+  editedAt?: string;
 }
 
 /**
@@ -76,6 +78,8 @@ export interface RewardGrant {
   xp: number;            // XP final aplicado (com bônus)
   ryo: number;           // Ryō final aplicado (com bônus)
   pillarId?: PillarId;
+  /** Distribuição por pilar para lançamentos agregados (saldo inicial e resumos de dias antigos). */
+  pillarXp?: Partial<Record<PillarId, number>>;
   damage?: DamageEntry[];
   createdAt: string;
 }
@@ -103,7 +107,11 @@ export interface ProtocolChallengeCycle {
   checkIns: Record<number, DailyCheckInRecord>;
   failedWeek?: number;
   failedReason?: string;
-  /** Dias anteriores a esta data não encerram o ciclo enquanto o histórico é preenchido. */
+  /** Quem encerrou: a regra de faltas (reavaliável) ou o próprio shinobi (definitivo). */
+  endedBy?: 'rule' | 'user';
+  /** Dia (local) em que o desafio foi criado — esse dia nunca conta como falta. */
+  createdOn?: string;
+  /** Dias anteriores a esta data não contam como falta. */
   graceBefore?: string;
   totalXpEarned: number;
   createdAt: string;
@@ -144,7 +152,13 @@ export interface UserProfile {
   // ── Motor de progressão v2 ──
   dayLog: Record<string, DayRecord>;           // histórico diário consolidado
   shieldedDates: string[];                     // dias protegidos pelo Escudo de Chakra
-  grants: Record<string, RewardGrant>;         // recompensas recentes (estornáveis)
+  grants: Record<string, RewardGrant>;         // livro-razão: XP, Ryō e nível são DERIVADOS daqui
+  revoked: Record<string, string>;             // lançamentos estornados (chave → ISO), para mesclar aparelhos
+  deletedMissions: Record<string, string>;     // missões excluídas (id → ISO)
+  deletedCycles: Record<string, string>;       // desafios excluídos (id → ISO)
+  shieldsThrough?: string;                     // último dia já avaliado para Escudo de Chakra
+  dayWipe?: { from: string; at: string };      // dias apagados ao excluir um desafio
+  resetEpoch?: string;                         // ISO do último reset completo de progresso
   purchasedItems: string[];                    // relíquias compradas na loja
   extraShieldWeeks: string[];                  // semanas com escudo extra comprado
   soldierPillDates: string[];                  // dias com Pílula de Soldado ativa

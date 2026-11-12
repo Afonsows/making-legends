@@ -53,8 +53,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
         if (data.user) {
           // Faz o primeiro sync do progresso local para a nuvem
-          await syncService.pushUserProfile(profile, data.user.id);
-          await syncService.pushMissions(missions, data.user.id);
+          syncService.setUser(data.user.id);
+          await syncService.sync();
           soundFx.playLevelUp();
           setMessage({
             text: 'Conta criada com sucesso! Seus dados e sequências estão sincronizados na nuvem.',
@@ -73,7 +73,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         if (error) throw error;
 
         if (data.user) {
-          await syncService.pullUserData(data.user.id);
+          syncService.setUser(data.user.id);
+          await syncService.sync();
           soundFx.playLevelUp();
           setMessage({
             text: 'Login realizado! Seu progresso foi restaurado.',
@@ -96,7 +97,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3.5 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="modal-overlay z-[100] bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
       <div className="bg-slate-900 border-2 border-slate-700 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl p-6 space-y-4 my-auto relative z-[101]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-shinobi-border pb-3">

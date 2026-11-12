@@ -38,47 +38,78 @@ export const AppContent: React.FC = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ email?: string; id?: string } | null>(null);
 
-  // Motor de renovação diária (00:00, visibilidade, foco e intervalo) + lembretes
+  // Inicialização: conta, primeira sincronização e motor de renovação diária.
+  // Enquanto não sabemos se há dados mais novos na nuvem, o "portão" fica fechado:
+  // nenhum dia é encerrado e nenhum desafio é interrompido com dados desatualizados.
   useEffect(() => {
-    soundFx.setSoundEnabled(useUserStore.getState().profile.notificationSettings.soundEnabled !== false);
-    useUserStore.getState().syncInventory();
-    const cleanupDailyEngine = initDailyResetEngine();
-    const cleanupReminders = initReminderScheduler();
-    return () => {
-      cleanupDailyEngine();
-      cleanupReminders();
+    const user = useUserStore.getState();
+    soundFx.setSoundEnabled(user.profile.notificationSettings.soundEnabled !== false);
+    user.syncInventory();
+    user.setCloudGate('pending');
+
+    const failSafe = setTimeout(() => useUserStore.getState().setCloudGate('open'), 6000);
+    const openGate = () => {
+      clearTimeout(failSafe);
+      useUserStore.getState().setCloudGate('open');
     };
-  }, []);
 
-  // Inicialização de Auth do Supabase e sincronização automática
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth
+      .getSession()
+      .then(async ({ data: { session } }) => {
+        if (session?.user) {
+          setCurrentUser({ email: session.user.email, id: session.user.id });
+          syncService.setUser(session.user.id);
+          await syncService.sync();
+        }
+      })
+      .catch(() => undefined)
+      .finally(openGate);
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         setCurrentUser({ email: session.user.email, id: session.user.id });
-        syncService.pullUserData(session.user.id);
-      }
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setCurrentUser({ email: session.user.email, id: session.user.id });
-        syncService.pullUserData(session.user.id);
+        syncService.setUser(session.user.id);
+        if (event === 'SIGNED_IN') void syncService.sync();
       } else {
         setCurrentUser(null);
+        syncService.setUser(null);
       }
     });
 
-    return () => subscription.unsubscribe();
+    const cleanupDailyEngine = initDailyResetEngine();
+    const cleanupReminders = initReminderScheduler();
+
+    // Ao voltar para o app: busca novidades de outros aparelhos. Ao sair: envia o que estiver pendente.
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') syncService.syncOnFocus();
+      else syncService.flush();
+    };
+    const handleFocus = () => syncService.syncOnFocus();
+    const handlePageHide = () => syncService.flush();
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('pagehide', handlePageHide);
+
+    return () => {
+      clearTimeout(failSafe);
+      subscription.unsubscribe();
+      cleanupDailyEngine();
+      cleanupReminders();
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('pagehide', handlePageHide);
+    };
   }, []);
 
   // Sincronização em segundo plano (agrupada) quando perfil, missões ou desafios mudam
   const challenges = useChallengeStore((s) => s.challenges);
   useEffect(() => {
-    if (currentUser?.id) syncService.schedulePush(currentUser.id);
+    if (currentUser?.id) syncService.schedule();
   }, [profile, missions, challenges, currentUser]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    syncService.setUser(null);
     setCurrentUser(null);
     setIsAuthModalOpen(false);
   };
@@ -91,9 +122,12 @@ export const AppContent: React.FC = () => {
   const pendingMissionsCount = missions.filter((m) => !m.isCompletedToday).length;
 
   return (
-    <div className="min-h-screen bg-shinobi-bg text-slate-100 flex flex-col selection:bg-shinobi-crimson selection:text-white relative overflow-x-hidden">
+    <div className="app-shell bg-shinobi-bg text-slate-100 flex flex-col selection:bg-shinobi-crimson selection:text-white relative">
       {/* Ambientação Shinobi Animada */}
       <ShinobiBackground opacity={0.5} />
+
+      {/* Faixa opaca sob a barra de status do aparelho */}
+      <div className="safe-top-scrim" aria-hidden="true" />
 
       {/* Navbar Superior com Nível, Rank, Streak, Escudo e Status Nuvem */}
       <Navbar

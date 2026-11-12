@@ -759,7 +759,7 @@ export const useChallengeStore = create<ChallengeStoreState>()(
           }
           return c;
         });
-        if (changed) set({ challenges: updated });
+        if (changed) setChallengesSilently(updated);
       },
     }),
     {
@@ -779,3 +779,24 @@ export const useChallengeStore = create<ChallengeStoreState>()(
     }
   )
 );
+
+// ─────────────────────────────────────────────────────────────
+// Sincronização
+// ─────────────────────────────────────────────────────────────
+
+let silentUpdate = false;
+
+/** Atualiza a lista sem contar como edição do shinobi (sincronização e rotinas automáticas). */
+export function setChallengesSilently(challenges: UserChallenge[]) {
+  silentUpdate = true;
+  try {
+    useChallengeStore.setState({ challenges });
+  } finally {
+    silentUpdate = false;
+  }
+}
+
+// Qualquer outra mudança na lista foi feita pelo shinobi neste aparelho
+useChallengeStore.subscribe((state, previous) => {
+  if (!silentUpdate && state.challenges !== previous.challenges) useUserStore.getState().touch();
+});

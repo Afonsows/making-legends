@@ -23,7 +23,7 @@ export const BossVictoryModal: React.FC = () => {
       : `+${rewardItem.buffValue}% ${BUFF_LABEL[rewardItem.buffType]}${pillar ? ` ${pillar.name}` : ''}`;
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-3.5 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in">
+    <div className="modal-overlay z-[110] bg-black/85 backdrop-blur-md animate-in fade-in">
       <div className="bg-shinobi-card washi-texture border-2 border-shinobi-orange w-full max-w-sm rounded-3xl overflow-hidden shadow-glow-orange p-6 text-center space-y-4 relative animate-in zoom-in-95">
         <div className="absolute -top-6 -left-2 font-kanji text-[120px] leading-none text-white/[0.04] select-none pointer-events-none">勝</div>
 

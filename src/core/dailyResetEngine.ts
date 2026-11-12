@@ -1,7 +1,6 @@
 import { getTodayString } from './dateUtils';
-import { useUserStore } from '../state/useUserStore';
-import { useHabitStore } from '../state/useHabitStore';
 import { useToolStore } from '../state/useToolStore';
+import { syncService } from '../services/syncService';
 
 /**
  * Retorna os milissegundos restantes até a próxima meia-noite (00:00:00.050) no horário local.
@@ -32,23 +31,18 @@ export function getTimeUntilMidnightString(): string {
 }
 
 /**
- * Executa a manutenção e reconciliação diária em todos os stores do sistema.
- * 1. Processa a transição de dias no protocolo de 66 dias e streaks do usuário.
- * 2. Reseta as missões diárias para o novo dia (desmarcando tarefas concluídas em datas anteriores).
- * 3. Zera os contadores diários de ferramentas (sessões de pomodoro, minutos de meditação, etc).
+ * Manutenção diária.
+ * 1. Zera os contadores diários das ferramentas.
+ * 2. Reconcilia a progressão (missões de hoje, dias anteriores, escudos, desafio).
+ *    Com conta conectada, os dados da nuvem são buscados ANTES de fechar o dia
+ *    anterior — um dia cumprido em outro aparelho nunca vira falta aqui.
  */
 export function runDailyMaintenance(): void {
   try {
     const today = getTodayString();
 
-    // 1. Missões: recalcula o status "concluída hoje" a partir das datas reais
-    useHabitStore.getState().resetDailyMissionsIfNewDay();
-
-    // 2. Perfil: fecha os dias anteriores, aplica Escudos de Chakra, avalia o desafio
-    useUserStore.getState().checkDayTransition();
-
-    // 3. Ferramentas: zera os contadores diários
     useToolStore.getState().resetDailyToolsIfNewDay();
+    void syncService.settleWithFreshData();
 
     // Notifica ouvintes que uma transição de dia ocorreu
     if (typeof window !== 'undefined') {

@@ -159,10 +159,9 @@ export const OnboardingQuiz: React.FC<OnboardingQuizProps> = ({ onFinishOnboardi
         completeOnboarding(userName.trim(), userGender, userEmail.trim(), userWhatsapp.trim());
 
         // 3. Sincroniza dados iniciais no Supabase
-        syncService.isHydrated = true;
-        const updatedProfile = useUserStore.getState().profile;
-        await syncService.pushUserProfile(updatedProfile, user.id);
-        await syncService.pushMissions(generated, user.id, true);
+        void generated;
+        syncService.setUser(user.id);
+        await syncService.sync();
       }
 
       soundFx.playChallengeStart();
@@ -199,7 +198,8 @@ export const OnboardingQuiz: React.FC<OnboardingQuizProps> = ({ onFinishOnboardi
 
       if (data.user) {
         // Baixa os dados da conta da nuvem
-        await syncService.pullUserData(data.user.id);
+        syncService.setUser(data.user.id);
+        await syncService.sync();
         soundFx.playLevelUp();
         onFinishOnboarding();
       }
@@ -211,7 +211,7 @@ export const OnboardingQuiz: React.FC<OnboardingQuizProps> = ({ onFinishOnboardi
   };
 
   return (
-    <div className="min-h-screen bg-shinobi-bg text-slate-100 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+    <div className="app-shell bg-shinobi-bg text-slate-100 flex flex-col items-center justify-center px-4 pt-[calc(env(safe-area-inset-top)+1rem)] pb-[max(env(safe-area-inset-bottom),1rem)] relative">
       {/* Fundo Shinobi Animado em Loop: Fogueira, Shinobi, Lua Cheia, Brasas e Sakura */}
       <ShinobiBackground opacity={1} />
 

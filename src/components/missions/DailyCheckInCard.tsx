@@ -97,7 +97,7 @@ export const DailyCheckInCard: React.FC<DailyCheckInCardProps> = ({ onOpenMap, o
   const handleDeleteActiveChallenge = () => {
     if (
       window.confirm(
-        'Deseja realmente cancelar e excluir o Desafio Ativo atual? Seus dados diários e sequência continuarão salvos, e você poderá iniciar um novo desafio quando desejar.'
+        'Excluir o desafio ativo? As marcações, os dias cumpridos e as recompensas (XP e Ryō) obtidos desde o início dele serão desfeitos. Esta ação não pode ser revertida.'
       )
     ) {
       deleteActiveChallenge();

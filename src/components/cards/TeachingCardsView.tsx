@@ -54,7 +54,7 @@ export const TeachingCardsView: React.FC = () => {
   ];
 
   return (
-    <div className="pb-24 pt-3 max-w-4xl mx-auto px-4 space-y-4">
+    <div className="pb-nav pt-3 max-w-4xl mx-auto px-4 space-y-4">
       {/* Header com Seletor de Aba */}
       <div className="pergaminho-bg rounded-2xl border border-shinobi-border p-4 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">

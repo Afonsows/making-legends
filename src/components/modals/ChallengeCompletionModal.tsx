@@ -27,7 +27,7 @@ export const ChallengeCompletionModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3.5 sm:p-6 bg-black/90 backdrop-blur-md animate-in fade-in duration-300">
+    <div className="modal-overlay z-[100] bg-black/90 backdrop-blur-md animate-in fade-in duration-300">
       <div className="bg-slate-900 border-2 border-shinobi-gold w-full max-w-lg rounded-3xl overflow-hidden shadow-glow-gold flex flex-col my-auto relative z-[101]">
         {/* Top Banner Dourado de Vitória */}
         <div className="p-6 bg-gradient-to-b from-amber-950/80 via-slate-950 to-slate-950 border-b border-shinobi-gold/40 text-center space-y-2 relative overflow-hidden">

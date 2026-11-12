@@ -16,7 +16,7 @@ export const LevelUpModal: React.FC = () => {
   const ryo = getLevelUpRyoBetween(oldLevel, newLevel);
 
   return (
-    <div className="fixed inset-0 z-[115] flex items-center justify-center p-3.5 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in">
+    <div className="modal-overlay z-[115] bg-black/85 backdrop-blur-md animate-in fade-in">
       <div
         className={`washi-texture bg-shinobi-card border-2 w-full max-w-sm rounded-3xl overflow-hidden p-6 text-center space-y-4 relative animate-in zoom-in-95 ${
           isRankUp ? 'border-shinobi-orange shadow-glow-orange' : 'border-shinobi-gold shadow-glow-gold'

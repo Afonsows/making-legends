@@ -11,7 +11,7 @@ export const ChallengeResetModal: React.FC = () => {
   const targetDays = cycle.targetDays || 66;
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-3.5 sm:p-6 bg-black/90 backdrop-blur-md animate-in fade-in">
+    <div className="modal-overlay z-[110] bg-black/90 backdrop-blur-md animate-in fade-in">
       <div className="washi-texture bg-slate-900 border-2 border-rose-500/70 w-full max-w-lg rounded-3xl overflow-hidden shadow-glow-crimson flex flex-col my-auto relative animate-in zoom-in-95">
         <div className="p-6 bg-gradient-to-b from-rose-950/80 to-slate-950/90 border-b border-rose-500/30 text-center space-y-2 relative overflow-hidden">
           <div className="absolute -top-4 right-2 font-kanji text-[110px] leading-none text-rose-500/10 select-none pointer-events-none">敗</div>

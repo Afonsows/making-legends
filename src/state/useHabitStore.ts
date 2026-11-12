@@ -6,10 +6,8 @@ import { shinobiTheme } from '../theme/shinobi.theme';
 import { getTodayString, isValidDateString } from '../core/dateUtils';
 import { getDefaultRyoReward, calculateRyoGainWithBuffs } from '../core/ryoEngine';
 import { useUserStore } from './useUserStore';
-import { syncService } from '../services/syncService';
 import { soundFx } from '../utils/audio';
 import { triggerMissionConfetti } from '../utils/confetti';
-import { buildDayRecord } from '../core/streakEngine';
 
 export { getDefaultRyoReward, calculateRyoGainWithBuffs };
 
@@ -68,6 +66,8 @@ function sanitizeMission(m: Mission, todayStr: string): Mission {
 }
 
 export const missionGrantKey = (missionId: string, date: string) => `mission:${missionId}:${date}`;
+/** Marcação feita depois que o dia já passou: registra o fato, sem recompensa. */
+export const retroMarkKey = (missionId: string, date: string) => `retro:${missionId}:${date}`;
 
 interface HabitStoreState {
   missions: Mission[];
@@ -90,7 +90,10 @@ interface HabitStoreState {
   updateMission: (id: string, updates: Partial<Mission>) => void;
   deleteMission: (id: string) => void;
   resetDailyMissionsIfNewDay: () => void;
+  /** Troca a lista de missões por decisão do shinobi (onboarding, novo desafio). */
   setCustomMissionList: (missions: Mission[]) => void;
+  /** Recebe a lista já mesclada pela sincronização (não gera lápides). */
+  replaceMissions: (missions: Mission[]) => void;
   reorderMissions: (newMissions: Mission[]) => void;
   moveMission: (missionId: string, direction: 'up' | 'down', visibleIds?: string[]) => void;
 
@@ -98,6 +101,9 @@ interface HabitStoreState {
   clearLogs: () => void;
   recalibrateFromMissions: () => { totalXp: number; level: number; ryo: number };
 }
+
+const sameMissions = (a: Mission[], b: Mission[]) =>
+  a.length === b.length && a.every((m, i) => m === b[i] || JSON.stringify(m) === JSON.stringify(b[i]));
 
 export const useHabitStore = create<HabitStoreState>()(
   persist(
@@ -126,12 +132,10 @@ export const useHabitStore = create<HabitStoreState>()(
           log(mission, -grant.xp, -grant.ryo, 'reverted');
           return;
         }
-        // Conclusão vinda de outro aparelho (sem registro local): estorna o valor base.
-        const base = getRankRewards(mission.rank);
-        const xp = mission.xpReward || base.xp;
-        const ryo = mission.ryoReward || base.ryo;
-        userStore.adjustProgress(-xp, -ryo, mission.pillarId);
-        log(mission, -xp, -ryo, 'reverted');
+        // Marcação sem lançamento (dado antigo): não há o que estornar, só registra
+        // a desmarcação para que os outros aparelhos também a removam.
+        userStore.forgetRewards([key]);
+        log(mission, 0, 0, 'reverted');
       };
 
       return {
@@ -190,7 +194,7 @@ export const useHabitStore = create<HabitStoreState>()(
             useUserStore.getState().updateProfile({ missionsCompletedTotal: Math.max(0, (p.missionsCompletedTotal || 0) - 1) });
           }
 
-          useUserStore.getState().refreshToday();
+          useUserStore.getState().reconcile();
         },
 
         toggleMissionOnDate: (missionId, date) => {
@@ -215,10 +219,23 @@ export const useHabitStore = create<HabitStoreState>()(
             }),
           }));
 
+          // O fato viaja pelo livro-razão (valor zero) para sincronizar com outros aparelhos
           const user = useUserStore.getState();
-          const record = buildDayRecord(get().missions, date, true, user.profile.dayLog[date]);
-          user.updateProfile({ dayLog: { ...user.profile.dayLog, [date]: record } });
-          user.refreshToday({ silent: true });
+          const key = retroMarkKey(missionId, date);
+          if (willBeCompleted) {
+            user.grantReward({
+              key,
+              label: `${mission.title} (registro retroativo)`,
+              baseXp: 0,
+              baseRyo: 0,
+              date,
+              applyXpBuffs: false,
+              applyRyoBuffs: false,
+            });
+          } else if (!user.revokeReward(key)) {
+            user.forgetRewards([key]);
+          }
+          useUserStore.getState().correctPastDay(date);
           return { success: true, isCompleted: willBeCompleted };
         },
 
@@ -252,7 +269,8 @@ export const useHabitStore = create<HabitStoreState>()(
           };
           set((state) => ({ missions: [...state.missions, newMission] }));
           soundFx.playScrollOpen();
-          useUserStore.getState().refreshToday({ silent: true });
+          useUserStore.getState().touch();
+          useUserStore.getState().reconcile({ silent: true });
         },
 
         updateMission: (id, updates) => {
@@ -295,7 +313,8 @@ export const useHabitStore = create<HabitStoreState>()(
             });
             if (grant) log(after, grant.xp, grant.ryo, 'completed');
           }
-          useUserStore.getState().refreshToday({ silent: true });
+          useUserStore.getState().touch();
+          useUserStore.getState().reconcile({ silent: true });
         },
 
         deleteMission: (id) => {
@@ -305,24 +324,49 @@ export const useHabitStore = create<HabitStoreState>()(
           set((state) => ({
             missions: state.missions.filter((m) => m.id !== id).map((m, idx) => ({ ...m, order: idx + 1 })),
           }));
-          syncService.deleteMission(id);
-          useUserStore.getState().refreshToday({ silent: true });
+          // Lápide: garante que a exclusão chegue aos outros aparelhos e à nuvem
+          const user = useUserStore.getState();
+          user.updateProfile({ deletedMissions: { ...user.profile.deletedMissions, [id]: new Date().toISOString() } });
+          useUserStore.getState().reconcile({ silent: true });
         },
 
         resetDailyMissionsIfNewDay: () => {
           const todayStr = getTodayString();
-          set((state) => ({ missions: state.missions.map((m) => sanitizeMission(m, todayStr)) }));
+          const next = get().missions.map((m) => sanitizeMission(m, todayStr));
+          if (!sameMissions(get().missions, next)) set({ missions: next });
         },
 
         setCustomMissionList: (newMissions) => {
           const todayStr = getTodayString();
-          set({
-            missions: newMissions.map((m, idx) => sanitizeMission({ ...m, order: m.order || idx + 1 }, todayStr)),
+          const now = new Date().toISOString();
+          const user = useUserStore.getState();
+          const deleted = { ...user.profile.deletedMissions };
+          const keptIds = new Set(newMissions.map((m) => m.id));
+          const wasDeleted = new Set(Object.keys(deleted));
+          // Missões que saíram da lista viram lápides; as que voltam são "recriadas"
+          get().missions.forEach((m) => {
+            if (!keptIds.has(m.id)) deleted[m.id] = now;
           });
+          set({
+            missions: newMissions.map((m, idx) =>
+              sanitizeMission(
+                { ...m, order: m.order || idx + 1, createdAt: wasDeleted.has(m.id) || !m.createdAt ? now : m.createdAt },
+                todayStr
+              )
+            ),
+          });
+          user.updateProfile({ deletedMissions: deleted });
+        },
+
+        replaceMissions: (newMissions) => {
+          const todayStr = getTodayString();
+          const next = newMissions.map((m, idx) => sanitizeMission({ ...m, order: idx + 1 }, todayStr));
+          if (!sameMissions(get().missions, next)) set({ missions: next });
         },
 
         reorderMissions: (newMissions) => {
           set({ missions: newMissions.map((m, idx) => ({ ...m, order: idx + 1 })) });
+          useUserStore.getState().touch();
         },
 
         /**
@@ -339,6 +383,7 @@ export const useHabitStore = create<HabitStoreState>()(
           const b = missions.findIndex((m) => m.id === neighborId);
           [missions[a], missions[b]] = [missions[b], missions[a]];
           set({ missions: missions.map((m, idx) => ({ ...m, order: idx + 1 })) });
+          useUserStore.getState().touch();
         },
 
         addMissionLog: (entry) => set((state) => ({ missionLogs: [entry, ...state.missionLogs].slice(0, 150) })),
@@ -349,11 +394,11 @@ export const useHabitStore = create<HabitStoreState>()(
          * nível, patente, sequência e inventário a partir dos dados existentes.
          */
         recalibrateFromMissions: () => {
+          // XP, nível e Ryō são derivados do livro-razão: basta reconciliar.
           get().resetDailyMissionsIfNewDay();
           const userStore = useUserStore.getState();
           userStore.syncInventory();
-          userStore.adjustProgress(0, 0);
-          userStore.refreshToday({ silent: true });
+          userStore.reconcile({ silent: true });
           const p = useUserStore.getState().profile;
           return { totalXp: p.totalXp, level: p.level, ryo: p.ryo };
         },

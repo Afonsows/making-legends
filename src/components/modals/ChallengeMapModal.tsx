@@ -31,7 +31,7 @@ export const ChallengeMapModal: React.FC<ChallengeMapModalProps> = ({ isOpen, on
 
   if (!activeChallenge) {
     return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-3.5 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="modal-overlay z-[100] bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
         <div className="bg-slate-900 border-2 border-shinobi-gold/60 w-full max-w-md rounded-3xl p-6 shadow-2xl text-center space-y-4">
           <div className="w-12 h-12 mx-auto rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
             <Map className="w-6 h-6" />
@@ -75,8 +75,8 @@ export const ChallengeMapModal: React.FC<ChallengeMapModalProps> = ({ isOpen, on
   ];
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3.5 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-slate-900 border-2 border-shinobi-gold/60 w-full max-w-3xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[88vh] my-auto relative z-[101]">
+    <div className="modal-overlay z-[100] bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-slate-900 border-2 border-shinobi-gold/60 w-full max-w-3xl rounded-3xl overflow-hidden shadow-2xl flex flex-col modal-panel my-auto relative z-[101]">
         {/* Header */}
         <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-800 bg-slate-950/90">
           <div className="flex items-center gap-2.5">

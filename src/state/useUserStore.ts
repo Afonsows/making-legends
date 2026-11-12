@@ -11,27 +11,35 @@ import {
   DayRecord,
 } from '../core/types';
 import { PillarId, UserRankId } from '../theme/types';
-import { getLevelFromTotalXp, getRankIdFromLevel, calculateXpGainWithBuffs } from '../core/xpEngine';
+import { calculateXpGainWithBuffs } from '../core/xpEngine';
+import { getDailyCheckInRyoBonus, calculateRyoGainWithBuffs } from '../core/ryoEngine';
 import {
-  getLevelUpRyoBetween,
-  getDailyCheckInRyoBonus,
-  calculateRyoGainWithBuffs,
-} from '../core/ryoEngine';
-import {
-  buildDayRecord,
-  closePastDays,
-  applyShieldsToClosedDays,
   computeCurrentStreak,
   computeBestStreak,
   countCompletedDays,
-  getWeeklyShieldCapacity,
-  countShieldsUsedInWeek,
   evaluateChallengeCycle,
+  asActiveCandidate,
   getChallengeCompletionReward,
   getCycleTargetDays,
   buildDayLogFromLegacy,
+  recomputeDay,
+  reconcileProgression,
   ShieldContext,
+  ABANDONED_REASON,
 } from '../core/streakEngine';
+import {
+  LedgerState,
+  LEGACY_BASE_KEY,
+  LEDGER_COMPACT_AFTER_DAYS,
+  addGrant,
+  removeGrant,
+  deriveTotals,
+  buildLegacyBase,
+  compactLedger,
+  pruneTombstones,
+  emptyPillarXp,
+} from '../core/ledger';
+import { stableStringify } from '../core/syncMerge';
 import { getTodayString, addDaysToDateString, getWeekKey, isValidDateString, daysBetween } from '../core/dateUtils';
 import { allGameItems, STARTER_ITEMS } from '../core/itemsData';
 import { teachingCards } from '../core/cardsData';
@@ -48,6 +56,12 @@ import { useDuelStore } from './useDuelStore';
 export const SOLDIER_PILL_PRICE = 600;
 export const SHIELD_SCROLL_PRICE = 900;
 
+/**
+ * Lançamentos anteriores a esta data já estavam embutidos nos totais do
+ * sistema antigo — na migração eles são absorvidos pelo saldo inicial.
+ */
+const LEGACY_LEDGER_EPOCH = '2026-11-08';
+
 /** Pergaminhos liberados pelo total de Dias Cumpridos (nunca se perdem). */
 export function getReconciledUnlockedCards(completedDays: number): string[] {
   const reached = Math.max(1, completedDays);
@@ -62,14 +76,6 @@ export interface Toast {
   title: string;
   message?: string;
 }
-
-const emptyPillars = (): Record<PillarId, number> => ({
-  taijutsu: 0,
-  ninjutsu: 0,
-  chakra: 0,
-  espirito: 0,
-  genjutsu: 0,
-});
 
 export const createDefaultProfile = (): UserProfile => ({
   id: 'local_shinobi',
@@ -86,7 +92,7 @@ export const createDefaultProfile = (): UserProfile => ({
   level: 1,
   totalXp: 0,
   currentRankId: 'aspirante',
-  pillarXp: emptyPillars(),
+  pillarXp: emptyPillarXp(),
   currentProtocolDay: 0,
   currentStreak: 0,
   bestStreak: 0,
@@ -111,6 +117,9 @@ export const createDefaultProfile = (): UserProfile => ({
   dayLog: {},
   shieldedDates: [],
   grants: {},
+  revoked: {},
+  deletedMissions: {},
+  deletedCycles: {},
   purchasedItems: [],
   extraShieldWeeks: [],
   soldierPillDates: [],
@@ -127,7 +136,13 @@ function readPersistedMissions(): Mission[] {
   }
 }
 
-/** Migra perfis antigos (v1) para o motor v2 sem perder progresso. */
+const asRecord = <T,>(value: unknown): Record<string, T> =>
+  value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, T>) : {};
+
+/**
+ * Normaliza um perfil salvo (deste aparelho ou da nuvem) para o formato atual,
+ * sem perder progresso. Pode rodar quantas vezes for.
+ */
 export function migrateProfile(
   raw: Partial<UserProfile> | undefined,
   missions: Mission[],
@@ -135,16 +150,16 @@ export function migrateProfile(
 ): UserProfile {
   const base = createDefaultProfile();
   const today = getTodayString();
+  // Perfis anteriores ao livro-razão guardavam XP/Ryō como totais soltos
+  const isLegacyLedger = Boolean(raw) && raw!.revoked === undefined;
   const p: UserProfile = { ...base, ...(raw || {}) } as UserProfile;
 
-  p.pillarXp = { ...emptyPillars(), ...(p.pillarXp || {}) };
   p.notificationSettings = { ...base.notificationSettings, ...(p.notificationSettings || {}) };
   p.avatarConfig = { ...base.avatarConfig, ...(p.avatarConfig || {}) };
-  p.totalXp = Math.max(0, Math.round(p.totalXp || 0));
-  p.ryo = Math.max(0, Math.round(p.ryo || 0));
-  p.level = getLevelFromTotalXp(p.totalXp);
-  p.currentRankId = getRankIdFromLevel(p.level);
-  p.grants = p.grants && typeof p.grants === 'object' ? p.grants : {};
+  p.grants = asRecord<RewardGrant>(p.grants);
+  p.revoked = asRecord<string>(p.revoked);
+  p.deletedMissions = asRecord<string>(p.deletedMissions);
+  p.deletedCycles = asRecord<string>(p.deletedCycles);
   p.shieldedDates = Array.isArray(p.shieldedDates) ? p.shieldedDates.filter(isValidDateString) : [];
   p.purchasedItems = Array.isArray(p.purchasedItems) ? p.purchasedItems : [];
   p.extraShieldWeeks = Array.isArray(p.extraShieldWeeks) ? p.extraShieldWeeks : [];
@@ -153,6 +168,22 @@ export function migrateProfile(
   p.equippedItems = Array.isArray(p.equippedItems) ? p.equippedItems : [];
   p.inventory = Array.isArray(p.inventory) && p.inventory.length ? p.inventory : [...STARTER_ITEMS];
   if (!isValidDateString(p.lastActiveDate)) p.lastActiveDate = today;
+
+  if (isLegacyLedger) {
+    const recent = Object.fromEntries(
+      Object.entries(p.grants).filter(([key, g]) => g && key !== LEGACY_BASE_KEY && (g.date || '') >= LEGACY_LEDGER_EPOCH)
+    );
+    const baseGrant = buildLegacyBase(
+      { totalXp: p.totalXp || 0, ryo: p.ryo || 0, pillarXp: { ...emptyPillarXp(), ...(p.pillarXp || {}) } },
+      recent,
+      p.updatedAt || new Date().toISOString()
+    );
+    p.grants = { ...recent, [LEGACY_BASE_KEY]: baseGrant };
+    // Os dias anteriores à migração já tiveram seus escudos avaliados
+    if (!isValidDateString(p.shieldsThrough)) p.shieldsThrough = addDaysToDateString(p.lastActiveDate, -1);
+  }
+  // XP, pilares, nível, patente e Ryō sempre saem do livro-razão
+  Object.assign(p, deriveTotals(p.grants));
 
   if (!p.dayLog || typeof p.dayLog !== 'object' || Object.keys(p.dayLog).length === 0) {
     p.dayLog = buildDayLogFromLegacy(p, missions, today);
@@ -163,9 +194,9 @@ export function migrateProfile(
   if (typeof p.bossesDefeated !== 'number') p.bossesDefeated = 0;
 
   if (p.activeChallenge) {
-    const cycle = p.activeChallenge as ProtocolChallengeCycle & { graceBefore?: string };
+    const cycle = p.activeChallenge;
     if (cycle.status !== 'active') {
-      p.challengeHistory = [cycle, ...p.challengeHistory];
+      p.challengeHistory = [cycle, ...p.challengeHistory.filter((c) => c.id !== cycle.id)];
       p.activeChallenge = undefined;
     } else {
       cycle.targetDays = getCycleTargetDays(cycle);
@@ -200,6 +231,11 @@ interface GrantParams {
 
 interface UserStoreState {
   profile: UserProfile;
+  /**
+   * 'pending' enquanto os dados da nuvem ainda não chegaram. Nesse intervalo
+   * nenhum dia é fechado e nenhum desafio é encerrado (ver `reconcile`).
+   */
+  cloudGate: 'open' | 'pending';
   activeLevelUpModal: { oldLevel: number; newLevel: number; oldRank: UserRankId; newRank: UserRankId } | null;
   activeResetModal: { cycle: ProtocolChallengeCycle } | null;
   activeCompletionModal: { cycle: ProtocolChallengeCycle } | null;
@@ -210,6 +246,8 @@ interface UserStoreState {
 
   // Perfil
   updateProfile: (updates: Partial<UserProfile>) => void;
+  /** Marca que o shinobi alterou algo neste aparelho (usado para decidir preferências na sincronização). */
+  touch: () => void;
   /** Zera toda a progressão, preservando a identidade e as preferências do cadastro. */
   resetProgress: () => void;
   setProfileName: (name: string) => void;
@@ -218,16 +256,14 @@ interface UserStoreState {
   toggleHardMode: () => { success: boolean; reason?: string };
   completeOnboarding: (name: string, gender?: 'male' | 'female', email?: string, whatsapp?: string) => void;
 
-  // Recompensas (XP, Ryō, dano)
+  // Recompensas (livro-razão)
   isEliteActive: () => boolean;
   isSoldierPillActive: () => boolean;
   grantReward: (params: GrantParams) => RewardGrant | null;
   revokeReward: (key: string) => RewardGrant | null;
+  /** Registra que uma chave foi desfeita mesmo sem lançamento local (para os outros aparelhos). */
+  forgetRewards: (keys: string[]) => void;
   hasGrant: (key: string) => boolean;
-  addXp: (baseXp: number, pillarId: PillarId) => { finalXp: number; bonusXp: number; levelUp: boolean };
-  adjustProgress: (xpDelta: number, ryoDelta: number, pillarId?: PillarId) => void;
-  addRyo: (amount: number) => void;
-  removeRyo: (amount: number) => void;
   closeLevelUpModal: () => void;
 
   // Equipamentos e inventário
@@ -235,22 +271,26 @@ interface UserStoreState {
   equipItem: (itemId: string) => void;
   unequipItem: (itemId: string) => void;
   syncInventory: () => void;
-  addItemToInventory: (itemId: string) => void;
 
   // Loja
   buyItem: (itemId: string) => { success: boolean; reason?: string };
   buySoldierPill: () => { success: boolean; reason?: string };
   buyShieldScroll: () => { success: boolean; reason?: string };
 
-  // Pergaminhos
-  unlockTeachingCard: (cardId: string) => void;
-
   // Dias, sequência e desafio
+  /**
+   * Ponto ÚNICO de reconciliação: recalcula dias, escudos, sequência e desafio
+   * a partir dos dados atuais. Idempotente — pode ser chamado a qualquer momento.
+   */
+  reconcile: (options?: { silent?: boolean }) => void;
   refreshToday: (options?: { silent?: boolean }) => void;
   checkDayTransition: () => void;
   recalculateStreak: () => { currentStreak: number; bestStreak: number };
-  consumeWeeklyShield: () => boolean;
-  toggleDailyCheckIn: (dayNumber?: number) => { success: boolean; reason?: string; isChecked?: boolean; ryoEarned?: number };
+  /** Recalcula um dia passado depois de uma correção manual das missões. */
+  correctPastDay: (date: string) => void;
+  setCloudGate: (gate: 'open' | 'pending') => void;
+  /** Recebe o perfil já mesclado pela sincronização. */
+  applySyncedProfile: (profile: UserProfile) => void;
   startChallenge: (params?: { title?: string; targetDays?: number; startDate?: string; missions?: Mission[]; isEliteMode?: boolean }) => ProtocolChallengeCycle;
   startNewChallengeCycle: () => void;
   abandonChallenge: () => void;
@@ -259,7 +299,6 @@ interface UserStoreState {
   deleteHistoryCycle: (cycleId: string) => void;
   clearChallengeHistory: () => void;
   restoreArchivedCycle: (cycleId: string) => boolean;
-  reconcileChallengeFromMissions: () => void;
   dismissResetModal: () => void;
   dismissCompletionModal: () => void;
   openChallengeHistoryModal: () => void;
@@ -277,7 +316,9 @@ interface UserStoreState {
 export const useUserStore = create<UserStoreState>()(
   persist(
     (set, get) => {
-      const touch = (profile: UserProfile): UserProfile => ({ ...profile, updatedAt: new Date().toISOString() });
+      const stamp = () => new Date().toISOString();
+      const touch = (profile: UserProfile): UserProfile => ({ ...profile, updatedAt: stamp() });
+      const ledgerOf = (profile: UserProfile): LedgerState => ({ grants: profile.grants || {}, revoked: profile.revoked || {} });
 
       const shieldContext = (profile: UserProfile): ShieldContext => ({
         isEliteMode: profile.isHardModeEnabled,
@@ -285,130 +326,187 @@ export const useUserStore = create<UserStoreState>()(
         extraShieldWeeks: profile.extraShieldWeeks,
       });
 
-      /** Aplica variações de XP/Ryō e cuida de nível, patente e Ryō de promoção. */
-      const applyDelta = (xpDelta: number, ryoDelta: number, pillarId?: PillarId) => {
-        const { profile } = get();
-        const totalXp = Math.max(0, profile.totalXp + xpDelta);
-        const oldLevel = profile.level;
-        const newLevel = getLevelFromTotalXp(totalXp);
-        const oldRank = profile.currentRankId;
-        const newRank = getRankIdFromLevel(newLevel);
-
-        let levelRyo = 0;
-        if (newLevel > oldLevel) levelRyo = getLevelUpRyoBetween(oldLevel, newLevel);
-        else if (newLevel < oldLevel) levelRyo = -getLevelUpRyoBetween(newLevel, oldLevel);
-
-        const pillarXp = { ...profile.pillarXp };
-        if (pillarId) pillarXp[pillarId] = Math.max(0, (pillarXp[pillarId] || 0) + xpDelta);
+      /**
+       * Grava o livro-razão e recalcula TODOS os totais (XP, pilares, nível,
+       * patente, Ryō). É o único lugar onde esses números mudam.
+       */
+      const commitLedger = (ledger: LedgerState) => {
+        const before = get().profile;
+        const totals = deriveTotals(ledger.grants);
+        const leveledUp = totals.level > before.level;
 
         set((state) => ({
-          profile: touch({
-            ...state.profile,
-            totalXp,
-            level: newLevel,
-            currentRankId: newRank,
-            pillarXp,
-            ryo: Math.max(0, (state.profile.ryo || 0) + ryoDelta + levelRyo),
-          }),
-          activeLevelUpModal:
-            newLevel > oldLevel ? { oldLevel, newLevel, oldRank, newRank } : state.activeLevelUpModal,
+          profile: touch({ ...state.profile, grants: ledger.grants, revoked: ledger.revoked, ...totals }),
+          activeLevelUpModal: leveledUp
+            ? { oldLevel: before.level, newLevel: totals.level, oldRank: before.currentRankId, newRank: totals.currentRankId }
+            : state.activeLevelUpModal,
         }));
 
-        if (newLevel > oldLevel) {
-          if (newRank !== oldRank) soundFx.playRankUp();
+        if (leveledUp) {
+          if (totals.currentRankId !== before.currentRankId) soundFx.playRankUp();
           else soundFx.playLevelUp();
           triggerLevelUpConfetti();
         }
-        return { levelUp: newLevel > oldLevel };
       };
 
-      /** Encerra o ciclo ativo (falha ou conclusão) e abre o modal correspondente. */
-      const archiveCycle = (cycle: ProtocolChallengeCycle, outcome: 'failed' | 'completed') => {
-        if (outcome === 'completed') {
-          const target = getCycleTargetDays(cycle);
-          const reward = getChallengeCompletionReward(target);
-          const grant = get().grantReward({
-            key: `challenge:${cycle.id}`,
-            label: `Desafio concluído: ${cycle.title || `${target} dias`}`,
-            baseXp: reward.xp,
-            baseRyo: reward.ryo,
-            pillarId: 'chakra',
-            applyXpBuffs: false,
-            applyRyoBuffs: false,
-          });
-          const finished: ProtocolChallengeCycle = {
-            ...cycle,
-            rewardXp: grant?.xp ?? reward.xp,
-            rewardRyo: grant?.ryo ?? reward.ryo,
-          };
-          set((state) => ({
-            profile: touch({
-              ...state.profile,
-              activeChallenge: undefined,
-              currentProtocolDay: 0,
-              challengeHistory: [finished, ...(state.profile.challengeHistory || [])],
-            }),
-            activeCompletionModal: { cycle: finished },
-          }));
-          soundFx.playChallengeComplete();
-          triggerChallengeCompleteConfetti();
-        } else {
-          set((state) => ({
-            profile: touch({
-              ...state.profile,
-              activeChallenge: undefined,
-              currentProtocolDay: 0,
-              challengeHistory: [cycle, ...(state.profile.challengeHistory || [])],
-            }),
-            activeResetModal: { cycle },
-          }));
-          soundFx.playChallengeFailed();
+      /** Lança uma despesa de Ryō (compra). A chave garante que nunca é cobrada duas vezes. */
+      const spend = (key: string, label: string, price: number) => {
+        commitLedger(
+          addGrant(ledgerOf(get().profile), { key, date: getTodayString(), label, xp: 0, ryo: -Math.abs(price), createdAt: stamp() })
+        );
+      };
+
+      /** Aplica só o que realmente mudou — evita regravar (e ressincronizar) à toa. */
+      const patchProfile = (patch: Partial<UserProfile>) => {
+        const current = get().profile as unknown as Record<string, unknown>;
+        const changed: Record<string, unknown> = {};
+        Object.entries(patch).forEach(([key, value]) => {
+          if (current[key] === value) return;
+          if (typeof value === 'object' && value !== null && typeof current[key] === 'object' && current[key] !== null) {
+            if (stableStringify(current[key]) === stableStringify(value)) return;
+          }
+          changed[key] = value;
+        });
+        if (Object.keys(changed).length > 0) {
+          set((state) => ({ profile: { ...state.profile, ...(changed as Partial<UserProfile>) } }));
         }
       };
 
-      /** Reavalia o ciclo ativo com o histórico diário atual. */
-      const evaluateActiveCycle = (today: string) => {
-        const { profile } = get();
-        const cycle = profile.activeChallenge;
-        if (!cycle || cycle.status !== 'active') return;
-        const result = evaluateChallengeCycle(cycle, profile.dayLog, today);
-        if (result.outcome === 'active') {
-          set((state) => ({
-            profile: {
-              ...state.profile,
-              activeChallenge: result.cycle,
-              currentProtocolDay: result.cycle.currentDay,
-            },
-          }));
-        } else {
-          archiveCycle(result.cycle, result.outcome);
-        }
-      };
-
-      const recomputeDerived = (today: string) => {
-        const { profile } = get();
-        const ctx = shieldContext(profile);
-        const week = getWeekKey(today);
-        const capacity = getWeeklyShieldCapacity(ctx, week);
-        const used = countShieldsUsedInWeek(profile.shieldedDates, week);
-        const currentStreak = computeCurrentStreak(profile.dayLog, profile.shieldedDates, today);
-        const bestStreak = Math.max(profile.bestStreak || 0, currentStreak);
-        const completedDays = countCompletedDays(profile.dayLog);
-        const unlockedCards = getReconciledUnlockedCards(completedDays);
-        const newCards = unlockedCards.filter((id) => !profile.unlockedCards.includes(id));
-
+      /** Paga o bônus de conclusão (uma única vez) e abre o modal de vitória. */
+      const celebrateCompletion = (cycle: ProtocolChallengeCycle) => {
+        const target = getCycleTargetDays(cycle);
+        const reward = getChallengeCompletionReward(target);
+        const key = `challenge:${cycle.id}`;
+        get().grantReward({
+          key,
+          label: `Desafio concluído: ${cycle.title || `${target} dias`}`,
+          baseXp: reward.xp,
+          baseRyo: reward.ryo,
+          pillarId: 'chakra',
+          applyXpBuffs: false,
+          applyRyoBuffs: false,
+        });
+        const paid = get().profile.grants[key];
+        const finished: ProtocolChallengeCycle = { ...cycle, rewardXp: paid?.xp ?? reward.xp, rewardRyo: paid?.ryo ?? reward.ryo };
         set((state) => ({
           profile: {
             ...state.profile,
-            currentStreak,
-            bestStreak,
-            weeklyShieldsMax: capacity,
-            weeklyShieldsRemaining: Math.max(0, capacity - used),
-            unlockedCards,
+            challengeHistory: (state.profile.challengeHistory || []).map((c) => (c.id === cycle.id ? finished : c)),
           },
+          activeCompletionModal: { cycle: finished },
         }));
+        soundFx.playChallengeComplete();
+        triggerChallengeCompleteConfetti();
+      };
 
-        if (newCards.length > 0 && profile.unlockedCards.length > 0) {
+      const reconcile = (options?: { silent?: boolean }) => {
+        const today = getTodayString();
+        const missions = useHabitStore.getState().missions;
+        const before = get().profile;
+        const settlePast = get().cloudGate !== 'pending';
+
+        const result = reconcileProgression(
+          {
+            dayLog: before.dayLog,
+            shieldedDates: before.shieldedDates,
+            shieldsThrough: before.shieldsThrough,
+            activeChallenge: before.activeChallenge,
+            challengeHistory: before.challengeHistory || [],
+            bestStreak: before.bestStreak,
+          },
+          { today, missions, shield: shieldContext(before), settlePast }
+        );
+
+        const unlockedCards = getReconciledUnlockedCards(result.completedDays);
+        const patch: Partial<UserProfile> = {
+          dayLog: result.dayLog,
+          shieldedDates: result.shieldedDates,
+          shieldsThrough: result.shieldsThrough,
+          activeChallenge: result.activeChallenge,
+          challengeHistory: result.challengeHistory,
+          currentProtocolDay: result.activeChallenge?.currentDay || 0,
+          currentStreak: result.currentStreak,
+          bestStreak: result.bestStreak,
+          weeklyShieldsMax: result.weeklyShieldsMax,
+          weeklyShieldsRemaining: result.weeklyShieldsRemaining,
+          unlockedCards,
+        };
+
+        // Faxina, uma vez por dia: resume lançamentos antigos e esquece lápides vencidas
+        if (settlePast && before.lastActiveDate !== today) {
+          patch.lastActiveDate = today;
+          patch.grants = compactLedger(before.grants, addDaysToDateString(today, -LEDGER_COMPACT_AFTER_DAYS));
+          patch.revoked = pruneTombstones(before.revoked, today);
+          patch.deletedMissions = pruneTombstones(before.deletedMissions, today);
+          patch.deletedCycles = pruneTombstones(before.deletedCycles, today);
+          patch.soldierPillDates = before.soldierPillDates.filter((d) => d >= addDaysToDateString(today, -30));
+        }
+        patchProfile(patch);
+
+        // ── Reações aos eventos (som, avisos, modais) ──
+        result.events.forEach((event) => {
+          if (event.type === 'shields_used') {
+            soundFx.playShield();
+            get().pushToast({
+              kind: 'shield',
+              title: 'Escudo de Chakra ativado!',
+              message:
+                event.dates.length === 1
+                  ? 'Uma falta foi absorvida e sua sequência foi preservada.'
+                  : `${event.dates.length} faltas foram absorvidas e sua sequência foi preservada.`,
+            });
+          } else if (event.type === 'cycle_failed') {
+            set({ activeResetModal: { cycle: event.cycle } });
+            soundFx.playChallengeFailed();
+          } else if (event.type === 'cycle_completed') {
+            celebrateCompletion(event.cycle);
+          } else if (event.type === 'cycle_restored') {
+            set({ activeResetModal: null });
+            get().pushToast({
+              kind: 'success',
+              title: 'Desafio restaurado!',
+              message: 'Os registros atualizados mostram que o ciclo não deveria ter sido encerrado. Ele voltou de onde parou.',
+            });
+          }
+        });
+
+        // O aviso de "desafio interrompido" não pode sobreviver a um ciclo que voltou a valer
+        // (ex.: a sincronização trouxe o mesmo ciclo ainda ativo de outro aparelho)
+        const openReset = get().activeResetModal;
+        if (openReset && get().profile.activeChallenge?.id === openReset.cycle.id) {
+          set({ activeResetModal: null });
+        }
+
+        // ── Estipêndio do Dia Cumprido ──
+        const record = get().profile.dayLog[today];
+        const stipendKey = `checkin:${today}`;
+        const hasStipend = get().hasGrant(stipendKey);
+        if (record?.completed && !hasStipend) {
+          const after = get().profile;
+          const stipend = getDailyCheckInRyoBonus(after.currentStreak, after.level);
+          get().grantReward({
+            key: stipendKey,
+            label: 'Sequência de perseverança — estipêndio da vila',
+            baseXp: 0,
+            baseRyo: stipend,
+            applyRyoBuffs: false,
+          });
+          if (!options?.silent) {
+            soundFx.playDayComplete();
+            triggerDayCompleteConfetti();
+            get().pushToast({
+              kind: 'success',
+              title: 'Sequência de Perseverança Garantida! 🔥',
+              message: `Você atingiu 50% do XP diário e ganhou +1 dia na sequência. +${stipend} Ryō de estipêndio; sequência atual: ${after.currentStreak} ${after.currentStreak === 1 ? 'dia' : 'dias'}.`,
+            });
+          }
+        } else if (record && !record.completed && hasStipend) {
+          get().revokeReward(stipendKey);
+        }
+
+        // ── Novos pergaminhos ──
+        const newCards = unlockedCards.filter((id) => !before.unlockedCards.includes(id));
+        if (newCards.length > 0 && before.unlockedCards.length > 0 && !options?.silent) {
           const card = teachingCards.find((c) => c.id === newCards[newCards.length - 1]);
           if (card) {
             get().pushToast({
@@ -422,6 +520,7 @@ export const useUserStore = create<UserStoreState>()(
 
       return {
         profile: createDefaultProfile(),
+        cloudGate: 'open',
         activeLevelUpModal: null,
         activeResetModal: null,
         activeCompletionModal: null,
@@ -431,6 +530,7 @@ export const useUserStore = create<UserStoreState>()(
         toasts: [],
 
         updateProfile: (updates) => set((state) => ({ profile: touch({ ...state.profile, ...updates }) })),
+        touch: () => set((state) => ({ profile: touch(state.profile) })),
 
         resetProgress: () => {
           const current = get().profile;
@@ -448,6 +548,8 @@ export const useUserStore = create<UserStoreState>()(
               subscriptionStatus: current.subscriptionStatus,
               hasCompletedOnboarding: true,
               createdAt: current.createdAt,
+              // Marca o reset para que outros aparelhos também comecem do zero
+              resetEpoch: stamp(),
             }),
             activeLevelUpModal: null,
             activeResetModal: null,
@@ -488,7 +590,7 @@ export const useUserStore = create<UserStoreState>()(
           set((state) => ({
             profile: touch({ ...state.profile, isHardModeEnabled: !state.profile.isHardModeEnabled }),
           }));
-          get().recalculateStreak();
+          reconcile({ silent: true });
           return { success: true };
         },
 
@@ -549,47 +651,33 @@ export const useUserStore = create<UserStoreState>()(
             ryo: finalRyo,
             pillarId,
             damage: damage && damage.length ? damage : undefined,
-            createdAt: new Date().toISOString(),
+            createdAt: stamp(),
           };
 
-          set((state) => ({
-            profile: { ...state.profile, grants: { ...state.profile.grants, [grant.key]: grant } },
-          }));
-          applyDelta(finalXp, finalRyo, pillarId);
-          return grant;
+          commitLedger(addGrant(ledgerOf(get().profile), grant));
+          return get().profile.grants[grant.key] || grant;
         },
 
         revokeReward: (key) => {
           const grant = get().profile.grants?.[key];
           if (!grant) return null;
-          const grants = { ...get().profile.grants };
-          delete grants[key];
-          set((state) => ({ profile: { ...state.profile, grants } }));
+          commitLedger(removeGrant(ledgerOf(get().profile), key, stamp()));
 
           if (grant.damage?.length) {
-            const defeatedIds = useDuelStore.getState().revertStrike(grant.damage);
-            defeatedIds.forEach((bossId) => get().revokeReward(`boss:${bossId}`));
+            const revivedIds = useDuelStore.getState().revertStrike(grant.damage);
+            revivedIds.forEach((bossId) => get().revokeReward(`boss:${bossId}`));
           }
-          applyDelta(-grant.xp, -grant.ryo, grant.pillarId);
           return grant;
         },
 
-        addXp: (baseXp, pillarId) => {
-          const { profile } = get();
-          const { finalXp, bonusXp } = calculateXpGainWithBuffs(baseXp, pillarId, get().getEquippedItems(), {
-            isEliteMode: profile.isHardModeEnabled,
-            soldierPillActive: get().isSoldierPillActive(),
-          });
-          const { levelUp } = applyDelta(finalXp, 0, pillarId);
-          return { finalXp, bonusXp, levelUp };
+        forgetRewards: (keys) => {
+          if (keys.length === 0) return;
+          const at = stamp();
+          let ledger = ledgerOf(get().profile);
+          keys.forEach((key) => (ledger = removeGrant(ledger, key, at)));
+          commitLedger(ledger);
         },
 
-        adjustProgress: (xpDelta, ryoDelta, pillarId) => {
-          applyDelta(xpDelta, ryoDelta, pillarId);
-        },
-
-        addRyo: (amount) => applyDelta(0, Math.max(0, amount)),
-        removeRyo: (amount) => applyDelta(0, -Math.max(0, amount)),
         closeLevelUpModal: () => set({ activeLevelUpModal: null }),
 
         // ── Equipamentos ──────────────────────────────────────
@@ -605,7 +693,7 @@ export const useUserStore = create<UserStoreState>()(
           if (!item || !profile.inventory.includes(itemId) || profile.equippedItems.includes(itemId)) return;
           const others = profile.equippedItems.filter((id) => allGameItems[id] && allGameItems[id].type !== item.type);
           set((state) => ({ profile: touch({ ...state.profile, equippedItems: [...others, itemId] }) }));
-          get().recalculateStreak();
+          reconcile({ silent: true });
         },
 
         unequipItem: (itemId) => {
@@ -615,7 +703,7 @@ export const useUserStore = create<UserStoreState>()(
               equippedItems: state.profile.equippedItems.filter((id) => id !== itemId),
             }),
           }));
-          get().recalculateStreak();
+          reconcile({ silent: true });
         },
 
         syncInventory: () => {
@@ -623,10 +711,8 @@ export const useUserStore = create<UserStoreState>()(
           const inventory = useDuelStore.getState().getDerivedInventory(profile.purchasedItems);
           const equippedItems = profile.equippedItems.filter((id) => inventory.includes(id));
           const bossesDefeated = useDuelStore.getState().adversaries.filter((a) => a.isDefeated).length;
-          set((state) => ({ profile: { ...state.profile, inventory, equippedItems, bossesDefeated } }));
+          patchProfile({ inventory, equippedItems, bossesDefeated });
         },
-
-        addItemToInventory: () => get().syncInventory(),
 
         // ── Loja ──────────────────────────────────────────────
         buyItem: (itemId) => {
@@ -637,12 +723,9 @@ export const useUserStore = create<UserStoreState>()(
           if (profile.ryo < item.shopPrice) {
             return { success: false, reason: `Faltam ${item.shopPrice - profile.ryo} Ryō para comprar.` };
           }
+          spend(`shop:item:${itemId}`, `Compra: ${item.name}`, item.shopPrice);
           set((state) => ({
-            profile: touch({
-              ...state.profile,
-              ryo: state.profile.ryo - item.shopPrice!,
-              purchasedItems: [...state.profile.purchasedItems, itemId],
-            }),
+            profile: touch({ ...state.profile, purchasedItems: [...state.profile.purchasedItems, itemId] }),
           }));
           get().syncInventory();
           soundFx.playPurchase();
@@ -656,12 +739,9 @@ export const useUserStore = create<UserStoreState>()(
           if (profile.ryo < SOLDIER_PILL_PRICE) {
             return { success: false, reason: `Faltam ${SOLDIER_PILL_PRICE - profile.ryo} Ryō.` };
           }
+          spend(`shop:pill:${today}`, 'Compra: Pílula de Soldado', SOLDIER_PILL_PRICE);
           set((state) => ({
-            profile: touch({
-              ...state.profile,
-              ryo: state.profile.ryo - SOLDIER_PILL_PRICE,
-              soldierPillDates: [...state.profile.soldierPillDates.filter((d) => d >= addDaysToDateString(today, -30)), today],
-            }),
+            profile: touch({ ...state.profile, soldierPillDates: [...state.profile.soldierPillDates, today] }),
           }));
           soundFx.playPurchase();
           return { success: true };
@@ -675,127 +755,50 @@ export const useUserStore = create<UserStoreState>()(
           if (profile.ryo < SHIELD_SCROLL_PRICE) {
             return { success: false, reason: `Faltam ${SHIELD_SCROLL_PRICE - profile.ryo} Ryō.` };
           }
+          spend(`shop:shield:${week}`, 'Compra: Pergaminho de Proteção', SHIELD_SCROLL_PRICE);
           set((state) => ({
-            profile: touch({
-              ...state.profile,
-              ryo: state.profile.ryo - SHIELD_SCROLL_PRICE,
-              extraShieldWeeks: [...state.profile.extraShieldWeeks.slice(-12), week],
-            }),
+            profile: touch({ ...state.profile, extraShieldWeeks: [...state.profile.extraShieldWeeks.slice(-12), week] }),
           }));
-          get().recalculateStreak();
+          reconcile({ silent: true });
           soundFx.playShield();
           return { success: true };
         },
 
-        unlockTeachingCard: () => get().recalculateStreak(),
-
         // ── Dia, sequência e desafio ──────────────────────────
-        refreshToday: (options) => {
-          const today = getTodayString();
-          const missions = useHabitStore.getState().missions;
-          const { profile } = get();
-          const previous = profile.dayLog[today];
-          const record = buildDayRecord(missions, today, false, previous);
-
-          set((state) => ({ profile: { ...state.profile, dayLog: { ...state.profile.dayLog, [today]: record } } }));
-          recomputeDerived(today);
-
-          const key = `checkin:${today}`;
-          const hasStipend = get().hasGrant(key);
-          if (record.completed && !hasStipend) {
-            const after = get().profile;
-            const stipend = getDailyCheckInRyoBonus(after.currentStreak, after.level);
-            get().grantReward({
-              key,
-              label: 'Sequência de perseverança — estipêndio da vila',
-              baseXp: 0,
-              baseRyo: stipend,
-              applyRyoBuffs: false,
-            });
-            if (!options?.silent) {
-              soundFx.playDayComplete();
-              triggerDayCompleteConfetti();
-              get().pushToast({
-                kind: 'success',
-                title: 'Sequência de Perseverança Garantida! 🔥',
-                message: `Você atingiu 50% do XP diário e ganhou +1 dia na sequência. +${stipend} Ryō de estipêndio; sequência atual: ${after.currentStreak} ${after.currentStreak === 1 ? 'dia' : 'dias'}.`,
-              });
-            }
-          } else if (!record.completed && hasStipend) {
-            get().revokeReward(key);
-          }
-
-          evaluateActiveCycle(today);
-        },
+        reconcile,
+        refreshToday: (options) => reconcile(options),
 
         checkDayTransition: () => {
-          const today = getTodayString();
-          const { profile } = get();
-          if (profile.lastActiveDate === today) {
-            get().refreshToday({ silent: true });
-            return;
-          }
-
           useHabitStore.getState().resetDailyMissionsIfNewDay();
-          const missions = useHabitStore.getState().missions;
-
-          const { dayLog, closedDates } = closePastDays(profile.dayLog, missions, profile.lastActiveDate, today);
-          const shields = applyShieldsToClosedDays(dayLog, profile.shieldedDates, closedDates, shieldContext(profile));
-
-          // Livro-razão persistente: um desafio pode ser excluído semanas depois
-          // e todas as suas recompensas ainda precisam ser estornáveis.
-          const grants: Record<string, RewardGrant> = { ...(profile.grants || {}) };
-
-          set((state) => ({
-            profile: touch({
-              ...state.profile,
-              dayLog,
-              shieldedDates: shields.shieldedDates,
-              grants,
-              lastActiveDate: today,
-            }),
-          }));
-
-          if (shields.newlyShielded.length > 0) {
-            soundFx.playShield();
-            get().pushToast({
-              kind: 'shield',
-              title: 'Escudo de Chakra ativado!',
-              message:
-                shields.newlyShielded.length === 1
-                  ? 'Uma falta foi absorvida e sua sequência foi preservada.'
-                  : `${shields.newlyShielded.length} faltas foram absorvidas e sua sequência foi preservada.`,
-            });
-          }
-
           useChallengeStore.getState().autoCompleteExpiredChallenges();
-          get().refreshToday({ silent: true });
+          reconcile({ silent: true });
         },
 
         recalculateStreak: () => {
-          recomputeDerived(getTodayString());
+          reconcile({ silent: true });
           const { currentStreak, bestStreak } = get().profile;
           return { currentStreak, bestStreak };
         },
 
-        consumeWeeklyShield: () => false,
-
-        /**
-         * A presença agora é automática: o dia é marcado quando você atinge a meta mínima.
-         * Mantido para compatibilidade — apenas informa o status atual.
-         */
-        toggleDailyCheckIn: () => {
+        correctPastDay: (date) => {
+          const today = getTodayString();
+          if (!isValidDateString(date) || date >= today) return;
           const missions = useHabitStore.getState().missions;
-          const record = buildDayRecord(missions, getTodayString(), false);
-          if (record.completed) {
-            return { success: true, isChecked: true };
-          }
-          const target = Math.ceil(record.xpTarget * 0.5);
-          return {
-            success: false,
-            isChecked: false,
-            reason: `A presença é confirmada automaticamente ao atingir 50% do XP do dia (${record.xpEarned}/${target} XP).`,
-          };
+          const record: DayRecord = recomputeDay(get().profile.dayLog[date], missions, date, stamp());
+          set((state) => ({ profile: touch({ ...state.profile, dayLog: { ...state.profile.dayLog, [date]: record } }) }));
+          reconcile({ silent: true });
+        },
+
+        setCloudGate: (gate) => {
+          if (get().cloudGate === gate) return;
+          set({ cloudGate: gate });
+          if (gate === 'open') get().checkDayTransition();
+        },
+
+        applySyncedProfile: (profile) => {
+          set({ profile });
+          get().syncInventory();
+          get().checkDayTransition();
         },
 
         startChallenge: (params) => {
@@ -818,13 +821,14 @@ export const useUserStore = create<UserStoreState>()(
             targetDays,
             isEliteMode,
             startDate,
+            createdOn: today,
             graceBefore: startDate < today ? today : undefined,
             status: 'active',
             currentDay: startDate === today ? 1 : 0,
             daysCompleted: 0,
             checkIns: {},
             totalXpEarned: 0,
-            createdAt: new Date().toISOString(),
+            createdAt: stamp(),
           };
 
           if (params?.missions && params.missions.length > 0) {
@@ -845,7 +849,7 @@ export const useUserStore = create<UserStoreState>()(
 
           soundFx.playChallengeStart();
           triggerLevelUpConfetti();
-          get().refreshToday({ silent: true });
+          reconcile({ silent: true });
           return get().profile.activeChallenge || cycle;
         },
 
@@ -853,12 +857,12 @@ export const useUserStore = create<UserStoreState>()(
           const { profile } = get();
           const cycle = profile.activeChallenge;
           if (!cycle || cycle.status !== 'active') return;
-          const today = getTodayString();
           const archived: ProtocolChallengeCycle = {
             ...cycle,
             status: 'failed',
-            endDate: today,
-            failedReason: 'Encerrado pelo próprio shinobi',
+            endedBy: 'user',
+            endDate: getTodayString(),
+            failedReason: ABANDONED_REASON,
           };
           set((state) => ({
             profile: touch({
@@ -873,35 +877,42 @@ export const useUserStore = create<UserStoreState>()(
         deleteActiveChallenge: () => {
           const cycle = get().profile.activeChallenge;
           if (cycle) {
+            const from = cycle.startDate;
+            const at = stamp();
+
+            // 1. Estorna tudo o que foi ganho desde o início do ciclo (compras não são reembolsadas)
             Object.values(get().profile.grants || {})
-              .filter((grant) => grant.date >= cycle.startDate)
+              .filter((grant) => grant.date >= from && grant.key !== LEGACY_BASE_KEY && !grant.key.startsWith('shop:'))
               .forEach((grant) => get().revokeReward(grant.key));
-            // O desafio oficial usa as missões diárias como atividades do ciclo.
-            // Ao apagá-lo, remove também essas marcações e os dias consolidados,
-            // evitando que uma reabertura/reload recrie XP ou Ryō automaticamente.
+
+            // 2. O desafio oficial usa as missões diárias: remove as marcações do período
+            //    e deixa lápides para que outros aparelhos também as removam.
             const today = getTodayString();
+            const erased: string[] = [];
             useHabitStore.setState((state) => ({
               missions: state.missions.map((mission) => {
-                const completedDates = (mission.completedDates || []).filter((date) => date < cycle.startDate);
+                (mission.completedDates || []).forEach((date) => date >= from && erased.push(`mission:${mission.id}:${date}`));
+                const completedDates = (mission.completedDates || []).filter((date) => date < from);
                 return { ...mission, completedDates, isCompletedToday: completedDates.includes(today) };
               }),
             }));
+            get().forgetRewards(erased);
+
+            // 3. Apaga os dias consolidados do período
+            set((state) => ({
+              profile: touch({
+                ...state.profile,
+                activeChallenge: undefined,
+                currentProtocolDay: 0,
+                dayLog: Object.fromEntries(Object.entries(state.profile.dayLog).filter(([date]) => date < from)),
+                shieldedDates: state.profile.shieldedDates.filter((date) => date < from),
+                dayWipe: { from, at },
+                deletedCycles: { ...state.profile.deletedCycles, [cycle.id]: at },
+              }),
+            }));
           }
-          set((state) => ({
-            profile: touch({
-              ...state.profile,
-              activeChallenge: undefined,
-              currentProtocolDay: 0,
-              dayLog: cycle
-                ? Object.fromEntries(Object.entries(state.profile.dayLog).filter(([date]) => date < cycle.startDate))
-                : state.profile.dayLog,
-              shieldedDates: cycle
-                ? state.profile.shieldedDates.filter((date) => date < cycle.startDate)
-                : state.profile.shieldedDates,
-            }),
-            activeResetModal: null,
-            activeCompletionModal: null,
-          }));
+          set({ activeResetModal: null, activeCompletionModal: null });
+          reconcile({ silent: true });
         },
 
         updateActiveChallenge: (updates) => {
@@ -922,25 +933,30 @@ export const useUserStore = create<UserStoreState>()(
               isHardModeEnabled: updatedCycle.isEliteMode ?? state.profile.isHardModeEnabled,
             }),
           }));
-          get().refreshToday({ silent: true });
+          reconcile({ silent: true });
         },
 
         deleteHistoryCycle: (cycleId) => {
           get().revokeReward(`challenge:${cycleId}`);
+          const at = stamp();
           set((state) => ({
             profile: touch({
               ...state.profile,
               challengeHistory: (state.profile.challengeHistory || []).filter((c) => c.id !== cycleId),
+              deletedCycles: { ...state.profile.deletedCycles, [cycleId]: at },
             }),
           }));
         },
 
         clearChallengeHistory: () => {
-          (get().profile.challengeHistory || []).forEach((cycle) => get().revokeReward(`challenge:${cycle.id}`));
+          const history = get().profile.challengeHistory || [];
+          history.forEach((cycle) => get().revokeReward(`challenge:${cycle.id}`));
+          const at = stamp();
           set((state) => ({
             profile: touch({
               ...state.profile,
               challengeHistory: [],
+              deletedCycles: { ...state.profile.deletedCycles, ...Object.fromEntries(history.map((c) => [c.id, at])) },
             }),
           }));
         },
@@ -957,14 +973,7 @@ export const useUserStore = create<UserStoreState>()(
           const target = history.find((c) => c.id === cycleId);
           if (!target || target.status !== 'failed') return false;
 
-          const candidate: ProtocolChallengeCycle = {
-            ...target,
-            status: 'active',
-            endDate: undefined,
-            failedReason: undefined,
-            failedWeek: undefined,
-          };
-          const result = evaluateChallengeCycle(candidate, profile.dayLog, getTodayString());
+          const result = evaluateChallengeCycle(asActiveCandidate(target), profile.dayLog, getTodayString());
           if (result.outcome === 'failed') return false;
 
           set((state) => ({
@@ -976,11 +985,9 @@ export const useUserStore = create<UserStoreState>()(
             }),
             activeResetModal: null,
           }));
-          get().refreshToday({ silent: true });
+          reconcile({ silent: true });
           return true;
         },
-
-        reconcileChallengeFromMissions: () => get().refreshToday({ silent: true }),
 
         dismissResetModal: () => set({ activeResetModal: null }),
         dismissCompletionModal: () => set({ activeCompletionModal: null }),
@@ -1001,7 +1008,7 @@ export const useUserStore = create<UserStoreState>()(
     },
     {
       name: 'shinobi_user_store_v1',
-      version: 2,
+      version: 3,
       partialize: (state) => ({ profile: state.profile }) as unknown as UserStoreState,
       migrate: (persisted, version) => {
         const state = (persisted || {}) as { profile?: Partial<UserProfile> };
@@ -1017,7 +1024,7 @@ export const useUserStore = create<UserStoreState>()(
         const state = (persisted || {}) as { profile?: Partial<UserProfile> };
         return {
           ...current,
-          profile: migrateProfile({ ...createDefaultProfile(), ...(state.profile || {}) }, readPersistedMissions()),
+          profile: migrateProfile(state.profile, readPersistedMissions()),
         };
       },
       onRehydrateStorage: () => (state) => {
