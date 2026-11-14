@@ -68,8 +68,8 @@ export const AddMissionModal: React.FC<AddMissionModalProps> = ({
   const pillarsList: PillarId[] = ['taijutsu', 'ninjutsu', 'chakra', 'espirito', 'genjutsu'];
 
   return (
-    <div className="modal-overlay z-[100] bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-slate-900 border-2 border-slate-700/90 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col modal-panel my-auto relative z-[101]">
+    <div className="modal-overlay z-[100] bg-black/85 animate-in fade-in duration-200">
+      <div className="bg-slate-900 border border-slate-700/90 w-full max-w-lg rounded-2xl overflow-hidden flex flex-col modal-panel my-auto relative z-[101]">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-shinobi-border bg-shinobi-bg/60">
           <div className="flex items-center gap-2">
@@ -133,7 +133,7 @@ export const AddMissionModal: React.FC<AddMissionModalProps> = ({
                     onClick={() => setPillarId(pId)}
                     className={`p-2 rounded-xl border text-xs flex items-center gap-1.5 transition-all text-left ${
                       isSelected
-                        ? 'border-opacity-100 bg-slate-950 shadow-md font-bold'
+                        ? 'border-opacity-100 bg-slate-950 font-bold'
                         : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:text-slate-200'
                     }`}
                     style={{
@@ -179,7 +179,7 @@ export const AddMissionModal: React.FC<AddMissionModalProps> = ({
                     onClick={() => setRank(r)}
                     className={`py-2 rounded-xl text-xs font-mono font-bold border transition-all ${
                       isSelected
-                        ? 'border-opacity-100 bg-slate-950 shadow-md scale-105'
+                        ? 'border-opacity-100 bg-slate-950 scale-105'
                         : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:text-slate-200'
                     }`}
                     style={{
@@ -212,7 +212,7 @@ export const AddMissionModal: React.FC<AddMissionModalProps> = ({
                   onClick={() => setTimeOfDay(t.id as TimeOfDay)}
                   className={`py-2 px-1 rounded-xl text-xs flex flex-col sm:flex-row items-center justify-center gap-1 border transition-all ${
                     timeOfDay === t.id
-                      ? 'border-shinobi-gold bg-slate-950 text-shinobi-gold font-bold shadow-md'
+                      ? 'border-shinobi-gold bg-slate-950 text-shinobi-gold font-bold '
                       : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:text-slate-200'
                   }`}
                 >
@@ -236,7 +236,7 @@ export const AddMissionModal: React.FC<AddMissionModalProps> = ({
           <button
             type="button"
             onClick={handleSubmit}
-            className="px-5 py-2.5 bg-gradient-to-r from-shinobi-crimson to-rose-600 text-white text-xs font-bold rounded-xl shadow-glow-crimson hover:opacity-95 transition-all flex items-center gap-1.5"
+            className="px-5 py-2.5 bg-shinobi-crimson text-onaccent text-xs font-bold rounded-xl hover:opacity-95 transition-all flex items-center gap-1.5"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>{initialData ? 'Salvar Alterações' : 'Gravar no Pergaminho'}</span>

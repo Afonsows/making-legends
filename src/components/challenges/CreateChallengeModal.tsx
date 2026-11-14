@@ -35,18 +35,18 @@ export const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({
   const { createChallenge } = useChallengeStore();
 
   const suggestions: DurationSuggestion[] = [
-    { days: 21, label: 'Hábito Básico', color: 'from-blue-600/30 to-blue-900/30 border-blue-500/50' },
-    { days: 40, label: 'Transformação', color: 'from-purple-600/30 to-purple-900/30 border-purple-500/50' },
+    { days: 21, label: 'Hábito Básico', color: 'bg-blue-600/30 border-blue-500/50' },
+    { days: 40, label: 'Transformação', color: 'bg-purple-600/30 border-purple-500/50' },
     { 
       days: 66, 
       label: 'Formação de Hábito', 
       badge: '⭐ MAIS POPULAR', 
       isPopular: true, 
-      color: 'from-amber-500/30 via-shinobi-gold/30 to-amber-700/30 border-shinobi-gold' 
+      color: 'bg-amber-500/30 border-shinobi-gold' 
     },
-    { days: 90, label: 'Trimestre Épico', color: 'from-cyan-600/30 to-cyan-900/30 border-cyan-500/50' },
-    { days: 365, label: 'Ano Lendário', color: 'from-emerald-600/30 to-emerald-900/30 border-emerald-500/50' },
-    { days: 1000, label: 'Mestria Absoluta', color: 'from-rose-600/30 to-rose-900/30 border-rose-500/50' },
+    { days: 90, label: 'Trimestre Épico', color: 'bg-cyan-600/30 border-cyan-500/50' },
+    { days: 365, label: 'Ano Lendário', color: 'bg-emerald-600/30 border-emerald-500/50' },
+    { days: 1000, label: 'Mestria Absoluta', color: 'bg-rose-600/30 border-rose-500/50' },
   ];
 
   const [title, setTitle] = useState('');
@@ -144,14 +144,14 @@ export const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({
   };
 
   return (
-    <div className="modal-overlay z-[100] bg-slate-950/40 backdrop-blur-xl animate-in fade-in duration-300">
-      <div className="liquid-glass-card bg-slate-900/45 backdrop-blur-2xl border border-white/20 w-full max-w-2xl rounded-3xl overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7),inset_0_1px_2px_rgba(255,255,255,0.35)] flex flex-col modal-panel my-auto relative z-[101]">
+    <div className="modal-overlay z-[100] bg-slate-950/40 animate-in fade-in duration-300">
+      <div className="liquid-glass-card bg-slate-900/45 border border-white/20 w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col modal-panel my-auto relative z-[101]">
         {/* Sheen superior */}
-        <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/60 via-shinobi-gold/50 to-transparent pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.06] via-transparent to-black/30 pointer-events-none" />
+        <div className="absolute top-0 inset-x-0 h-[1.5px] bg-transparent pointer-events-none" />
+        <div className="hidden" />
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-white/10 bg-white/[0.02] backdrop-blur-xl relative z-10">
+        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-white/10 bg-white/[0.02] relative z-10">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-shinobi-gold/20 border border-shinobi-gold/40 flex items-center justify-center text-shinobi-gold">
               <Target className="w-5 h-5" />
@@ -237,13 +237,13 @@ export const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({
                     onClick={() => handleSelectSuggestion(sug.days)}
                     className={`p-3 rounded-2xl border text-left transition-all relative overflow-hidden flex flex-col justify-between min-h-[74px] select-none active:scale-[0.98] ${
                       isSelected
-                        ? 'bg-gradient-to-br from-amber-500/25 via-shinobi-gold/20 to-slate-900 border-2 border-shinobi-gold text-slate-100 shadow-glow-gold/40 scale-[1.02]'
+                        ? ' bg-amber-500/25 border border-shinobi-gold text-slate-100 scale-[1.02]'
                         : `bg-slate-950/70 border-slate-800 hover:border-slate-600 text-slate-300 hover:bg-slate-900`
                     }`}
                   >
                     {/* Badge do 66 Dias: Mais Popular */}
                     {sug.badge && (
-                      <span className="absolute top-1.5 right-1.5 bg-gradient-to-r from-amber-500 to-shinobi-gold text-slate-950 text-[9px] font-extrabold px-2 py-0.5 rounded-full shadow-md animate-pulse">
+                      <span className="absolute top-1.5 right-1.5 bg-amber-500 text-slate-950 text-[9px] font-extrabold px-2 py-0.5 rounded-full ">
                         {sug.badge}
                       </span>
                     )}
@@ -288,7 +288,7 @@ export const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({
                     setIsCustomMode(true);
                     handleCustomDaysChange(e.target.value);
                   }}
-                  className="w-32 bg-slate-900 border-2 border-slate-700 rounded-xl px-3 py-2 text-sm font-mono font-bold text-shinobi-gold focus:outline-none focus:border-shinobi-gold transition-colors"
+                  className="w-32 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm font-mono font-bold text-shinobi-gold focus:outline-none focus:border-shinobi-gold transition-colors"
                 />
                 <span className="text-xs text-slate-400">
                   dias corridos de acompanhamento
@@ -367,7 +367,7 @@ export const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({
           </div>
 
           {/* Footer com Ações */}
-          <div className="p-4 sm:p-5 border-t border-white/10 bg-white/[0.02] backdrop-blur-xl -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 flex items-center justify-between gap-3">
+          <div className="p-4 sm:p-5 border-t border-white/10 bg-white/[0.02] -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 flex items-center justify-between gap-3">
             <button
               type="button"
               onClick={onClose}
@@ -378,7 +378,7 @@ export const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({
 
             <button
               type="submit"
-              className="px-6 py-2.5 bg-gradient-to-r from-shinobi-gold to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-glow-gold transition-all flex items-center gap-1.5"
+              className="px-6 py-2.5 bg-shinobi-gold text-slate-950 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5"
             >
               <Sparkles className="w-4 h-4 text-slate-950" />
               <span>Iniciar Desafio ({targetDays} Dias)</span>

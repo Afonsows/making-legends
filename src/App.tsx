@@ -5,7 +5,8 @@ import { useHabitStore } from './state/useHabitStore';
 import { supabase } from './services/supabase';
 import { syncService } from './services/syncService';
 import { Navbar } from './components/layout/Navbar';
-import { BottomNav, TabType } from './components/layout/BottomNav';
+import { BottomNav } from './components/layout/BottomNav';
+import { SettingsSheet } from './components/layout/SettingsSheet';
 import { MissionsView } from './components/missions/MissionsView';
 import { ChallengesView } from './components/challenges/ChallengesView';
 import { StatusWindow } from './components/status/StatusWindow';
@@ -16,23 +17,36 @@ import { LevelUpModal } from './components/modals/LevelUpModal';
 import { BossVictoryModal } from './components/modals/BossVictoryModal';
 import { ChallengeResetModal } from './components/modals/ChallengeResetModal';
 import { ChallengeCompletionModal } from './components/modals/ChallengeCompletionModal';
+import { ChallengeMapModal } from './components/modals/ChallengeMapModal';
+import { ChallengeHistoryModal } from './components/modals/ChallengeHistoryModal';
 import { StartChallengeModal } from './components/challenges/StartChallengeModal';
 import { IosInstallModal } from './components/pwa/IosInstallModal';
 import { NotificationSettingsModal } from './components/pwa/NotificationSettingsModal';
 import { AuthModal } from './components/auth/AuthModal';
-import { ShinobiBackground } from './components/ui/ShinobiBackground';
 
 import { ToastHost } from './components/ui/ToastHost';
+import { useApplyTheme } from './components/ui/kit';
+import { useUIStore } from './state/useUIStore';
 import { useChallengeStore } from './state/useChallengeStore';
 import { soundFx } from './utils/audio';
 import { initReminderScheduler } from './utils/reminders';
 import { initDailyResetEngine } from './core/dailyResetEngine';
 
 export const AppContent: React.FC = () => {
-  const { profile, isStartChallengeModalOpen, closeStartChallengeModal } = useUserStore();
+  const {
+    profile,
+    isStartChallengeModalOpen,
+    closeStartChallengeModal,
+    isChallengeMapModalOpen,
+    closeChallengeMapModal,
+    isChallengeHistoryModalOpen,
+    closeChallengeHistoryModal,
+  } = useUserStore();
   const { missions } = useHabitStore();
 
-  const [activeTab, setActiveTab] = useState<TabType>('missions');
+  const activeTab = useUIStore((s) => s.activeTab);
+  const setActiveTab = useUIStore((s) => s.setActiveTab);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isIosModalOpen, setIsIosModalOpen] = useState(false);
   const [isNotifModalOpen, setIsNotifModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -122,23 +136,20 @@ export const AppContent: React.FC = () => {
   const pendingMissionsCount = missions.filter((m) => !m.isCompletedToday).length;
 
   return (
-    <div className="app-shell bg-shinobi-bg text-slate-100 flex flex-col selection:bg-shinobi-crimson selection:text-white relative">
-      {/* Ambientação Shinobi Animada */}
-      <ShinobiBackground opacity={0.5} />
-
+    <div className="app-shell flex flex-col relative">
       {/* Faixa opaca sob a barra de status do aparelho */}
       <div className="safe-top-scrim" aria-hidden="true" />
 
-      {/* Navbar Superior com Nível, Rank, Streak, Escudo e Status Nuvem */}
+      {/* Cabeçalho: título da tela, sequência, ajustes e avatar */}
       <Navbar
-        onOpenNotifications={() => setIsNotifModalOpen(true)}
+        activeTab={activeTab}
         onOpenStatus={() => setActiveTab('status')}
-        onOpenAuth={() => setIsAuthModalOpen(true)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
         isCloudSynced={!!currentUser}
       />
 
       {/* Conteúdo Principal da Aba Selecionada */}
-      <main className="flex-1 w-full max-w-4xl mx-auto relative">
+      <main className="flex-1 w-full max-w-2xl mx-auto relative">
         {activeTab === 'missions' && (
           <MissionsView onOpenCard={() => setActiveTab('cards')} />
         )}
@@ -155,6 +166,15 @@ export const AppContent: React.FC = () => {
         pendingMissionsCount={pendingMissionsCount}
       />
 
+      <SettingsSheet
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        onOpenNotifications={() => setIsNotifModalOpen(true)}
+        onOpenAuth={() => setIsAuthModalOpen(true)}
+        isCloudSynced={!!currentUser}
+        accountEmail={currentUser?.email}
+      />
+
       {/* Avisos de jogo */}
       <ToastHost />
 
@@ -167,6 +187,9 @@ export const AppContent: React.FC = () => {
         isOpen={isStartChallengeModalOpen}
         onClose={closeStartChallengeModal}
       />
+      {/* Mapa e histórico de ciclos: abertos a partir de qualquer aba */}
+      <ChallengeMapModal isOpen={isChallengeMapModalOpen} onClose={closeChallengeMapModal} />
+      <ChallengeHistoryModal isOpen={isChallengeHistoryModalOpen} onClose={closeChallengeHistoryModal} />
       <IosInstallModal
         isOpen={isIosModalOpen}
         onClose={() => setIsIosModalOpen(false)}
@@ -187,6 +210,7 @@ export const AppContent: React.FC = () => {
 };
 
 export const App: React.FC = () => {
+  useApplyTheme();
   return (
     <ThemeProvider>
       <AppContent />

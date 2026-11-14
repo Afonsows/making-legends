@@ -31,8 +31,8 @@ export const ChallengeMapModal: React.FC<ChallengeMapModalProps> = ({ isOpen, on
 
   if (!activeChallenge) {
     return (
-      <div className="modal-overlay z-[100] bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-        <div className="bg-slate-900 border-2 border-shinobi-gold/60 w-full max-w-md rounded-3xl p-6 shadow-2xl text-center space-y-4">
+      <div className="modal-overlay z-[100] bg-black/85 animate-in fade-in duration-200">
+        <div className="bg-slate-900 border border-shinobi-gold/60 w-full max-w-md rounded-2xl p-6 text-center space-y-4">
           <div className="w-12 h-12 mx-auto rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
             <Map className="w-6 h-6" />
           </div>
@@ -54,7 +54,7 @@ export const ChallengeMapModal: React.FC<ChallengeMapModalProps> = ({ isOpen, on
                 onClose();
                 useUserStore.getState().openStartChallengeModal();
               }}
-              className="px-5 py-2 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 text-xs font-bold rounded-xl shadow-glow-gold transition-all"
+              className="px-5 py-2 bg-amber-500 text-slate-950 text-xs font-bold rounded-xl transition-all"
             >
               Iniciar Desafio ⚡
             </button>
@@ -75,8 +75,8 @@ export const ChallengeMapModal: React.FC<ChallengeMapModalProps> = ({ isOpen, on
   ];
 
   return (
-    <div className="modal-overlay z-[100] bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-slate-900 border-2 border-shinobi-gold/60 w-full max-w-3xl rounded-3xl overflow-hidden shadow-2xl flex flex-col modal-panel my-auto relative z-[101]">
+    <div className="modal-overlay z-[100] bg-black/85 animate-in fade-in duration-200">
+      <div className="bg-slate-900 border border-shinobi-gold/60 w-full max-w-3xl rounded-2xl overflow-hidden flex flex-col modal-panel my-auto relative z-[101]">
         {/* Header */}
         <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-800 bg-slate-950/90">
           <div className="flex items-center gap-2.5">
@@ -106,7 +106,7 @@ export const ChallengeMapModal: React.FC<ChallengeMapModalProps> = ({ isOpen, on
         {/* Content */}
         <div className="p-4 sm:p-6 space-y-5 overflow-y-auto flex-1">
           {/* Resumo do Ciclo */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3.5 rounded-2xl bg-slate-950 border border-slate-800 text-center text-xs shadow-md">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3.5 rounded-2xl bg-slate-950 border border-slate-800 text-center text-xs ">
             <div className="p-2.5 bg-slate-900/80 rounded-xl border border-slate-800">
               <span className="text-slate-400 block text-[10px]">Dia Atual</span>
               <span className="font-bold text-shinobi-gold font-mono text-base">
@@ -147,7 +147,7 @@ export const ChallengeMapModal: React.FC<ChallengeMapModalProps> = ({ isOpen, on
               <span>Falta</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-4 h-4 rounded-md bg-amber-500/40 border-2 border-shinobi-gold animate-pulse" />
+              <div className="w-4 h-4 rounded-md bg-amber-500/40 border border-shinobi-gold " />
               <span>Hoje (presença automática)</span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -197,8 +197,8 @@ export const ChallengeMapModal: React.FC<ChallengeMapModalProps> = ({ isOpen, on
                         className={`h-11 sm:h-12 rounded-xl flex flex-col items-center justify-center text-xs font-mono font-bold transition-all relative select-none ${
                           isToday
                             ? isChecked
-                              ? 'bg-emerald-600 border-2 border-emerald-300 text-white shadow-glow-jade scale-105 z-10'
-                              : 'bg-orange-950/40 border-2 border-shinobi-orange text-shinobi-orange z-10'
+                              ? 'bg-emerald-600 border border-emerald-300 text-onaccent scale-105 z-10'
+                              : 'bg-orange-950/40 border border-shinobi-orange text-shinobi-orange z-10'
                             : isPast
                             ? isChecked
                               ? 'bg-emerald-950/40 border border-emerald-500/50 text-emerald-300'
@@ -223,7 +223,7 @@ export const ChallengeMapModal: React.FC<ChallengeMapModalProps> = ({ isOpen, on
                         </span>
 
                         {isToday && (
-                          <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-shinobi-orange rounded-full shadow" />
+                          <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-shinobi-orange rounded-full " />
                         )}
                       </div>
                     );
@@ -235,7 +235,7 @@ export const ChallengeMapModal: React.FC<ChallengeMapModalProps> = ({ isOpen, on
         </div>
 
         {/* Footer */}
-        <div className="p-4 sm:p-5 border-t-2 border-slate-800 bg-slate-950 flex items-center justify-between gap-3">
+        <div className="p-4 sm:p-5 border-t border-slate-800 bg-slate-950 flex items-center justify-between gap-3">
           <span className="text-[11px] text-slate-400 font-mono hidden sm:inline">
             {protocolStatus.allowedMissesPerWeek === 0
               ? 'Modo Elite: qualquer falta encerra o ciclo.'
@@ -243,7 +243,7 @@ export const ChallengeMapModal: React.FC<ChallengeMapModalProps> = ({ isOpen, on
           </span>
           <button
             onClick={onClose}
-            className="px-6 py-2.5 bg-gradient-to-r from-shinobi-gold to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 text-xs font-bold rounded-xl shadow-glow-gold transition-all ml-auto"
+            className="px-6 py-2.5 bg-shinobi-gold text-slate-950 text-xs font-bold rounded-xl transition-all ml-auto"
           >
             Fechar Mapa
           </button>

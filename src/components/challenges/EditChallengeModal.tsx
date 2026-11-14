@@ -150,8 +150,8 @@ export const EditChallengeModal: React.FC<EditChallengeModalProps> = ({
   };
 
   return (
-    <div className="modal-overlay z-[120] bg-slate-950/80 backdrop-blur-xl animate-in fade-in duration-200">
-      <div className="liquid-glass-card bg-slate-900/90 border-2 border-shinobi-gold/60 w-full max-w-xl rounded-3xl overflow-hidden shadow-2xl flex flex-col modal-panel my-auto relative z-[121]">
+    <div className="modal-overlay z-[120] bg-slate-950/80 animate-in fade-in duration-200">
+      <div className="liquid-glass-card bg-slate-900/90 border border-shinobi-gold/60 w-full max-w-xl rounded-2xl overflow-hidden flex flex-col modal-panel my-auto relative z-[121]">
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
           <div className="flex items-center gap-2.5">
@@ -215,7 +215,7 @@ export const EditChallengeModal: React.FC<EditChallengeModalProps> = ({
                   onClick={() => handleSelectDaysPreset(p.days)}
                   className={`py-2 px-1 text-center rounded-xl text-xs font-mono font-bold border transition-all ${
                     targetDays === p.days
-                      ? 'bg-shinobi-gold text-slate-950 border-shinobi-gold shadow-glow-gold/40'
+                      ? 'bg-shinobi-gold text-slate-950 border-shinobi-gold '
                       : 'bg-slate-950/60 text-slate-300 border-white/10 hover:border-slate-500'
                   }`}
                 >
@@ -338,7 +338,7 @@ export const EditChallengeModal: React.FC<EditChallengeModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 bg-gradient-to-r from-shinobi-gold to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 rounded-xl text-xs font-bold shadow-glow-gold transition-all flex items-center gap-1.5"
+              className="px-5 py-2.5 bg-shinobi-gold text-slate-950 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
             >
               <Save className="w-3.5 h-3.5" />
               <span>Salvar Alterações</span>

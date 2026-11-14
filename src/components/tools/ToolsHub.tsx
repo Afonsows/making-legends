@@ -25,6 +25,16 @@ import {
 
 type ActiveTool = 'nutrition' | 'pomodoro' | 'books' | 'meditation' | 'seallock' | 'workout' | 'body' | null;
 
+const TOOL_SHORT_LABEL: Record<string, string> = {
+  nutrition: 'Nutrição',
+  pomodoro: 'Foco',
+  books: 'Leituras',
+  meditation: 'Meditação',
+  seallock: 'Bloqueio',
+  workout: 'Treino',
+  body: 'Corpo',
+};
+
 export const ToolsHub: React.FC = () => {
   const {
     nutritionLogs,
@@ -221,60 +231,32 @@ export const ToolsHub: React.FC = () => {
   ];
 
   return (
-    <div className="pb-nav pt-3 max-w-4xl mx-auto px-4 space-y-4">
-      {/* Header do Hub com Selo Oficial */}
-      <div className="pergaminho-bg rounded-2xl border border-shinobi-border p-4 shadow-xl">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h2 className="font-cinzel text-lg sm:text-xl font-bold text-slate-100 flex items-center gap-2">
-              <span>7 Mini-Ferramentas Shinobi</span>
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Instrumentos práticos de apoio para disciplina, mente, corpo e recuperação.
-            </p>
-          </div>
-          <img
-            src="/logo.png"
-            alt="Making Legends"
-            className="w-10 h-10 rounded-xl border border-shinobi-crimson/40 shadow-glow-crimson object-cover shrink-0 hidden sm:block"
-            title="Making Legends Tools"
-          />
-        </div>
-
-        {/* Menu de Seleção das 7 Ferramentas */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 mt-3">
-          {toolsList.map((tool) => {
-            const Icon = tool.icon;
-            const isSelected = activeTool === tool.id;
-            return (
-              <button
-                key={tool.id}
-                onClick={() => setActiveTool(tool.id)}
-                className={`p-3 rounded-2xl border-2 flex flex-col items-center gap-1.5 transition-all shadow-md ${
-                  isSelected
-                    ? 'bg-slate-900 shadow-xl scale-105 font-bold'
-                    : 'border-slate-800 bg-slate-950 text-slate-300 hover:border-slate-600 hover:text-white'
-                }`}
-                style={{
-                  borderColor: isSelected ? tool.color : undefined,
-                  color: isSelected ? tool.color : undefined
-                }}
-              >
-                <Icon className="w-5 h-5" />
-                <span className="text-[11px] text-center font-semibold line-clamp-1">
-                  {tool.name.split(' ')[0]} {tool.name.split(' ')[1]}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+    <div className="pb-nav pt-2 px-4 space-y-5">
+      {/* Seletor de ferramenta: uma linha rolável */}
+      <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-4 px-4">
+        {toolsList.map((tool) => {
+          const Icon = tool.icon;
+          const isSelected = activeTool === tool.id;
+          return (
+            <button
+              key={tool.id}
+              type="button"
+              onClick={() => setActiveTool(tool.id)}
+              title={tool.name}
+              className={`chip !h-9 !px-3.5 ${isSelected ? 'chip-on' : ''}`}
+            >
+              <Icon className="w-4 h-4" />
+              {(tool.id && TOOL_SHORT_LABEL[tool.id]) || tool.name}
+            </button>
+          );
+        })}
       </div>
 
       {/* Conteúdo da Ferramenta Ativa */}
 
       {/* 1. DIÁRIO DE NUTRIÇÃO */}
       {activeTool === 'nutrition' && (
-        <div className="bg-slate-900 border-2 border-slate-700/80 rounded-3xl p-5 shadow-2xl space-y-4">
+        <div className="bg-slate-900 border border-slate-700/80 rounded-2xl p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <div className="flex items-center gap-2">
               <Utensils className="w-5 h-5 text-rose-500" />
@@ -345,7 +327,7 @@ export const ToolsHub: React.FC = () => {
               </div>
               <button
                 type="submit"
-                className="w-full py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1"
+                className="w-full py-2 bg-rose-600 hover:bg-rose-500 text-onaccent text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1"
               >
                 <Plus className="w-3.5 h-3.5" /> Adicionar Refeição (+{TOOL_REWARDS.meal.xp} XP • {mealsRewarded}/{TOOL_LIMITS.mealsRewarded} hoje)
               </button>
@@ -386,7 +368,7 @@ export const ToolsHub: React.FC = () => {
               onClick={() => setPomodoroPreset('work', 25)}
               className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
                 pomoMode === 'work' && pomodoro.durationMinutes === 25
-                  ? 'bg-purple-600 text-white shadow-glow-violet'
+                  ? 'bg-purple-600 text-onaccent '
                   : 'bg-shinobi-bg border border-shinobi-border text-slate-400'
               }`}
             >
@@ -396,7 +378,7 @@ export const ToolsHub: React.FC = () => {
               onClick={() => setPomodoroPreset('work', 50)}
               className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
                 pomoMode === 'work' && pomodoro.durationMinutes === 50
-                  ? 'bg-purple-600 text-white shadow-glow-violet'
+                  ? 'bg-purple-600 text-onaccent '
                   : 'bg-shinobi-bg border border-shinobi-border text-slate-400'
               }`}
             >
@@ -406,7 +388,7 @@ export const ToolsHub: React.FC = () => {
               onClick={() => setPomodoroPreset('break', 5)}
               className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
                 pomoMode === 'break'
-                  ? 'bg-emerald-600 text-white shadow-glow-jade'
+                  ? 'bg-emerald-600 text-onaccent '
                   : 'bg-shinobi-bg border border-shinobi-border text-slate-400'
               }`}
             >
@@ -416,7 +398,7 @@ export const ToolsHub: React.FC = () => {
 
           {/* Relógio Gigante */}
           <div className="relative inline-flex items-center justify-center">
-            <div className="w-56 h-56 rounded-full bg-shinobi-bg border-4 border-purple-500/40 flex flex-col items-center justify-center shadow-glow-violet/30">
+            <div className="w-56 h-56 rounded-full bg-shinobi-bg border-4 border-purple-500/40 flex flex-col items-center justify-center ">
               <span className="font-mono text-5xl font-bold tracking-tight text-slate-100">
                 {String(Math.floor(pomoSeconds / 60)).padStart(2, '0')}:
                 {String(pomoSeconds % 60).padStart(2, '0')}
@@ -435,7 +417,7 @@ export const ToolsHub: React.FC = () => {
                 if (isPomoRunning) pausePomodoro();
                 else startPomodoro();
               }}
-              className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm rounded-xl shadow-glow-violet transition-all flex items-center gap-2"
+              className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-onaccent font-bold text-sm rounded-xl transition-all flex items-center gap-2"
             >
               {isPomoRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
               {isPomoRunning ? 'Pausar Foco' : 'Iniciar Foco'}
@@ -522,11 +504,11 @@ export const ToolsHub: React.FC = () => {
           <div className="relative inline-flex items-center justify-center">
             <div className={`w-52 h-52 rounded-full border-4 flex flex-col items-center justify-center transition-all duration-1000 ${
               breathPhase === 'Inspire'
-                ? 'scale-110 border-emerald-400 bg-emerald-950/30 shadow-glow-jade'
+                ? 'scale-110 border-emerald-400 bg-emerald-950/30 '
                 : breathPhase === 'Segure'
-                ? 'scale-110 border-amber-400 bg-amber-950/30 shadow-glow-gold'
+                ? 'scale-110 border-amber-400 bg-amber-950/30 '
                 : breathPhase === 'Expire'
-                ? 'scale-90 border-cyan-400 bg-cyan-950/30 shadow-glow-chakra'
+                ? 'scale-90 border-cyan-400 bg-cyan-950/30 '
                 : 'scale-85 border-slate-600 bg-slate-900'
             }`}>
               <span className="font-cinzel text-2xl font-bold text-slate-100">{breathPhase}</span>
@@ -541,7 +523,7 @@ export const ToolsHub: React.FC = () => {
                 soundFx.playZenBell();
                 setIsMeditating(!isMeditating);
               }}
-              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl shadow-glow-jade transition-all flex items-center gap-2"
+              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-onaccent font-bold text-sm rounded-xl transition-all flex items-center gap-2"
             >
               {isMeditating ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
               {isMeditating ? 'Pausar Respiração' : 'Iniciar Respiração Guiada'}
@@ -563,7 +545,7 @@ export const ToolsHub: React.FC = () => {
                   setMeditationElapsed(0);
                   setIsMeditating(false);
                 }}
-                className="px-4 py-3 bg-shinobi-gold text-shinobi-bg font-bold text-xs rounded-xl shadow-glow-gold transition-all"
+                className="px-4 py-3 bg-shinobi-gold text-shinobi-bg font-bold text-xs rounded-xl transition-all"
               >
                 Concluir Sessão ({Math.floor(meditationElapsed / 60)} min)
               </button>
@@ -575,7 +557,7 @@ export const ToolsHub: React.FC = () => {
       {/* 5. SELO DE BLOQUEIO (APP LOCK / SCREEN TIME) */}
       {activeTool === 'seallock' && (
         <div className="bg-shinobi-card rounded-2xl border border-shinobi-border p-6 text-center space-y-4">
-          <div className="w-16 h-16 rounded-full bg-amber-500/20 border-2 border-amber-500 mx-auto flex items-center justify-center text-2xl shadow-glow-gold">
+          <div className="w-16 h-16 rounded-full bg-amber-500/20 border border-amber-500 mx-auto flex items-center justify-center text-2xl ">
             <Lock className="w-8 h-8 text-amber-400" />
           </div>
 
@@ -614,8 +596,8 @@ export const ToolsHub: React.FC = () => {
             }}
             className={`px-6 py-3 font-bold text-xs rounded-xl transition-all ${
               sealLockActive
-                ? 'bg-rose-600 text-white'
-                : 'bg-shinobi-gold text-shinobi-bg shadow-glow-gold'
+                ? 'bg-rose-600 text-onaccent'
+                : 'bg-shinobi-gold text-shinobi-bg '
             }`}
           >
             {sealLockActive ? 'Encerrar Sessão sem Recompensa' : `Iniciar Sessão de Foco (60 min • +${TOOL_REWARDS.seal.xp} XP)`}
@@ -679,7 +661,7 @@ export const ToolsHub: React.FC = () => {
             </div>
             <button
               type="submit"
-              className="w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5"
+              className="w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-onaccent font-bold text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" /> Registrar Treino (+{TOOL_REWARDS.workout.xp} XP • {workoutsRewarded}/{TOOL_LIMITS.workoutsRewarded} hoje)
             </button>
@@ -738,7 +720,7 @@ export const ToolsHub: React.FC = () => {
                       onClick={() => (isFilled ? removeWaterGlass() : addWaterGlass())}
                       className={`p-2 rounded-lg border text-center transition-all ${
                         isFilled
-                          ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow-glow-chakra'
+                          ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 '
                           : 'bg-slate-800/40 border-slate-700 text-slate-600'
                       }`}
                     >
@@ -751,7 +733,7 @@ export const ToolsHub: React.FC = () => {
               <div className="flex justify-between gap-2">
                 <button
                   onClick={addWaterGlass}
-                  className="flex-1 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold rounded-lg transition-colors"
+                  className="flex-1 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-onaccent text-xs font-bold rounded-lg transition-colors"
                 >
                   +1 Copo (250ml)
                 </button>
@@ -813,7 +795,7 @@ export const ToolsHub: React.FC = () => {
 
               <button
                 onClick={handleSaveSleep}
-                className="w-full py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-colors"
+                className="w-full py-1.5 bg-indigo-600 hover:bg-indigo-500 text-onaccent text-xs font-bold rounded-lg transition-colors"
               >
                 {todayBody.sleepLogged ? 'Atualizar Registro de Sono' : `Salvar Sono (+${TOOL_REWARDS.sleep.xp} XP)`}
               </button>

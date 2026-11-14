@@ -2,11 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * ────────────────────────────────────────────────────────────────
+ *  Making Legends — sistema visual "Obsidiana"
+ *  Fundo sólido, uma única cor de destaque, superfícies planas com
+ *  filete fino e tipografia de uma só família (Archivo, largura variável).
+ *  Os tokens abaixo trocam com a classe do <html>: `dark` (padrão) | `light`.
+ * ────────────────────────────────────────────────────────────────
+ */
 @layer base {
   :root {
-    --color-bg: #0a0c12;
-    --color-card: #121624;
-    --color-border: #232b45;
+    /* ── Tema escuro (padrão) ── */
+    --bg: 12 11 10;
+    --surface: 22 21 19;
+    --surface-2: 31 30 27;
+    --line: 46 44 40;
+    --ink: 245 241 232;
+    --ink-2: 168 163 152;
+    --ink-3: 118 114 105;
+    --accent: 255 36 76;
+    --ok: 52 211 139;
+    --gold: 214 178 94;
+    --warn: 240 170 60;
+    --white: 255 255 255;
+
+    /* Pilares: paleta categórica validada para daltonismo (sempre acompanhada do nome) */
+    --pillar-taijutsu: 238 69 96;
+    --pillar-ninjutsu: 63 143 221;
+    --pillar-chakra: 31 167 107;
+    --pillar-espirito: 184 138 46;
+    --pillar-genjutsu: 143 116 238;
+
+    color-scheme: dark;
 
     /* Áreas seguras do aparelho (entalhe, barra de status, indicador de início) */
     --safe-top: env(safe-area-inset-top, 0px);
@@ -14,134 +41,159 @@
     --safe-left: env(safe-area-inset-left, 0px);
     --safe-right: env(safe-area-inset-right, 0px);
 
-    /* Barra de navegação inferior flutuante: altura + distância até a borda */
-    --nav-height: 4rem;
-    --nav-offset: max(var(--safe-bottom), 0.5rem);
+    /* Barra de navegação inferior, encostada na borda */
+    --nav-height: 3.75rem;
+    --nav-offset: var(--safe-bottom);
     --nav-space: calc(var(--nav-height) + var(--nav-offset));
+  }
+
+  html.light {
+    --bg: 246 243 237;
+    --surface: 255 255 255;
+    --surface-2: 240 236 228;
+    --line: 226 221 210;
+    --ink: 22 20 16;
+    --ink-2: 100 95 85;
+    --ink-3: 146 140 128;
+    --accent: 222 18 58;
+    --ok: 14 140 90;
+    --gold: 148 110 24;
+    --warn: 180 110 10;
+    --white: 22 20 16;
+
+    --pillar-taijutsu: 214 30 66;
+    --pillar-ninjutsu: 27 111 196;
+    --pillar-chakra: 14 140 90;
+    --pillar-espirito: 160 118 20;
+    --pillar-genjutsu: 110 80 220;
+
+    color-scheme: light;
   }
 
   html {
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    background-color: rgb(var(--bg));
   }
 
   body {
-    background-color: #0a0c12;
-    color: #f1f5f9;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: rgb(var(--bg));
+    color: rgb(var(--ink));
+    font-family: 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-size: 15px;
+    line-height: 1.45;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     touch-action: manipulation;
     overscroll-behavior-y: none;
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* Custom scrollbar */
+  ::selection {
+    background: rgb(var(--accent) / 0.25);
+  }
+
+  /* Barra de rolagem discreta */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #0a0c12;
+    background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #232b45;
+    background: rgb(var(--line));
     border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #e11d48;
+    background: rgb(var(--ink-3));
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--accent));
+    outline-offset: 2px;
+  }
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: none;
   }
 }
 
 @layer components {
   /* ── Estrutura da tela (mobile-first, com áreas seguras) ── */
 
-  /* Casca do app: ocupa a tela visível e começa abaixo da barra de status */
+  /* Casca do app: fundo sólido com um gradiente muito sutil no topo */
   .app-shell {
     min-height: 100vh;
     min-height: 100dvh;
     padding-top: var(--safe-top);
     padding-left: var(--safe-left);
     padding-right: var(--safe-right);
-    /* "clip" (e não "hidden"): corta sobras laterais sem criar uma área de rolagem,
-       o que impediria o cabeçalho de ficar fixo no topo */
     overflow-x: clip;
+    background:
+      radial-gradient(120% 34rem at 50% -8rem, rgb(var(--accent) / 0.055), transparent 70%),
+      rgb(var(--bg));
+    color: rgb(var(--ink));
   }
 
-  /* Faixa sob a barra de status: o conteúdo rolado não aparece atrás do relógio nem acima do cabeçalho */
+  /* Faixa sob a barra de status do aparelho. No tema claro fica escura porque
+     o iOS desenha o relógio em branco no modo tela cheia. */
   .safe-top-scrim {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
-    height: calc(var(--safe-top) + 1.5rem);
-    z-index: 39;
+    height: var(--safe-top);
+    z-index: 45;
     pointer-events: none;
-    background: linear-gradient(to bottom, #0a0c12 0, #0a0c12 var(--safe-top), rgba(10, 12, 18, 0.8) calc(var(--safe-top) + 0.5rem), rgba(10, 12, 18, 0) 100%);
+    background: rgb(var(--bg));
+  }
+  html.light .safe-top-scrim {
+    background: rgb(22 20 16);
   }
 
   /* Cabeçalho fixo logo abaixo da área segura */
   .app-header {
     position: sticky;
-    top: calc(var(--safe-top) + 0.5rem);
-  }
-  @media (min-width: 640px) {
-    .app-header {
-      top: calc(var(--safe-top) + 0.875rem);
-    }
+    top: var(--safe-top);
+    z-index: 40;
+    background: rgb(var(--bg) / 0.86);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
   }
 
-  /* Barra inferior flutuante acima do indicador de início */
+  /* Barra inferior encostada na borda, acima do indicador de início */
   .bottom-nav {
     position: fixed;
-    bottom: var(--nav-offset);
-    left: max(var(--safe-left), 0.5rem);
-    right: max(var(--safe-right), 0.5rem);
-  }
-  @media (min-width: 640px) {
-    .bottom-nav {
-      bottom: max(var(--safe-bottom), 1rem);
-      left: 50%;
-      right: auto;
-      width: 100%;
-      max-width: 36rem;
-      transform: translateX(-50%);
-    }
-  }
-
-  /* Esmaece o conteúdo que passa por trás da barra inferior (legibilidade) */
-  .bottom-nav-scrim {
-    position: fixed;
+    bottom: 0;
     left: 0;
     right: 0;
-    bottom: 0;
-    height: calc(var(--nav-space) + 2.25rem);
-    z-index: 39;
-    pointer-events: none;
-    background: linear-gradient(
-      to top,
-      #0a0c12 0%,
-      rgba(10, 12, 18, 0.94) calc(var(--nav-offset) + 1.25rem),
-      rgba(10, 12, 18, 0.72) 62%,
-      rgba(10, 12, 18, 0) 100%
-    );
+    z-index: 40;
+    padding-bottom: var(--safe-bottom);
+    padding-left: var(--safe-left);
+    padding-right: var(--safe-right);
+    background: rgb(var(--bg) / 0.92);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    border-top: 1px solid rgb(var(--line));
   }
 
   /* Espaço no fim das telas para o último item ficar acima da barra inferior */
   .pb-nav {
-    padding-bottom: calc(var(--nav-space) + 2rem);
+    padding-bottom: calc(var(--nav-space) + 1.75rem);
   }
 
   /* Avisos flutuantes abaixo do cabeçalho */
   .toast-host {
     position: fixed;
-    top: calc(var(--safe-top) + 6.25rem);
+    top: calc(var(--safe-top) + 4rem);
     left: 0;
     right: 0;
   }
 
   /*
    * Fundo de modal: centraliza quando o painel cabe e ROLA quando não cabe.
-   * (Com "items-center" o topo de um painel alto ficava cortado e inalcançável.)
    */
   .modal-overlay {
     position: fixed;
@@ -152,6 +204,7 @@
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
+    background-color: rgb(8 7 6 / 0.72);
     padding: max(var(--safe-top), 0.875rem) max(var(--safe-right), 0.75rem) max(var(--safe-bottom), 0.875rem)
       max(var(--safe-left), 0.75rem);
   }
@@ -176,27 +229,199 @@
       max-height: calc(100dvh - max(var(--safe-top), 1.5rem) - max(var(--safe-bottom), 1.5rem));
     }
   }
+
+  /* ── Peças do sistema novo ── */
+
+  /* Superfície padrão: plana, filete fino, cantos de 16px */
+  .card {
+    background: rgb(var(--surface));
+    border: 1px solid rgb(var(--line));
+    border-radius: 1rem;
+  }
+
+  /* Rótulo: caixa alta, espaçamento largo — a mesma voz do "MAKING" da marca */
+  .t-label {
+    font-size: 0.6875rem;
+    line-height: 1;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgb(var(--ink-2));
+  }
+
+  /* Título de tela: condensado, pesado */
+  .t-title {
+    font-stretch: 75%;
+    font-weight: 800;
+    letter-spacing: 0.005em;
+    line-height: 0.95;
+    text-transform: uppercase;
+  }
+
+  /* Números de destaque: largos, pesados, tabulares */
+  .t-num {
+    font-stretch: 125%;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    font-feature-settings: 'tnum';
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    padding: 0 1rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s, opacity 0.15s, transform 0.1s;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .btn:active {
+    transform: scale(0.98);
+  }
+  .btn:disabled {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+  .btn-primary {
+    background: rgb(var(--accent));
+    color: #fff;
+  }
+  .btn-primary:hover {
+    opacity: 0.92;
+  }
+  .btn-solid {
+    background: rgb(var(--ink));
+    color: rgb(var(--bg));
+  }
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid rgb(var(--line));
+    color: rgb(var(--ink));
+  }
+  .btn-ghost:hover {
+    background: rgb(var(--surface-2));
+  }
+  .btn-sm {
+    min-height: 2.25rem;
+    padding: 0 0.75rem;
+    font-size: 0.8125rem;
+    border-radius: 0.625rem;
+  }
+
+  /* Botão só de ícone, com área de toque de 40px */
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.75rem;
+    color: rgb(var(--ink-2));
+    transition: background-color 0.15s, color 0.15s;
+  }
+  .icon-btn:hover {
+    background: rgb(var(--surface-2));
+    color: rgb(var(--ink));
+  }
+
+  .field {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0 0.875rem;
+    border-radius: 0.75rem;
+    background: rgb(var(--surface-2));
+    border: 1px solid transparent;
+    color: rgb(var(--ink));
+    font-size: 0.9375rem;
+    transition: border-color 0.15s;
+  }
+  .field::placeholder {
+    color: rgb(var(--ink-3));
+  }
+  .field:focus {
+    border-color: rgb(var(--ink-3));
+  }
+
+  /* Etiqueta pequena */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    height: 1.625rem;
+    padding: 0 0.625rem;
+    border-radius: 9999px;
+    border: 1px solid rgb(var(--line));
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgb(var(--ink-2));
+    white-space: nowrap;
+  }
+  .chip-on {
+    background: rgb(var(--ink));
+    border-color: rgb(var(--ink));
+    color: rgb(var(--bg));
+  }
+
+  /* Trilho de progresso */
+  .track {
+    height: 0.375rem;
+    border-radius: 9999px;
+    background: rgb(var(--surface-2));
+    overflow: hidden;
+  }
+  .track > i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: rgb(var(--accent));
+    transition: width 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
 }
 
 @layer utilities {
-  /* Títulos: pincelada de anime ninja (a classe mantém o nome antigo por compatibilidade) */
-  .font-cinzel,
-  .font-brush {
-    font-family: 'Potta One', 'Cinzel', system-ui, sans-serif;
-    font-weight: 400;
-    font-synthesis: none;
-    letter-spacing: 0.01em;
+  .font-wide {
+    font-stretch: 125%;
+  }
+  .font-cond {
+    font-stretch: 75%;
+  }
+  .tabular {
+    font-feature-settings: 'tnum';
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 
-  /* Kanji decorativos em caligrafia */
+  /* Títulos das telas antigas: passam a usar a família única do sistema */
+  .font-cinzel,
+  .font-brush {
+    font-family: 'Archivo', system-ui, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  /* Kanji: mantidos onde são conteúdo; as marcas d'água gigantes somem */
   .font-kanji {
     font-family: 'Yuji Syuku', 'Noto Serif JP', 'Hiragino Mincho ProN', serif;
     font-synthesis: none;
   }
+  .font-kanji.absolute {
+    display: none;
+  }
 
-  /* ── Animações que os componentes já usavam (antes inexistentes) ── */
+  /* ── Animações ── */
   .animate-in {
-    animation-duration: 0.28s;
+    animation-duration: 0.24s;
     animation-fill-mode: both;
     animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
   }
@@ -204,154 +429,66 @@
   .animate-in.zoom-in-95 { animation-name: ml-zoom-in; }
   .animate-in.slide-in-from-bottom { animation-name: ml-slide-up; }
   .animate-spin-slow { animation: spin 6s linear infinite; }
+  .animate-pop { animation: ml-pop 0.28s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
 
-  /* ── Efeitos shinobi ── */
   .animate-hit { animation: ml-hit 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
   .animate-float-up { animation: ml-float-up 1.1s ease-out forwards; }
-  .animate-stamp { animation: ml-stamp 0.42s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
-  .animate-leaf { animation: ml-leaf 7s ease-in-out infinite; }
-  .animate-chakra { animation: ml-chakra 2.4s ease-in-out infinite; }
+  .animate-stamp { animation: ml-pop 0.28s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+  .animate-leaf,
+  .animate-chakra { animation: none; }
 
+  /* Carimbo de concluído das telas antigas: agora um selo discreto */
   .hanko-stamp {
     font-family: 'Yuji Syuku', 'Noto Serif JP', serif;
-    color: #ff1341;
-    border: 2px solid currentColor;
-    border-radius: 10px;
+    color: rgb(var(--accent));
+    border: 1px solid currentColor;
+    border-radius: 8px;
     line-height: 1;
-    box-shadow: inset 0 0 0 1px rgba(255, 19, 65, 0.25);
-    text-shadow: 0 0 1px rgba(255, 19, 65, 0.6);
-    mix-blend-mode: screen;
-    transform: rotate(-10deg);
+    opacity: 0.85;
   }
 
   .smoke-poof {
-    position: absolute;
-    pointer-events: none;
-    border-radius: 9999px;
-    background:
-      radial-gradient(circle at 30% 40%, rgba(226, 232, 240, 0.9) 0 18%, transparent 19%),
-      radial-gradient(circle at 65% 35%, rgba(203, 213, 225, 0.85) 0 22%, transparent 23%),
-      radial-gradient(circle at 50% 65%, rgba(241, 245, 249, 0.9) 0 24%, transparent 25%),
-      radial-gradient(circle at 25% 70%, rgba(148, 163, 184, 0.7) 0 15%, transparent 16%),
-      radial-gradient(circle at 75% 70%, rgba(203, 213, 225, 0.75) 0 16%, transparent 17%);
-    animation: ml-poof 0.65s ease-out forwards;
+    display: none;
   }
 
-  /* Papel de pergaminho (washi) com fibras sutis */
-  .washi-texture {
-    background-image:
-      repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.018) 0 2px, transparent 2px 9px),
-      repeating-linear-gradient(25deg, rgba(255, 255, 255, 0.012) 0 1px, transparent 1px 13px);
+  /* Texturas e efeitos antigos: neutralizados */
+  .washi-texture,
+  .ninja-texture {
+    background-image: none;
   }
-
+  .chakra-glow {
+    filter: none;
+  }
   .scroll-rod {
-    height: 10px;
-    border-radius: 9999px;
-    background: linear-gradient(180deg, #7c2d12 0%, #c2410c 45%, #431407 100%);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    height: 1px;
+    background: rgb(var(--line));
   }
-
   .text-naruto-gradient {
-    background: linear-gradient(90deg, #ff7a1a, #ffb347 50%, #ff1341);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    color: rgb(var(--accent));
   }
 
   .pt-safe {
     padding-top: max(env(safe-area-inset-top, 0px), 0.75rem);
   }
-
   .pb-safe {
     padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.75rem);
   }
-  
+
+  /* Superfícies antigas (vidro líquido, pergaminho) → superfície plana do sistema */
   .shinobi-gradient-border {
-    position: relative;
-    border: 1px solid transparent;
-    background-clip: padding-box;
+    border: 1px solid rgb(var(--line));
   }
-  
-  .shinobi-gradient-border::before {
-    content: '';
-    position: absolute;
-    top: -1px; bottom: -1px; left: -1px; right: -1px;
-    z-index: -1;
-    border-radius: inherit;
-    background: linear-gradient(135deg, rgba(225, 29, 72, 0.4), rgba(234, 179, 8, 0.3), rgba(6, 182, 212, 0.2));
-  }
-
-  .pergaminho-bg {
-    background:
-      repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.016) 0 2px, transparent 2px 9px),
-      radial-gradient(120% 80% at 100% 0%, rgba(255, 122, 26, 0.07), transparent 60%),
-      linear-gradient(180deg, #171d2f 0%, #0e121e 100%);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 10px 25px -5px rgba(0, 0, 0, 0.5);
-  }
-
-  .ninja-texture {
-    background-image: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 0);
-    background-size: 16px 16px;
-  }
-
-  .chakra-glow {
-    filter: drop-shadow(0 0 10px rgba(6, 182, 212, 0.5));
-  }
-
-  .liquid-glass-card {
-    background-color: rgba(15, 23, 42, 0.75);
-    -webkit-backdrop-filter: blur(16px);
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(51, 65, 85, 0.8);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  
-  .liquid-glass-card:hover,
-  .liquid-glass-card:active {
-    background-color: rgba(30, 41, 59, 0.45);
-    -webkit-backdrop-filter: blur(24px);
-    backdrop-filter: blur(24px);
-    border-color: rgba(148, 163, 184, 0.7);
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
-  }
-
-  .liquid-glass-completed {
-    background-color: rgba(6, 78, 59, 0.25);
-    -webkit-backdrop-filter: blur(16px);
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(16, 185, 129, 0.4);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .liquid-glass-completed:hover,
-  .liquid-glass-completed:active {
-    background-color: rgba(6, 78, 59, 0.4);
-    -webkit-backdrop-filter: blur(24px);
-    backdrop-filter: blur(24px);
-    border-color: rgba(52, 211, 153, 0.6);
-  }
-
-  .liquid-glass-nav {
-    background-color: rgba(10, 15, 30, 0.74);
-    background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.01) 100%);
-    -webkit-backdrop-filter: blur(26px) saturate(210%);
-    backdrop-filter: blur(26px) saturate(210%);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    box-shadow: 
-      0 16px 40px -6px rgba(0, 0, 0, 0.65),
-      inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.4),
-      inset 0 -1px 1px 0 rgba(255, 255, 255, 0.05);
-  }
-
+  .pergaminho-bg,
+  .liquid-glass-card,
+  .liquid-glass-nav,
   .liquid-glass-header {
-    background-color: rgba(10, 15, 30, 0.48);
-    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.01) 100%);
-    -webkit-backdrop-filter: blur(26px) saturate(210%);
-    backdrop-filter: blur(26px) saturate(210%);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
-    box-shadow: 
-      0 8px 30px rgba(0, 0, 0, 0.45),
-      inset 0 -1px 1px 0 rgba(255, 255, 255, 0.2);
+    background: rgb(var(--surface));
+    border: 1px solid rgb(var(--line));
+    box-shadow: none;
+  }
+  .liquid-glass-completed {
+    background: rgb(var(--surface));
+    border: 1px solid rgb(var(--ok) / 0.35);
   }
 }
 
@@ -361,16 +498,20 @@
   to { opacity: 1; }
 }
 @keyframes ml-zoom-in {
-  from { opacity: 0; transform: scale(0.95); }
+  from { opacity: 0; transform: scale(0.97); }
   to { opacity: 1; transform: scale(1); }
 }
 @keyframes ml-slide-up {
-  from { opacity: 0; transform: translateY(16px); }
+  from { opacity: 0; transform: translateY(14px); }
   to { opacity: 1; transform: translateY(0); }
 }
+@keyframes ml-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
 @keyframes ml-hit {
-  0%, 100% { transform: translateX(0) rotate(0); filter: none; }
-  15% { transform: translateX(-7px) rotate(-4deg); filter: brightness(1.8) saturate(0.4); }
+  0%, 100% { transform: translateX(0) rotate(0); }
+  15% { transform: translateX(-7px) rotate(-4deg); }
   35% { transform: translateX(6px) rotate(3deg); }
   55% { transform: translateX(-4px) rotate(-1deg); }
   75% { transform: translateX(2px); }
@@ -380,26 +521,12 @@
   15% { transform: translateY(-6px) scale(1.15); opacity: 1; }
   100% { transform: translateY(-46px) scale(1); opacity: 0; }
 }
-@keyframes ml-stamp {
-  0% { transform: scale(2.4) rotate(-22deg); opacity: 0; }
-  60% { transform: scale(0.9) rotate(-8deg); opacity: 1; }
-  100% { transform: scale(1) rotate(-10deg); opacity: 1; }
-}
-@keyframes ml-poof {
-  0% { transform: scale(0.3); opacity: 0.95; }
-  100% { transform: scale(2.3); opacity: 0; }
-}
-@keyframes ml-leaf {
-  0%, 100% { transform: translateY(0) rotate(-8deg); }
-  50% { transform: translateY(-5px) rotate(10deg); }
-}
-@keyframes ml-chakra {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 122, 26, 0.0), 0 0 18px -4px rgba(255, 122, 26, 0.45); }
-  50% { box-shadow: 0 0 0 4px rgba(255, 122, 26, 0.12), 0 0 28px -2px rgba(255, 122, 26, 0.7); }
-}
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-hit, .animate-float-up, .animate-stamp, .animate-leaf, .animate-chakra, .smoke-poof, .animate-spin-slow {
+  .animate-hit, .animate-float-up, .animate-stamp, .animate-pop, .animate-spin-slow, .animate-in {
     animation: none !important;
+  }
+  .track > i {
+    transition: none;
   }
 }

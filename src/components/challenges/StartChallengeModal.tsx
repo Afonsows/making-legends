@@ -146,13 +146,13 @@ export const StartChallengeModal: React.FC<StartChallengeModalProps> = ({ isOpen
   };
 
   return (
-    <div className="modal-overlay z-[100] bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-slate-900 border-2 border-shinobi-gold/80 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col modal-panel my-auto relative z-[101]">
+    <div className="modal-overlay z-[100] bg-black/90 animate-in fade-in duration-200">
+      <div className="bg-slate-900 border border-shinobi-gold/80 w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col modal-panel my-auto relative z-[101]">
         {/* Top Header */}
-        <div className="p-5 sm:p-6 bg-gradient-to-r from-amber-950/60 via-slate-950 to-slate-950 border-b border-shinobi-gold/30 flex items-start justify-between gap-4">
+        <div className="p-5 sm:p-6 bg-amber-950/60 border-b border-shinobi-gold/30 flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-shinobi-gold/20 border-2 border-shinobi-gold flex items-center justify-center text-shinobi-gold shadow-glow-gold flex-shrink-0">
-              <Flame className="w-6 h-6 animate-pulse" />
+            <div className="w-12 h-12 rounded-2xl bg-shinobi-gold/20 border border-shinobi-gold flex items-center justify-center text-shinobi-gold flex-shrink-0">
+              <Flame className="w-6 h-6 " />
             </div>
             <div>
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-shinobi-gold/15 text-shinobi-gold text-[10px] font-mono font-bold border border-shinobi-gold/40">
@@ -190,7 +190,7 @@ export const StartChallengeModal: React.FC<StartChallengeModalProps> = ({ isOpen
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Ex: Desafio 66 Dias — Ciclo #1"
-              className="w-full bg-slate-950 border-2 border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-100 font-semibold focus:outline-none focus:border-shinobi-gold transition-colors"
+              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-100 font-semibold focus:outline-none focus:border-shinobi-gold transition-colors"
             />
           </div>
 
@@ -212,7 +212,7 @@ export const StartChallengeModal: React.FC<StartChallengeModalProps> = ({ isOpen
                   onClick={() => handleSelectPresetDays(preset.days)}
                   className={`p-3 rounded-2xl border text-left transition-all ${
                     targetDays === preset.days
-                      ? 'bg-amber-950/40 border-shinobi-gold shadow-glow-gold/30 text-slate-100'
+                      ? 'bg-amber-950/40 border-shinobi-gold text-slate-100'
                       : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
                   }`}
                 >
@@ -255,7 +255,7 @@ export const StartChallengeModal: React.FC<StartChallengeModalProps> = ({ isOpen
                 }}
                 className={`p-3 rounded-2xl border text-left flex items-center justify-between transition-all ${
                   !isCustomStartDate
-                    ? 'bg-emerald-950/30 border-emerald-500/80 text-emerald-300 shadow-glow-jade/20'
+                    ? 'bg-emerald-950/30 border-emerald-500/80 text-emerald-300 '
                     : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
                 }`}
               >
@@ -276,7 +276,7 @@ export const StartChallengeModal: React.FC<StartChallengeModalProps> = ({ isOpen
                 onClick={() => setIsCustomStartDate(true)}
                 className={`p-3 rounded-2xl border text-left flex items-center justify-between transition-all ${
                   isCustomStartDate
-                    ? 'bg-amber-950/30 border-shinobi-gold text-amber-300 shadow-glow-gold/20'
+                    ? 'bg-amber-950/30 border-shinobi-gold text-amber-300 '
                     : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
                 }`}
               >
@@ -325,7 +325,7 @@ export const StartChallengeModal: React.FC<StartChallengeModalProps> = ({ isOpen
 
             {/* Formulário Rápido para Criar Nova Missão */}
             {isAddingNewMission && (
-              <form onSubmit={handleAddNewMission} className="p-4 rounded-2xl bg-slate-950 border-2 border-shinobi-gold/60 space-y-3 animate-in fade-in">
+              <form onSubmit={handleAddNewMission} className="p-4 rounded-2xl bg-slate-950 border border-shinobi-gold/60 space-y-3 animate-in fade-in">
                 <div className="font-bold text-slate-100 text-xs flex items-center gap-1.5">
                   <Plus className="w-4 h-4 text-shinobi-gold" />
                   <span>Adicionar Missão Personalizada ao Desafio</span>
@@ -395,7 +395,7 @@ export const StartChallengeModal: React.FC<StartChallengeModalProps> = ({ isOpen
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-shinobi-gold to-amber-500 text-slate-950 text-xs font-bold shadow-glow-gold"
+                    className="px-4 py-1.5 rounded-lg bg-shinobi-gold text-slate-950 text-xs font-bold "
                   >
                     Salvar e Incluir
                   </button>
@@ -454,7 +454,7 @@ export const StartChallengeModal: React.FC<StartChallengeModalProps> = ({ isOpen
                 type="button"
                 onClick={() => setIsEliteMode(false)}
                 className={`p-3 rounded-2xl border text-left transition-all ${
-                  !isEliteMode ? 'bg-emerald-950/30 border-emerald-500/80 shadow-glow-jade/20' : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
+                  !isEliteMode ? 'bg-emerald-950/30 border-emerald-500/80 ' : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
                 }`}
               >
                 <div className="font-bold text-xs text-slate-100">🛡️ Caminho Padrão</div>
@@ -464,7 +464,7 @@ export const StartChallengeModal: React.FC<StartChallengeModalProps> = ({ isOpen
                 type="button"
                 onClick={() => setIsEliteMode(true)}
                 className={`p-3 rounded-2xl border text-left transition-all ${
-                  isEliteMode ? 'bg-rose-950/40 border-rose-500 shadow-glow-crimson/30' : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
+                  isEliteMode ? 'bg-rose-950/40 border-rose-500 ' : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
                 }`}
               >
                 <div className="font-bold text-xs text-rose-200">💀 Modo Elite (+20% XP)</div>
@@ -500,7 +500,7 @@ export const StartChallengeModal: React.FC<StartChallengeModalProps> = ({ isOpen
           <button
             type="button"
             onClick={handleConfirmStart}
-            className="w-full sm:w-auto px-7 py-3 bg-gradient-to-r from-shinobi-orange via-amber-500 to-shinobi-crimson hover:brightness-110 text-slate-950 font-extrabold text-xs sm:text-sm rounded-2xl shadow-glow-orange transition-all duration-300 flex items-center justify-center gap-2"
+            className="w-full sm:w-auto px-7 py-3 bg-shinobi-orange text-slate-950 font-extrabold text-xs sm:text-sm rounded-2xl transition-all duration-300 flex items-center justify-center gap-2"
           >
             <Flame className="w-4 h-4 stroke-[2.5]" />
             <span>Jurar e Iniciar o Desafio</span>

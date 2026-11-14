@@ -47,8 +47,8 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
   };
 
   return (
-    <div className="modal-overlay z-[100] bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-slate-900 border-2 border-slate-700 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl p-6 space-y-4 my-auto relative z-[101]">
+    <div className="modal-overlay z-[100] bg-black/85 animate-in fade-in duration-200">
+      <div className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl overflow-hidden p-6 space-y-4 my-auto relative z-[101]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-shinobi-border pb-3">
           <div className="flex items-center gap-2">
@@ -163,7 +163,7 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
           </button>
           <button
             onClick={handleSave}
-            className="px-5 py-2.5 bg-shinobi-crimson hover:bg-shinobi-crimsonGlow text-white font-bold text-xs rounded-xl shadow-glow-crimson transition-all flex items-center gap-1.5"
+            className="px-5 py-2.5 bg-shinobi-crimson hover:bg-shinobi-crimsonGlow text-onaccent font-bold text-xs rounded-xl transition-all flex items-center gap-1.5"
           >
             <Check className="w-4 h-4 stroke-[3]" />
             Salvar Horários

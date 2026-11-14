@@ -47,7 +47,7 @@ export const DuelView: React.FC<DuelViewProps> = () => {
   return (
     <div className="pb-nav pt-3 max-w-4xl mx-auto px-4 space-y-4">
       {/* Header do Modo Duelo */}
-      <div className="pergaminho-bg rounded-2xl border border-shinobi-border p-4 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="pergaminho-bg rounded-2xl border border-shinobi-border p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-600/20 text-rose-400 font-bold border border-rose-600/40">
@@ -90,7 +90,7 @@ export const DuelView: React.FC<DuelViewProps> = () => {
       <BossCard adversary={activeBoss} lastDamage={lastDamageDealt} isTarget={isViewingTarget} />
 
       {/* Seletor dos 30 Adversários com Bloqueio Sequencial */}
-      <div className="bg-slate-900 border-2 border-slate-700/80 rounded-3xl p-5 shadow-2xl">
+      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl p-5 ">
         <div className="flex items-center justify-between mb-3 border-b border-slate-800 pb-2.5">
           <div>
             <h3 className="font-cinzel text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
@@ -120,7 +120,7 @@ export const DuelView: React.FC<DuelViewProps> = () => {
                 title={!isUnlocked ? `Derrote o Adversário #${adv.number - 1} para desbloquear` : undefined}
                 className={`p-3 rounded-2xl border text-left transition-all relative ${
                   isSelected
-                    ? 'border-2 border-rose-500 bg-rose-950/40 shadow-glow-crimson scale-[1.02]'
+                    ? 'border border-rose-500 bg-rose-950/40 scale-[1.02]'
                     : adv.isDefeated
                     ? 'border-emerald-500/50 bg-emerald-950/20 hover:border-emerald-400 cursor-pointer'
                     : isUnlocked
@@ -157,7 +157,7 @@ export const DuelView: React.FC<DuelViewProps> = () => {
       </div>
 
       {/* Registro de Golpes Recentes (Combat Log) */}
-      <div className="bg-slate-900 border-2 border-slate-700/80 rounded-3xl p-5 shadow-2xl">
+      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl p-5 ">
         <h3 className="font-cinzel text-sm sm:text-base font-bold text-slate-100 mb-3 flex items-center gap-2 border-b border-slate-800 pb-2.5">
           <History className="w-4 h-4 text-shinobi-chakra" />
           Registro de Combate da Sessão

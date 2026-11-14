@@ -25,8 +25,8 @@ export const BossCard: React.FC<BossCardProps> = ({ adversary, lastDamage, isTar
       : `+${reward.buffValue}% XP`;
 
   return (
-    <div className="relative bg-shinobi-card washi-texture rounded-2xl border border-shinobi-border overflow-hidden shadow-2xl">
-      <div className="h-32 bg-gradient-to-b from-rose-950/50 via-orange-950/20 to-shinobi-card p-4 flex items-start justify-between relative">
+    <div className="relative bg-shinobi-card washi-texture rounded-2xl border border-shinobi-border overflow-hidden ">
+      <div className="h-32 bg-rose-950/50 p-4 flex items-start justify-between relative">
         <div className="absolute inset-0 opacity-30 pointer-events-none" style={{ background: 'radial-gradient(60% 90% at 50% 120%, rgba(255,122,26,0.35), transparent 70%)' }} />
         <div className="flex items-center gap-2 relative">
           <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-rose-600/20 text-rose-300 border border-rose-600/40">
@@ -53,8 +53,8 @@ export const BossCard: React.FC<BossCardProps> = ({ adversary, lastDamage, isTar
           <div className="relative">
             <div
               key={showHit ? lastDamage!.id : 'idle'}
-              className={`w-24 h-24 rounded-2xl bg-gradient-to-tr from-slate-950 to-rose-950 border-2 flex items-center justify-center text-5xl overflow-hidden ${
-                adversary.isDefeated ? 'border-shinobi-jade/60 grayscale opacity-70' : 'border-rose-500/80 shadow-glow-crimson'
+              className={`w-24 h-24 rounded-2xl bg-slate-950 border flex items-center justify-center text-5xl overflow-hidden ${
+                adversary.isDefeated ? 'border-shinobi-jade/60 grayscale opacity-70' : 'border-rose-500/80 '
               } ${showHit ? 'animate-hit' : ''}`}
             >
               <span>{adversary.avatarEmoji || '🥷'}</span>
@@ -65,7 +65,7 @@ export const BossCard: React.FC<BossCardProps> = ({ adversary, lastDamage, isTar
             {showHit && (
               <div
                 key={`dmg_${lastDamage!.id}`}
-                className={`absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap font-mono font-black animate-float-up drop-shadow ${
+                className={`absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap font-mono font-black animate-float-up ${
                   lastDamage!.isCritical ? 'text-amber-300 text-lg' : 'text-rose-300 text-base'
                 }`}
               >
@@ -99,10 +99,10 @@ export const BossCard: React.FC<BossCardProps> = ({ adversary, lastDamage, isTar
             <div
               className={`h-full rounded-full transition-all duration-700 ${
                 hpPercentage > 50
-                  ? 'bg-gradient-to-r from-rose-600 to-rose-400'
+                  ? ' bg-rose-600 '
                   : hpPercentage > 20
-                  ? 'bg-gradient-to-r from-orange-600 to-amber-400'
-                  : 'bg-gradient-to-r from-amber-500 to-yellow-300'
+                  ? ' bg-orange-600 '
+                  : ' bg-amber-500 '
               }`}
               style={{ width: `${hpPercentage}%` }}
             />

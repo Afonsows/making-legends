@@ -1,7 +1,22 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+export type ThemeMode = 'system' | 'light' | 'dark';
+export type AppTab = 'missions' | 'challenges' | 'status' | 'tools' | 'cards';
+
 interface UIStoreState {
+  // Aparência: claro, escuro ou acompanhar o aparelho
+  themeMode: ThemeMode;
+  setThemeMode: (mode: ThemeMode) => void;
+
+  // Aba aberta (não é salva: o app sempre abre em "Hoje")
+  activeTab: AppTab;
+  setActiveTab: (tab: AppTab) => void;
+
+  // Filtros da lista de missões abertos/fechados
+  isMissionFiltersOpen: boolean;
+  toggleMissionFilters: () => void;
+
   // Modo Clean Global
   isCleanMode: boolean;
   toggleCleanMode: () => void;
@@ -50,7 +65,16 @@ interface UIStoreState {
 
 export const useUIStore = create<UIStoreState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
+      themeMode: 'dark',
+      setThemeMode: (mode) => set({ themeMode: mode }),
+
+      activeTab: 'missions',
+      setActiveTab: (tab) => set({ activeTab: tab }),
+
+      isMissionFiltersOpen: false,
+      toggleMissionFilters: () => set((state) => ({ isMissionFiltersOpen: !state.isMissionFiltersOpen })),
+
       isCleanMode: false,
       toggleCleanMode: () => set((state) => ({ isCleanMode: !state.isCleanMode })),
       setCleanMode: (enabled) => set({ isCleanMode: enabled }),
@@ -112,6 +136,11 @@ export const useUIStore = create<UIStoreState>()(
     }),
     {
       name: 'shinobi_ui_prefs_v1',
+      // A aba aberta não é salva
+      partialize: (state) => {
+        const { activeTab: _activeTab, ...rest } = state;
+        return rest;
+      },
     }
   )
 );

@@ -56,12 +56,12 @@ export const TeachingCardsView: React.FC = () => {
   return (
     <div className="pb-nav pt-3 max-w-4xl mx-auto px-4 space-y-4">
       {/* Header com Seletor de Aba */}
-      <div className="pergaminho-bg rounded-2xl border border-shinobi-border p-4 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="pergaminho-bg rounded-2xl border border-shinobi-border p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <img
             src="/logo.png"
             alt="Making Legends"
-            className="w-10 h-10 rounded-xl border border-shinobi-crimson/40 shadow-glow-crimson object-cover shrink-0 hidden sm:block"
+            className="w-10 h-10 rounded-xl border border-shinobi-crimson/40 object-cover shrink-0 hidden sm:block"
           />
           <div>
             <h2 className="font-cinzel text-lg sm:text-xl font-bold text-slate-100 flex items-center gap-2">
@@ -79,7 +79,7 @@ export const TeachingCardsView: React.FC = () => {
             onClick={() => setActiveTab('cards')}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'cards'
-                ? 'bg-shinobi-gold text-shinobi-bg shadow-sm font-bold'
+                ? 'bg-shinobi-gold text-shinobi-bg font-bold'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -90,7 +90,7 @@ export const TeachingCardsView: React.FC = () => {
             onClick={() => setActiveTab('leagues')}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'leagues'
-                ? 'bg-shinobi-gold text-shinobi-bg shadow-sm font-bold'
+                ? 'bg-shinobi-gold text-shinobi-bg font-bold'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -111,7 +111,7 @@ export const TeachingCardsView: React.FC = () => {
                 onClick={() => setSelectedPillar(p.id)}
                 className={`px-3 py-1 rounded-xl text-xs whitespace-nowrap transition-all border font-semibold cursor-pointer ${
                   selectedPillar === p.id
-                    ? 'bg-slate-900 border-2 border-shinobi-gold text-shinobi-gold font-bold shadow-glow-gold/20 scale-105'
+                    ? 'bg-slate-900 border border-shinobi-gold text-shinobi-gold font-bold scale-105'
                     : 'bg-slate-900/90 border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500'
                 }`}
               >
@@ -130,7 +130,7 @@ export const TeachingCardsView: React.FC = () => {
               const rarityTheme = {
                 common: {
                   container: isUnlocked
-                    ? 'bg-slate-900/90 border border-slate-700/80 hover:border-slate-500 shadow-md'
+                    ? 'bg-slate-900/90 border border-slate-700/80 hover:border-slate-500 '
                     : 'bg-slate-950/70 border border-slate-850 opacity-40 grayscale',
                   badge: 'bg-slate-800 text-slate-400 border border-slate-700',
                   badgeText: 'COMUM',
@@ -143,27 +143,27 @@ export const TeachingCardsView: React.FC = () => {
                 },
                 rare: {
                   container: isUnlocked
-                    ? 'bg-gradient-to-b from-[#06283d]/90 via-slate-950 to-slate-950 border-2 border-cyan-400/90 shadow-[0_0_18px_rgba(6,182,212,0.35)] hover:border-cyan-300 hover:scale-[1.02]'
-                    : 'bg-slate-950/70 border-2 border-cyan-900/40 opacity-40 grayscale',
-                  badge: 'bg-cyan-950 text-cyan-300 border border-cyan-400 font-bold shadow-[0_0_8px_rgba(6,182,212,0.4)]',
+                    ? ' bg-[#06283d]/90 border border-cyan-400/90 hover:border-cyan-300 '
+                    : 'bg-slate-950/70 border border-cyan-900/40 opacity-40 grayscale',
+                  badge: 'bg-cyan-950 text-cyan-300 border border-cyan-400 font-bold ',
                   badgeText: '⚡ RARO',
                   titleColor: 'text-cyan-50 group-hover:text-cyan-300',
                   cornerGlyph: '⚡',
                   kanjiGlow: 'opacity-15 text-cyan-400 group-hover:opacity-25',
-                  glowEffect: 'shadow-glow-chakra',
+                  glowEffect: '',
                   accentTag: '⚡ Fluxo Chakra',
                   accentColor: 'text-cyan-400',
                 },
                 legendary: {
                   container: isUnlocked
-                    ? 'bg-gradient-to-b from-[#3a1b02] via-[#1a0e02] to-slate-950 border-2 border-amber-400 shadow-[0_0_26px_rgba(245,158,11,0.55)] hover:border-amber-300 hover:scale-[1.03]'
-                    : 'bg-slate-950/70 border-2 border-amber-900/40 opacity-40 grayscale',
-                  badge: 'bg-gradient-to-r from-amber-500 via-shinobi-gold to-amber-400 text-slate-950 font-black border border-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.7)]',
+                    ? ' bg-[#3a1b02] border border-amber-400 hover:border-amber-300 '
+                    : 'bg-slate-950/70 border border-amber-900/40 opacity-40 grayscale',
+                  badge: ' bg-amber-500 text-slate-950 font-black border border-amber-300 ',
                   badgeText: '👑 LENDÁRIO ★★★',
                   titleColor: 'text-amber-100 group-hover:text-amber-300 font-extrabold',
                   cornerGlyph: '❖',
                   kanjiGlow: 'opacity-20 text-amber-400 group-hover:opacity-35',
-                  glowEffect: 'shadow-glow-gold',
+                  glowEffect: '',
                   accentTag: '👑 Mestria Sannin',
                   accentColor: 'text-amber-400',
                 },

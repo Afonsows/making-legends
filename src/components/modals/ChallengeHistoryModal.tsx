@@ -65,8 +65,8 @@ export const ChallengeHistoryModal: React.FC<ChallengeHistoryModalProps> = ({ is
   };
 
   return (
-    <div className="modal-overlay z-[100] bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-slate-900 border-2 border-shinobi-gold/60 w-full max-w-3xl rounded-3xl overflow-hidden shadow-2xl flex flex-col modal-panel my-auto relative z-[101]">
+    <div className="modal-overlay z-[100] bg-black/85 animate-in fade-in duration-200">
+      <div className="bg-slate-900 border border-shinobi-gold/60 w-full max-w-3xl rounded-2xl overflow-hidden flex flex-col modal-panel my-auto relative z-[101]">
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-slate-800 bg-slate-950/90">
           <div className="flex items-center gap-2.5">
@@ -94,10 +94,10 @@ export const ChallengeHistoryModal: React.FC<ChallengeHistoryModalProps> = ({ is
         <div className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1">
           {/* Card do Ciclo Ativo Atual ou Convite para Iniciar */}
           {activeCycle && activeCycle.status === 'active' ? (
-            <div className="pergaminho-bg rounded-2xl border-2 border-shinobi-gold/70 p-4 shadow-lg space-y-3">
+            <div className="pergaminho-bg rounded-2xl border border-shinobi-gold/70 p-4 space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-shinobi-gold/30 pb-2.5">
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-glow-jade" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 " />
                   <h4 className="font-cinzel font-bold text-slate-100 text-xs sm:text-sm">
                     {activeCycle.title || `Desafio ${activeCycle.targetDays || 66} Dias`} — Ciclo #{activeCycle.cycleNumber || 1}
                   </h4>
@@ -147,7 +147,7 @@ export const ChallengeHistoryModal: React.FC<ChallengeHistoryModalProps> = ({ is
               </div>
             </div>
           ) : (
-            <div className="p-4 rounded-2xl bg-slate-950/80 border-2 border-dashed border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="p-4 rounded-2xl bg-slate-950/80 border border-dashed border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="space-y-0.5">
                 <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4 text-amber-400" />
@@ -159,7 +159,7 @@ export const ChallengeHistoryModal: React.FC<ChallengeHistoryModalProps> = ({ is
               </div>
               <button
                 onClick={handleOpenStartModal}
-                className="px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 text-slate-950 text-xs font-bold rounded-xl shadow-glow-gold transition-all flex items-center justify-center gap-1.5 shrink-0"
+                className="px-4 py-2 bg-amber-500 text-slate-950 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shrink-0"
               >
                 <Zap className="w-3.5 h-3.5" />
                 <span>Iniciar Desafio ⚡</span>
@@ -213,7 +213,7 @@ export const ChallengeHistoryModal: React.FC<ChallengeHistoryModalProps> = ({ is
                       key={cycle.id}
                       className={`p-3.5 rounded-2xl border transition-all ${
                         isCompleted
-                          ? 'bg-emerald-950/20 border-emerald-500/40 shadow-glow-jade/10'
+                          ? 'bg-emerald-950/20 border-emerald-500/40 '
                           : 'bg-slate-950/80 border-slate-800'
                       }`}
                     >
@@ -334,13 +334,13 @@ export const ChallengeHistoryModal: React.FC<ChallengeHistoryModalProps> = ({ is
         </div>
 
         {/* Footer */}
-        <div className="p-3.5 sm:p-4 border-t-2 border-slate-800 bg-slate-950 flex items-center justify-between gap-3">
+        <div className="p-3.5 sm:p-4 border-t border-slate-800 bg-slate-950 flex items-center justify-between gap-3">
           <span className="text-[10px] text-slate-500 font-mono hidden sm:inline">
             A constância diária é o segredo dos grandes ninjas.
           </span>
           <button
             onClick={onClose}
-            className="px-5 py-2 bg-gradient-to-r from-shinobi-gold to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 text-xs font-bold rounded-xl shadow-glow-gold transition-all ml-auto"
+            className="px-5 py-2 bg-shinobi-gold text-slate-950 text-xs font-bold rounded-xl transition-all ml-auto"
           >
             Fechar Histórico
           </button>

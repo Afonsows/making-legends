@@ -1,77 +1,109 @@
 import React, { useState } from 'react';
 import { useUserStore } from '../../state/useUserStore';
 import { useHabitStore } from '../../state/useHabitStore';
-import { useUIStore } from '../../state/useUIStore';
-import { useTheme } from '../../theme/ThemeContext';
-import { evaluateProtocolStatus, getWeekDayRange } from '../../core/streakEngine';
-import { formatDateBR } from '../../core/dateUtils';
+import { evaluateProtocolStatus } from '../../core/streakEngine';
+import { addDaysToDateString, formatDateBR, getTodayString, parseDate } from '../../core/dateUtils';
 import { EditChallengeModal } from '../challenges/EditChallengeModal';
 import { buildSyncedOfficial66Challenge } from '../../state/useChallengeStore';
-import {
-  Map,
-  History,
-  Flame,
-  ShieldCheck,
-  ShieldAlert,
-  Shield,
-  Zap,
-  Sparkles,
-  CalendarClock,
-  Skull,
-  ChevronDown,
-  ChevronUp,
-  Edit3,
-  Trash2,
-  CheckCircle2,
-} from 'lucide-react';
+import { Bar, Menu, Ring } from '../ui/kit';
+import { Check, History, Map, Pencil, Shield, Trash2 } from 'lucide-react';
+import { DailyXpProgress } from '../../core/dayLog';
+import { UserProfile } from '../../core/types';
 
 interface DailyCheckInCardProps {
   onOpenMap?: () => void;
   onOpenHistory?: () => void;
 }
 
-/** Selo circular do dia: anel de progresso de XP ou o carimbo 完 quando o dia foi cumprido. */
-const DaySeal: React.FC<{ percentOfGoal: number; done: boolean; dayLabel: string }> = ({ percentOfGoal, done, dayLabel }) => {
-  const radius = 34;
-  const circumference = 2 * Math.PI * radius;
-  const pct = Math.min(1, Math.max(0, percentOfGoal));
+const WEEKDAY_INITIALS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+
+/** Meta do dia: anel + XP feito / XP necessário para o dia contar. */
+const DayGoal: React.FC<{ xp: DailyXpProgress }> = ({ xp }) => {
+  const goal = Math.max(1, xp.target50PctXp);
+  const ratio = xp.currentXp / goal;
+  const done = xp.isUnlocked;
+  const empty = xp.totalTargetXp === 0;
+
   return (
-    <div className={`relative w-[86px] h-[86px] shrink-0 rounded-full ${done ? 'animate-chakra' : ''}`}>
-      <svg viewBox="0 0 80 80" className="w-full h-full -rotate-90">
-        <circle cx="40" cy="40" r={radius} fill="rgba(2,6,23,0.85)" stroke="rgba(148,163,184,0.18)" strokeWidth="6" />
-        <circle
-          cx="40"
-          cy="40"
-          r={radius}
-          fill="none"
-          stroke={done ? '#FF7A1A' : 'url(#sealGradient)'}
-          strokeWidth="6"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={circumference * (1 - pct)}
-          style={{ transition: 'stroke-dashoffset 0.6s cubic-bezier(.2,.8,.2,1)' }}
-        />
-        <defs>
-          <linearGradient id="sealGradient" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#FF1341" />
-            <stop offset="100%" stopColor="#eab308" />
-          </linearGradient>
-        </defs>
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
+    <div className="flex items-center gap-4">
+      <Ring value={ratio} size={76} stroke={6} color={done ? 'rgb(var(--ok))' : 'rgb(var(--accent))'}>
         {done ? (
-          <span key="stamp" className="hanko-stamp animate-stamp text-3xl px-1.5 py-1 font-bold">完</span>
+          <Check key="done" className="w-7 h-7 text-ok animate-pop" strokeWidth={2.75} />
         ) : (
-          <>
-            <span className="font-mono text-lg font-bold text-slate-100 leading-none">{Math.round(pct * 100)}%</span>
-            <span className="text-[9px] font-mono text-slate-400 mt-1 uppercase tracking-wider">{dayLabel}</span>
-          </>
+          <span className="t-num text-[19px] text-ink">
+            {Math.round(Math.min(1, ratio) * 100)}
+            <span className="text-[11px] text-ink3">%</span>
+          </span>
         )}
+      </Ring>
+      <div className="min-w-0 flex-1">
+        <div className="t-label">Meta de hoje</div>
+        <div className="t-num text-[26px] text-ink mt-2">
+          {xp.currentXp}
+          <span className="text-sm text-ink3 font-semibold"> / {xp.target50PctXp} XP</span>
+        </div>
+        <p className="text-[13px] text-ink2 mt-1.5 leading-snug">
+          {empty
+            ? 'Crie missões para definir a meta do dia.'
+            : done
+            ? 'Dia garantido. O que vier a mais é bônus.'
+            : `Faltam ${xp.remainingXpToUnlock} XP para o dia contar na sequência.`}
+        </p>
       </div>
     </div>
   );
 };
 
+/** Últimos 7 dias: cumprido, protegido por escudo, perdido ou hoje. */
+const WeekStrip: React.FC<{ profile: UserProfile; todayDone: boolean }> = ({ profile, todayDone }) => {
+  const today = getTodayString();
+  const shielded = new Set(profile.shieldedDates || []);
+  const days = Array.from({ length: 7 }, (_, i) => addDaysToDateString(today, i - 6));
+
+  return (
+    <div className="grid grid-cols-7 gap-1.5">
+      {days.map((date) => {
+        const record = profile.dayLog?.[date];
+        const isToday = date === today;
+        const done = isToday ? todayDone : Boolean(record?.completed);
+        const isShielded = !done && shielded.has(date);
+        const missed = !isToday && !done && !isShielded && Boolean(record?.closed) && record!.xpTarget > 0;
+        const label = isToday ? 'Hoje' : done ? 'Cumprido' : isShielded ? 'Protegido por escudo' : missed ? 'Não cumprido' : 'Sem registro';
+
+        return (
+          <div key={date} className="flex flex-col items-center gap-1.5" title={`${formatDateBR(date)} — ${label}`}>
+            <span className={`text-[10px] font-semibold tracking-wider ${isToday ? 'text-ink' : 'text-ink3'}`}>
+              {WEEKDAY_INITIALS[parseDate(date).getDay()]}
+            </span>
+            <span
+              className={`w-8 h-8 rounded-full flex items-center justify-center border ${
+                done
+                  ? 'bg-ink border-ink text-bg'
+                  : isShielded
+                  ? 'border-ok/50 text-ok'
+                  : isToday
+                  ? 'border-accent text-ink'
+                  : missed
+                  ? 'border-line text-ink3'
+                  : 'border-transparent bg-surface2 text-ink3'
+              }`}
+            >
+              {done ? (
+                <Check className="w-4 h-4" strokeWidth={3} />
+              ) : isShielded ? (
+                <Shield className="w-3.5 h-3.5" />
+              ) : (
+                <span className="text-[11px] font-semibold tabular">{parseDate(date).getDate()}</span>
+              )}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+/** Cartão principal da tela "Hoje": o desafio em curso e a meta do dia. */
 export const DailyCheckInCard: React.FC<DailyCheckInCardProps> = ({ onOpenMap, onOpenHistory }) => {
   const {
     profile,
@@ -81,15 +113,10 @@ export const DailyCheckInCard: React.FC<DailyCheckInCardProps> = ({ onOpenMap, o
     deleteActiveChallenge,
   } = useUserStore();
   const { missions } = useHabitStore();
-  const { getPhaseInfo } = useTheme();
-  const { isDailyCheckInCollapsed, toggleDailyCheckIn } = useUIStore();
-
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const status = evaluateProtocolStatus(profile, missions);
   const { xpProgress } = status;
-  const goal = Math.max(1, xpProgress.target50PctXp);
-  const percentOfGoal = xpProgress.currentXp / goal;
   const handleOpenMap = onOpenMap || openChallengeMapModal;
   const handleOpenHistory = onOpenHistory || openChallengeHistoryModal;
   const cycle = profile.activeChallenge && profile.activeChallenge.status === 'active' ? profile.activeChallenge : undefined;
@@ -104,342 +131,126 @@ export const DailyCheckInCard: React.FC<DailyCheckInCardProps> = ({ onOpenMap, o
     }
   };
 
-  const dailyBlock = (
-    <div className="flex items-center gap-4">
-      <DaySeal percentOfGoal={percentOfGoal} done={xpProgress.isUnlocked} dayLabel="da meta" />
-      <div className="min-w-0 flex-1 space-y-1.5">
-        <div className="text-sm font-bold text-slate-100">
-          {xpProgress.isUnlocked ? 'Sequência de perseverança garantida!' : xpProgress.totalTargetXp === 0 ? 'Crie missões para começar' : 'Meta do dia em andamento'}
-        </div>
-        <p className="text-xs text-slate-400 leading-snug">
-          {xpProgress.isUnlocked
-            ? `Você atingiu 50% do XP diário e acrescentou 1 dia à sua sequência de perseverança. Cada missão a mais fortalece seu chakra.`
-            : xpProgress.totalTargetXp === 0
-            ? 'Adicione missões diárias para definir sua meta.'
-            : `Faltam ${xpProgress.remainingXpToUnlock} XP para acrescentar 1 dia à sequência (50% de ${xpProgress.totalTargetXp} XP).`}
-        </p>
-        <div className="relative w-full h-2.5 bg-slate-900 rounded-full overflow-hidden border border-slate-700/80">
-          <div
-            className={`h-full rounded-full transition-all duration-500 ${
-              xpProgress.isUnlocked ? 'bg-gradient-to-r from-shinobi-orange to-amber-300' : 'bg-gradient-to-r from-shinobi-crimson to-shinobi-orange'
-            }`}
-            style={{ width: `${xpProgress.progressPercent}%` }}
-          />
-          <div className="absolute top-0 bottom-0 w-0.5 bg-white/80" style={{ left: '50%' }} title="Meta mínima: 50% do XP" />
-        </div>
-        <div className="flex justify-between text-[10px] font-mono text-slate-500">
-          <span>{xpProgress.currentXp} XP</span>
-          <span className="text-slate-300">meta {xpProgress.target50PctXp}</span>
-          <span>{xpProgress.totalTargetXp} XP</span>
-        </div>
+  const dayBlock = (
+    <>
+      <div className="border-t border-line pt-5">
+        <DayGoal xp={xpProgress} />
       </div>
-    </div>
+      <div className="border-t border-line pt-4">
+        <WeekStrip profile={profile} todayDone={xpProgress.isUnlocked} />
+      </div>
+    </>
   );
-
-  // ── Versão Compacta / Clean da barra de presença ──────────────────
-  const compactBar = (
-    <div className="pergaminho-bg rounded-2xl border border-shinobi-orange/50 p-3 flex items-center justify-between gap-3 shadow-md">
-      <div className="flex items-center gap-2.5 min-w-0">
-        <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
-          xpProgress.isUnlocked
-            ? 'bg-amber-500/20 text-shinobi-orange border border-shinobi-orange/40 font-kanji text-sm'
-            : 'bg-slate-900 border border-slate-700 text-slate-300'
-        }`}>
-          {xpProgress.isUnlocked ? '完' : `${Math.round(xpProgress.progressPercent)}%`}
-        </div>
-
-        <div className="min-w-0">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-xs font-bold text-slate-100 truncate">
-              {cycle ? `Dia ${status.currentDay}/${status.targetDays}` : 'Meta Diária'}
-            </span>
-            <span className="text-[10px] font-mono text-slate-400">
-              ({xpProgress.currentXp}/{xpProgress.target50PctXp} XP)
-            </span>
-            {xpProgress.isUnlocked && (
-              <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-0.5">
-                <CheckCircle2 className="w-3 h-3" /> Cumprido
-              </span>
-            )}
-          </div>
-
-          <div className="w-32 sm:w-48 h-1.5 bg-slate-900 rounded-full overflow-hidden mt-1 border border-slate-800">
-            <div
-              className={`h-full rounded-full transition-all duration-300 ${
-                xpProgress.isUnlocked ? 'bg-shinobi-orange' : 'bg-shinobi-crimson'
-              }`}
-              style={{ width: `${xpProgress.progressPercent}%` }}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-1.5 shrink-0">
-        {cycle && (
-          <>
-            <button
-              onClick={handleOpenMap}
-              className="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-shinobi-orange border border-shinobi-orange/40 rounded-lg text-xs font-bold transition-all"
-              title="Abrir mapa do desafio"
-            >
-              <Map className="w-3 h-3" />
-            </button>
-            <button
-              onClick={() => setIsEditModalOpen(true)}
-              className="p-1 text-slate-400 hover:text-shinobi-gold rounded-lg hover:bg-slate-800 transition-colors"
-              title="Editar desafio"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-            </button>
-          </>
-        )}
-        <button
-          onClick={handleOpenHistory}
-          className="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-bold transition-all"
-          title="Ver histórico de ciclos"
-        >
-          <History className="w-3 h-3" />
-        </button>
-        <button
-          type="button"
-          onClick={toggleDailyCheckIn}
-          className="p-1 text-slate-400 hover:text-slate-100 rounded-lg hover:bg-white/10 transition-colors"
-          title="Expandir cartão de presença"
-        >
-          <ChevronDown className="w-4 h-4" />
-        </button>
-      </div>
-    </div>
-  );
-
-  if (isDailyCheckInCollapsed) {
-    return (
-      <>
-        {compactBar}
-        {isEditModalOpen && (
-          <EditChallengeModal
-            isOpen={isEditModalOpen}
-            onClose={() => setIsEditModalOpen(false)}
-            challenge={buildSyncedOfficial66Challenge(profile, missions)}
-          />
-        )}
-      </>
-    );
-  }
 
   // ── Sem desafio ativo ─────────────────────────────────────
   if (!cycle) {
-    const nextCycleNum = (profile.challengeHistory?.length || 0) + 1;
     return (
-      <div className="pergaminho-bg rounded-2xl border-2 border-shinobi-orange/50 p-4 sm:p-5 shadow-2xl relative overflow-hidden space-y-4">
-        <div className="absolute -top-6 right-2 font-kanji text-[110px] leading-none text-white/[0.04] select-none pointer-events-none">挑</div>
-        <div className="relative z-10 flex items-start justify-between gap-3">
-          <div>
-            <span className="inline-block text-[10px] font-mono uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-shinobi-orange/15 text-shinobi-orange font-bold border border-shinobi-orange/40">
-              Ciclo #{nextCycleNum} • aguardando início
-            </span>
-            <h2 className="font-cinzel text-lg sm:text-xl text-slate-100 mt-2 flex items-center gap-2">
-              <Flame className="w-5 h-5 text-shinobi-orange" />
-              Pronto para um novo desafio?
-            </h2>
-            <p className="text-xs text-slate-300 mt-1 max-w-xl">
-              Escolha suas missões, a duração (21, 30, 66 ou 90 dias) e jure seguir o caminho ninja. Sua sequência e seus Dias Cumpridos continuam contando mesmo sem desafio.
+      <section className="card p-5 space-y-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="t-label">Sem desafio em curso</div>
+            <h2 className="t-title text-[26px] text-ink mt-3">Comece uma jornada</h2>
+            <p className="text-sm text-ink2 mt-2 leading-snug">
+              Escolha a duração (21 a 90 dias) e suas missões. Sua sequência continua contando mesmo sem desafio.
             </p>
           </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              onClick={handleOpenHistory}
-              className="px-3 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-amber-300 border border-amber-500/50 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
-            >
-              <History className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Histórico</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={toggleDailyCheckIn}
-              className="p-1.5 text-slate-400 hover:text-slate-100 rounded-xl hover:bg-white/10 transition-colors"
-              title="Recolher para modo clean"
-            >
-              <ChevronUp className="w-4 h-4" />
-            </button>
-          </div>
+          <Menu items={[{ label: 'Histórico de ciclos', icon: History, onSelect: handleOpenHistory }]} />
         </div>
-
-        <div className="relative z-10 bg-slate-950/70 border border-slate-800 rounded-2xl p-4">{dailyBlock}</div>
-
-        <button
-          type="button"
-          onClick={openStartChallengeModal}
-          className="relative z-10 w-full py-3.5 bg-gradient-to-r from-shinobi-orange via-amber-500 to-shinobi-crimson hover:brightness-110 text-slate-950 font-extrabold text-sm rounded-2xl shadow-glow-orange transition-all flex items-center justify-center gap-2"
-        >
-          <Sparkles className="w-4 h-4" />
-          Personalizar e Iniciar Desafio
+        <button type="button" onClick={openStartChallengeModal} className="btn btn-primary w-full">
+          Iniciar desafio
         </button>
-      </div>
+        {dayBlock}
+      </section>
     );
   }
 
   // ── Desafio agendado (começa no futuro) ───────────────────
   if (status.isScheduled) {
     return (
-      <div className="pergaminho-bg rounded-2xl border-2 border-cyan-500/40 p-4 sm:p-5 shadow-2xl space-y-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <span className="text-[10px] font-mono uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 font-bold border border-cyan-500/40">
-              {cycle.title}
-            </span>
-            <h2 className="font-cinzel text-lg text-slate-100 mt-2 flex items-center gap-2">
-              <CalendarClock className="w-5 h-5 text-cyan-300" />
-              Começa em {status.daysUntilStart} {status.daysUntilStart === 1 ? 'dia' : 'dias'}
-            </h2>
-            <p className="text-xs text-slate-400 mt-1">
-              Dia 1 em {formatDateBR(cycle.startDate)}. Até lá, use os dias para ajustar suas missões — eles ainda contam para a sua sequência.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={toggleDailyCheckIn}
-            className="p-1.5 text-slate-400 hover:text-slate-100 rounded-xl hover:bg-white/10 transition-colors"
-            title="Recolher para modo clean"
-          >
-            <ChevronUp className="w-4 h-4" />
-          </button>
+      <section className="card p-5 space-y-5">
+        <div>
+          <div className="t-label truncate">{cycle.title || `Desafio ${status.targetDays} dias`}</div>
+          <h2 className="t-title text-[26px] text-ink mt-3">
+            Começa em {status.daysUntilStart} {status.daysUntilStart === 1 ? 'dia' : 'dias'}
+          </h2>
+          <p className="text-sm text-ink2 mt-2 leading-snug">
+            Dia 1 em {formatDateBR(cycle.startDate)}. Até lá, ajuste suas missões — os dias já contam para a sequência.
+          </p>
         </div>
-        <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-4">{dailyBlock}</div>
-      </div>
+        {dayBlock}
+      </section>
     );
   }
 
   // ── Desafio em andamento ──────────────────────────────────
-  const phase = getPhaseInfo(status.currentDay, status.targetDays);
-  const { startDay, endDay } = getWeekDayRange(status.currentWeek, status.targetDays);
   const allowed = status.allowedMissesPerWeek;
   const missed = status.missedDaysInCurrentWeek;
   const atRisk = missed >= allowed;
+  const weekNote =
+    allowed === 0
+      ? 'Modo Elite: qualquer falta encerra o desafio'
+      : atRisk
+      ? 'Mais uma falta nesta semana encerra o desafio'
+      : `Semana ${status.currentWeek} · ${missed} de ${allowed} falta tolerada`;
 
   return (
     <>
-      <div className="pergaminho-bg rounded-2xl border-2 border-shinobi-orange/50 p-4 sm:p-5 shadow-2xl relative overflow-hidden space-y-4">
-        <div className="absolute -top-8 right-0 font-kanji text-[120px] leading-none text-white/[0.035] select-none pointer-events-none">
-          {status.phaseIndex === 1 ? '覚' : status.phaseIndex === 2 ? '鍛' : '極'}
-        </div>
-
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap mb-1">
-              <span className="text-[10px] font-mono uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-shinobi-orange/15 text-shinobi-orange font-bold border border-shinobi-orange/40 truncate max-w-[230px]">
-                {cycle.title || `Desafio ${status.targetDays} Dias`}
-              </span>
-              {cycle.isEliteMode && (
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-rose-600/20 text-rose-300 border border-rose-500/50 flex items-center gap-1">
-                  <Skull className="w-3 h-3" /> ELITE
-                </span>
-              )}
+      <section className="card p-5 space-y-5">
+        <div>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 pt-1">
+              <div className="t-label truncate">
+                {cycle.title || `Desafio ${status.targetDays} dias`}
+                {cycle.isEliteMode && <span className="text-accent"> · Elite</span>}
+              </div>
             </div>
-            <h2 className="font-cinzel text-xl sm:text-2xl text-slate-100">
-              Dia {status.currentDay} <span className="text-slate-500 text-base">/ {status.targetDays}</span>
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Fase {status.phaseIndex}: <strong className="text-amber-300">{phase.name}</strong> ({phase.daysRange}) — {status.totalDaysRemaining}{' '}
-              {status.totalDaysRemaining === 1 ? 'dia restante' : 'dias restantes'}
-            </p>
+            <div className="-mt-2 -mr-2">
+              <Menu
+                label="Opções do desafio"
+                items={[
+                  { label: 'Mapa do desafio', icon: Map, onSelect: handleOpenMap },
+                  { label: 'Histórico de ciclos', icon: History, onSelect: handleOpenHistory },
+                  { label: 'Editar desafio', icon: Pencil, onSelect: () => setIsEditModalOpen(true) },
+                  { label: 'Excluir desafio', icon: Trash2, onSelect: handleDeleteActiveChallenge, danger: true },
+                ]}
+              />
+            </div>
           </div>
 
-          <div className="flex items-center gap-1.5 self-start sm:self-center flex-wrap">
-            <button
-              onClick={() => setIsEditModalOpen(true)}
-              className="p-1.5 bg-slate-900/90 hover:bg-slate-800 text-shinobi-gold border border-shinobi-gold/40 rounded-xl text-xs font-bold transition-all flex items-center gap-1"
-              title="Editar título e duração do desafio"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Editar</span>
-            </button>
-
-            <button
-              onClick={handleDeleteActiveChallenge}
-              className="p-1.5 bg-rose-950/40 hover:bg-rose-900/50 text-rose-300 border border-rose-500/40 rounded-xl text-xs font-bold transition-all flex items-center gap-1"
-              title="Cancelar e excluir o desafio ativo"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Excluir</span>
-            </button>
-
-            <button
-              onClick={handleOpenMap}
-              className="px-2.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-shinobi-orange border border-shinobi-orange/50 rounded-xl text-xs font-bold transition-all flex items-center gap-1"
-            >
-              <Map className="w-3.5 h-3.5" />
-              <span>Mapa</span>
-            </button>
-
-            <button
-              onClick={handleOpenHistory}
-              className="px-2.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-amber-300 border border-amber-500/50 rounded-xl text-xs font-bold transition-all flex items-center gap-1"
-            >
-              <History className="w-3.5 h-3.5" />
-              <span>Ciclos</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={toggleDailyCheckIn}
-              className="p-1.5 text-slate-400 hover:text-slate-100 rounded-xl hover:bg-white/10 transition-colors"
-              title="Recolher para modo clean"
-            >
-              <ChevronUp className="w-4 h-4" />
-            </button>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="t-label">Dia</span>
+            <span className="t-num text-[64px] text-ink">{status.currentDay}</span>
+            <span className="t-num text-xl text-ink3">/{status.targetDays}</span>
           </div>
-        </div>
 
-        {/* Barra de progresso da jornada */}
-        <div className="relative z-10">
-          <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-shinobi-crimson via-shinobi-orange to-amber-300 rounded-full transition-all duration-700"
-              style={{ width: `${status.protocolProgressPercent}%` }}
-            />
-          </div>
-        </div>
-
-        <div className="relative z-10 bg-slate-950/70 border border-slate-800 rounded-2xl p-4">{dailyBlock}</div>
-
-        {/* Regras da semana */}
-        <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-          <div className={`flex items-center gap-2 p-2.5 rounded-xl border ${atRisk ? 'bg-rose-950/40 border-rose-500/40' : 'bg-slate-950/60 border-slate-800'}`}>
-            {missed === 0 ? (
-              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-            ) : (
-              <ShieldAlert className={`w-4 h-4 shrink-0 ${atRisk ? 'text-rose-400 animate-pulse' : 'text-amber-400'}`} />
-            )}
-            <span className="text-slate-300">
-              Semana {status.currentWeek} (dias {startDay}–{endDay}): <strong className={missed === 0 ? 'text-emerald-400' : atRisk ? 'text-rose-300' : 'text-amber-300'}>{missed} {missed === 1 ? 'falta' : 'faltas'}</strong>
-              {allowed === 0
-                ? ' — Modo Elite: qualquer falta encerra o desafio.'
-                : atRisk
-                ? ' — mais uma falta nesta semana encerra o desafio!'
-                : ` de ${allowed} tolerada.`}
+          <Bar value={status.protocolProgressPercent} className="mt-4" />
+          <div className="flex items-center justify-between gap-3 mt-2.5 text-[13px] text-ink2">
+            <span className="truncate">
+              Fase {status.phaseIndex} · {status.phaseName}
             </span>
-          </div>
-          <div className="flex items-center gap-2 p-2.5 rounded-xl border bg-slate-950/60 border-slate-800">
-            <Shield className={`w-4 h-4 shrink-0 ${profile.weeklyShieldsRemaining > 0 ? 'text-emerald-400' : 'text-slate-500'}`} />
-            <span className="text-slate-300">
-              {profile.isHardModeEnabled
-                ? 'Sem Escudo de Chakra no Modo Elite (+20% XP).'
-                : <>Escudo de Chakra: <strong className="text-emerald-300">{profile.weeklyShieldsRemaining}/{profile.weeklyShieldsMax}</strong> — protege sua sequência de 1 falta.</>}
+            <span className="shrink-0 tabular">
+              {status.totalDaysRemaining} {status.totalDaysRemaining === 1 ? 'dia restante' : 'dias restantes'}
             </span>
           </div>
         </div>
 
-        {xpProgress.isUnlocked && (
-          <div className="relative z-10 flex items-center gap-2 text-[11px] text-amber-200/90 bg-amber-950/20 border border-amber-500/20 rounded-xl px-3 py-2">
-            <Zap className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-            Presença do Dia {status.currentDay} confirmada. Volte amanhã para manter a chama acesa.
-          </div>
-        )}
-      </div>
+        {dayBlock}
+
+        <div className="flex items-center justify-between gap-3 text-[13px] -mt-1">
+          <span className={atRisk || allowed === 0 ? 'text-accent font-semibold' : 'text-ink2'}>{weekNote}</span>
+          {!profile.isHardModeEnabled && (
+            <span
+              className={`shrink-0 inline-flex items-center gap-1.5 tabular ${
+                profile.weeklyShieldsRemaining > 0 ? 'text-ink2' : 'text-ink3'
+              }`}
+              title="Escudo de Chakra: protege a sequência de 1 falta na semana"
+            >
+              <Shield className={`w-3.5 h-3.5 ${profile.weeklyShieldsRemaining > 0 ? 'text-ok' : ''}`} />
+              {profile.weeklyShieldsRemaining}/{profile.weeklyShieldsMax}
+            </span>
+          )}
+        </div>
+      </section>
 
       {isEditModalOpen && (
         <EditChallengeModal

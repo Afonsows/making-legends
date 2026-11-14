@@ -11,9 +11,9 @@ export const ChallengeResetModal: React.FC = () => {
   const targetDays = cycle.targetDays || 66;
 
   return (
-    <div className="modal-overlay z-[110] bg-black/90 backdrop-blur-md animate-in fade-in">
-      <div className="washi-texture bg-slate-900 border-2 border-rose-500/70 w-full max-w-lg rounded-3xl overflow-hidden shadow-glow-crimson flex flex-col my-auto relative animate-in zoom-in-95">
-        <div className="p-6 bg-gradient-to-b from-rose-950/80 to-slate-950/90 border-b border-rose-500/30 text-center space-y-2 relative overflow-hidden">
+    <div className="modal-overlay z-[110] bg-black/90 animate-in fade-in">
+      <div className="washi-texture bg-slate-900 border border-rose-500/70 w-full max-w-lg rounded-2xl overflow-hidden flex flex-col my-auto relative animate-in zoom-in-95">
+        <div className="p-6 bg-rose-950/80 border-b border-rose-500/30 text-center space-y-2 relative overflow-hidden">
           <div className="absolute -top-4 right-2 font-kanji text-[110px] leading-none text-rose-500/10 select-none pointer-events-none">敗</div>
           <div className="font-kanji text-5xl text-rose-400 leading-none">折</div>
           <h3 className="font-cinzel text-xl sm:text-2xl text-slate-100">O desafio foi interrompido</h3>
@@ -71,7 +71,7 @@ export const ChallengeResetModal: React.FC = () => {
                 dismissResetModal();
                 openStartChallengeModal();
               }}
-              className="flex-1 sm:flex-initial px-5 py-2.5 bg-gradient-to-r from-shinobi-orange to-shinobi-crimson hover:brightness-110 text-white text-xs font-bold rounded-xl shadow-glow-orange transition-all flex items-center justify-center gap-2"
+              className="flex-1 sm:flex-initial px-5 py-2.5 bg-shinobi-orange text-onaccent text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2"
             >
               <Flame className="w-4 h-4" />
               Recomeçar

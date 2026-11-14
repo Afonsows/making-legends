@@ -11,11 +11,11 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.png', 'logo.png', 'icon-192.png', 'icon-512.png'],
       manifest: {
-        name: 'Making Legends — Shinobi Habit RPG',
+        name: 'Making Legends',
         short_name: 'Making Legends',
         description: 'Hábitos e performance no caminho ninja: missões diárias, desafios, duelos e a jornada até Kage.',
-        theme_color: '#0a0c12',
-        background_color: '#0a0c12',
+        theme_color: '#0C0B0A',
+        background_color: '#0C0B0A',
         display: 'standalone',
         orientation: 'portrait',
         icons: [

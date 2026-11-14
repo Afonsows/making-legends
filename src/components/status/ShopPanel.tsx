@@ -58,7 +58,7 @@ export const ShopPanel: React.FC = () => {
 
   return (
     <div className="space-y-4 animate-in fade-in">
-      <div className="pergaminho-bg rounded-2xl border border-shinobi-orange/40 p-5 shadow-xl relative overflow-hidden">
+      <div className="pergaminho-bg rounded-2xl border border-shinobi-orange/40 p-5 relative overflow-hidden">
         <div className="absolute -top-6 right-2 font-kanji text-[110px] leading-none text-white/[0.04] select-none pointer-events-none">店</div>
         <div className="flex items-center justify-between gap-3 relative">
           <div>
@@ -91,7 +91,7 @@ export const ShopPanel: React.FC = () => {
           {consumables.map((c) => {
             const affordable = profile.ryo >= c.price;
             return (
-              <div key={c.id} className="p-4 rounded-2xl bg-slate-900 border-2 border-slate-800 flex flex-col gap-3 relative overflow-hidden">
+              <div key={c.id} className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col gap-3 relative overflow-hidden">
                 <div className="absolute -right-2 -bottom-4 font-kanji text-7xl text-white/[0.04] pointer-events-none">{c.kanji}</div>
                 <div className="flex items-start gap-3">
                   <span className="text-3xl">{c.icon}</span>
@@ -109,7 +109,7 @@ export const ShopPanel: React.FC = () => {
                       c.disabled
                         ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
                         : affordable
-                        ? 'bg-gradient-to-r from-amber-500 to-shinobi-orange text-slate-950 shadow-glow-orange hover:brightness-110'
+                        ? ' bg-amber-500 text-slate-950 '
                         : 'bg-slate-800 text-amber-300/70 border border-amber-500/30'
                     }`}
                   >
@@ -133,7 +133,7 @@ export const ShopPanel: React.FC = () => {
             return (
               <div
                 key={item.id}
-                className={`p-4 rounded-2xl border-2 flex flex-col gap-3 ${owned ? 'bg-emerald-950/15 border-emerald-500/30' : 'bg-slate-900 border-slate-800'}`}
+                className={`p-4 rounded-2xl border flex flex-col gap-3 ${owned ? 'bg-emerald-950/15 border-emerald-500/30' : 'bg-slate-900 border-slate-800'}`}
               >
                 <div className="flex items-start gap-3">
                   <span className="text-3xl">{item.icon}</span>
@@ -157,7 +157,7 @@ export const ShopPanel: React.FC = () => {
                       onClick={() => handle(buyItem(item.id), `${item.name} adicionado à mochila! Equipe na aba Mochila.`)}
                       className={`px-3.5 py-2 rounded-xl text-xs font-bold font-mono transition-all ${
                         affordable
-                          ? 'bg-gradient-to-r from-amber-500 to-shinobi-orange text-slate-950 shadow-glow-orange hover:brightness-110'
+                          ? ' bg-amber-500 text-slate-950 '
                           : 'bg-slate-800 text-amber-300/70 border border-amber-500/30'
                       }`}
                     >

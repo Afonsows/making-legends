@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useUserStore } from '../../state/useUserStore';
 import { useHabitStore } from '../../state/useHabitStore';
 import { useTheme } from '../../theme/ThemeContext';
-import { RadarChart } from './RadarChart';
 import { getLevelProgress } from '../../core/xpEngine';
 import { getDefaultRyoReward } from '../../core/ryoEngine';
 import { evaluateProtocolStatus } from '../../core/streakEngine';
@@ -39,6 +38,8 @@ import {
 } from 'lucide-react';
 import { allGameItems } from '../../core/itemsData';
 import { EditProfileModal } from '../modals/EditProfileModal';
+import { ProfileOverview } from './ProfileOverview';
+import { Segmented } from '../ui/kit';
 import { ShopPanel } from './ShopPanel';
 import { ChallengeMapModal } from '../modals/ChallengeMapModal';
 import { ChallengeHistoryModal } from '../modals/ChallengeHistoryModal';
@@ -94,374 +95,30 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
   };
 
   return (
-    <div className="pb-nav pt-3 max-w-4xl mx-auto px-4 space-y-4">
-      {/* Cabeçalho do Pergaminho de Status */}
-      <div className="pergaminho-bg rounded-2xl border border-shinobi-border p-5 shadow-2xl relative overflow-hidden">
-        <div className="flex flex-col sm:flex-row items-center gap-5 relative z-10">
-          {/* Avatar com Aura de Chakra */}
-          <div className="relative flex-shrink-0">
-            <button
-              onClick={() => setIsEditModalOpen(true)}
-              className="w-20 h-20 rounded-2xl bg-gradient-to-br from-shinobi-card to-slate-900 border-2 border-shinobi-gold flex items-center justify-center text-4xl shadow-glow-gold/40 relative hover:scale-105 transition-transform"
-              title="Clique para trocar Avatar e Foto"
-            >
-              <span>{avatarDisplay}</span>
-              <div className="absolute -bottom-2 -right-2 bg-shinobi-crimson text-white text-xs font-mono font-bold px-2 py-0.5 rounded-full border border-shinobi-bg">
-                Nv. {currentLevel}
-              </div>
-            </button>
-            <button
-              onClick={() => setIsEditModalOpen(true)}
-              className="absolute -top-1.5 -right-1.5 p-1.5 bg-shinobi-card border border-shinobi-gold/70 text-shinobi-gold hover:text-white hover:bg-shinobi-gold/20 rounded-full transition-colors shadow-lg"
-              title="Editar Ficha e Foto"
-            >
-              <Edit className="w-3.5 h-3.5" />
-            </button>
-          </div>
+    <div className="pb-nav pt-2 px-4 space-y-6">
+      <Segmented
+        options={[
+          { id: 'stats', label: 'Resumo' },
+          { id: 'inventory', label: 'Mochila' },
+          { id: 'shop', label: 'Loja' },
+          { id: 'history', label: 'Histórico' },
+        ]}
+        value={activeSubTab}
+        onChange={setActiveSubTab}
+      />
 
-          {/* Nome e Títulos */}
-          <div className="text-center sm:text-left flex-1 min-w-0">
-            <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap mb-1">
-              <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded-full bg-shinobi-gold/20 text-shinobi-gold border border-shinobi-gold/40 flex items-center gap-1.5">
-                <span className="font-kanji text-sm leading-none">{rankInfo.kanji}</span>
-                {rankInfo.name}
-              </span>
-              <span className="text-xs text-slate-400 font-mono">
-                {profile.totalXp} XP Total
-              </span>
-              <span className="text-[10px] text-amber-300 font-mono px-2 py-0.5 rounded bg-amber-950/40 border border-amber-500/30 flex items-center gap-1">
-                <span>🪙</span> {profile.ryo || 0} Ryō
-              </span>
-            </div>
-
-            <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-              <h2 className="font-cinzel text-xl sm:text-2xl font-bold text-slate-100">
-                {profile.name}
-              </h2>
-              <button
-                onClick={() => setIsEditModalOpen(true)}
-                className="text-xs text-shinobi-gold hover:text-amber-300 hover:underline flex items-center gap-1 font-mono font-bold"
-              >
-                (Editar Ficha & Avatar)
-              </button>
-            </div>
-
-            <p className="text-xs text-slate-400 mt-1 max-w-md">
-              {rankInfo.description}
-            </p>
-
-            {/* Barra de XP de Nível */}
-            <div className="mt-3">
-              <div className="flex justify-between text-[10px] font-mono text-slate-400 mb-1">
-                <span>Progresso para o Nível {currentLevel + 1}</span>
-                <span className="font-bold text-shinobi-gold">{progressPercent}% ({currentLevelXp}/{nextLevelXpThreshold} XP)</span>
-              </div>
-              <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
-                <div
-                  className="h-full bg-gradient-to-r from-shinobi-chakra via-shinobi-jade to-shinobi-gold transition-all duration-500 rounded-full"
-                  style={{ width: `${progressPercent}%` }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Insígnia Oficial da Academia Shinobi */}
-          <div className="hidden sm:flex flex-col items-center gap-1.5 shrink-0 p-2.5 rounded-2xl bg-black/40 border border-shinobi-border shadow-inner">
-            <img
-              src="/logo.png"
-              alt="Making Legends"
-              className="w-12 h-12 rounded-xl border border-shinobi-crimson/50 shadow-glow-crimson object-cover"
-            />
-            <span className="text-[9px] font-cinzel font-bold text-slate-300 tracking-wider">MAKING LEGENDS</span>
-          </div>
-        </div>
-      </div>
-
-      {/* SELETOR DE SUB-ABAS (ESTATÍSTICAS / INVENTÁRIO / EDITAR FICHA / HISTÓRICO) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2 bg-slate-900 border-2 border-slate-700 rounded-2xl shadow-2xl">
-        <button
-          onClick={() => setActiveSubTab('stats')}
-          className={`py-2.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-            activeSubTab === 'stats'
-              ? 'bg-gradient-to-r from-shinobi-gold to-amber-500 text-slate-950 shadow-glow-gold font-bold scale-[1.02]'
-              : 'bg-slate-800 border border-slate-700 text-slate-200 hover:text-white hover:bg-slate-700'
-          }`}
-        >
-          <BarChart3 className="w-4 h-4 flex-shrink-0" />
-          <span className="truncate">Estatísticas</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSubTab('inventory')}
-          className={`py-2.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-            activeSubTab === 'inventory'
-              ? 'bg-gradient-to-r from-shinobi-gold to-amber-500 text-slate-950 shadow-glow-gold font-bold scale-[1.02]'
-              : 'bg-slate-800 border border-slate-700 text-slate-200 hover:text-white hover:bg-slate-700'
-          }`}
-        >
-          <Backpack className="w-4 h-4 flex-shrink-0" />
-          <span className="truncate">Mochila ({profile.inventory.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSubTab('shop')}
-          className={`py-2.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-            activeSubTab === 'shop'
-              ? 'bg-gradient-to-r from-shinobi-gold to-amber-500 text-slate-950 shadow-glow-gold font-bold scale-[1.02]'
-              : 'bg-slate-800 border border-slate-700 text-slate-200 hover:text-white hover:bg-slate-700'
-          }`}
-        >
-          <ShoppingBag className="w-4 h-4 flex-shrink-0" />
-          <span className="truncate">Loja</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSubTab('history')}
-          className={`py-2.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-            activeSubTab === 'history'
-              ? 'bg-gradient-to-r from-shinobi-gold to-amber-500 text-slate-950 shadow-glow-gold font-bold scale-[1.02]'
-              : 'bg-slate-800 border border-slate-700 text-slate-200 hover:text-white hover:bg-slate-700'
-          }`}
-        >
-          <History className="w-4 h-4 flex-shrink-0" />
-          <span className="truncate">Histórico</span>
-        </button>
-      </div>
-
-      {/* SUB-ABA 1: ESTATÍSTICAS E PILARES */}
       {activeSubTab === 'stats' && (
-        <div className="space-y-4 animate-in fade-in duration-200">
-          {/* Grid de Estatísticas Principais */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-            {/* Saldo de Ryō */}
-            <div className="bg-slate-900 border-2 border-amber-500/50 p-4 rounded-2xl text-center space-y-1 shadow-xl bg-amber-950/20">
-              <span className="text-[10px] font-mono font-bold uppercase text-amber-400 tracking-wider flex items-center justify-center gap-1">
-                <span>🪙</span> MOEDAS RYŌ
-              </span>
-              <div className="text-2xl font-cinzel font-bold text-amber-300">
-                {profile.ryo || 0}
-              </div>
-              <p className="text-[10px] text-slate-300">
-                gaste no Mercado
-              </p>
-            </div>
-
-            {/* Dia do Protocolo */}
-            <button
-              type="button"
-              onClick={hasActiveChallenge ? openChallengeMapModal : openStartChallengeModal}
-              className="bg-slate-900 border-2 border-slate-700 hover:border-shinobi-gold p-4 rounded-2xl text-center space-y-1 shadow-xl hover:scale-105 transition-all cursor-pointer group"
-              title={hasActiveChallenge ? "Clique para ver o mapa completo do desafio" : "Clique para iniciar um desafio"}
-            >
-              <span className="text-[10px] font-mono font-bold uppercase text-slate-300 group-hover:text-shinobi-gold tracking-wider flex items-center justify-center gap-1">
-                <Map className="w-3 h-3 text-shinobi-gold" /> PROTOCOLO
-              </span>
-              {hasActiveChallenge ? (
-                <>
-                  <div className="text-2xl font-cinzel font-bold text-shinobi-gold">
-                    Dia {profile.activeChallenge?.currentDay || 1}<span className="text-xs font-mono text-slate-400">/{profile.activeChallenge?.targetDays || 66}</span>
-                  </div>
-                  <p className="text-[10px] text-slate-300 group-hover:text-slate-200">
-                    {protocolStatus.phaseName}
-                  </p>
-                </>
-              ) : (
-                <>
-                  <div className="text-sm font-cinzel font-bold text-amber-400 py-1">
-                    Sem Desafio Ativo
-                  </div>
-                  <p className="text-[10px] text-amber-400/80 group-hover:text-amber-300">
-                    Toque para Iniciar ⚡
-                  </p>
-                </>
-              )}
-            </button>
-
-            {/* Sequência Atual */}
-            <div className="bg-slate-900 border-2 border-slate-700 p-4 rounded-2xl text-center space-y-1 shadow-xl">
-              <span className="text-[10px] font-mono font-bold uppercase text-slate-300 tracking-wider flex items-center justify-center gap-1">
-                <Flame className="w-3 h-3 text-shinobi-crimson" /> SEQUÊNCIA
-              </span>
-              <div className="text-2xl font-cinzel font-bold text-shinobi-crimson">
-                {profile.currentStreak} <span className="text-xs font-mono text-slate-400">dias</span>
-              </div>
-              <p className="text-[10px] text-slate-300">
-                Recorde: {profile.bestStreak} dias
-              </p>
-            </div>
-
-            {/* Escudos de Chakra */}
-            <div className="bg-slate-900 border-2 border-slate-700 p-4 rounded-2xl text-center space-y-1 shadow-xl">
-              <span className="text-[10px] font-mono font-bold uppercase text-slate-300 tracking-wider flex items-center justify-center gap-1">
-                <Shield className="w-3 h-3 text-shinobi-jade" /> ESCUDO CHAKRA
-              </span>
-              <div className="text-2xl font-cinzel font-bold text-shinobi-jade">
-                {profile.weeklyShieldsRemaining}<span className="text-xs font-mono text-slate-400">/{profile.weeklyShieldsMax}</span>
-              </div>
-              <p className="text-[10px] text-slate-300">
-                {profile.isHardModeEnabled ? 'Modo Elite: sem escudos' : 'protege a sequência'}
-              </p>
-            </div>
-
-            {/* Pergaminhos Desbloqueados */}
-            <div className="bg-slate-900 border-2 border-slate-700 p-4 rounded-2xl text-center space-y-1 shadow-xl col-span-2 sm:col-span-1">
-              <span className="text-[10px] font-mono font-bold uppercase text-slate-300 tracking-wider flex items-center justify-center gap-1">
-                <Award className="w-3 h-3 text-purple-400" /> PERGAMINHOS
-              </span>
-              <div className="text-2xl font-cinzel font-bold text-purple-400">
-                {profile.unlockedCards.length}
-              </div>
-              <p className="text-[10px] text-slate-300">
-                Cartas de sabedoria
-              </p>
-            </div>
-          </div>
-
-          {/* Radar Chart dos 5 Pilares */}
-          <div className="bg-slate-900 border-2 border-slate-700/80 rounded-3xl p-5 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
-              <div>
-                <h3 className="font-cinzel text-base font-bold text-slate-100 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-shinobi-gold" />
-                  Equilíbrio dos 5 Pilares Shinobi
-                </h3>
-                <p className="text-xs text-slate-400">
-                  Distribuição de XP acumulado por área de desenvolvimento pessoal
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-col md:flex-row items-center gap-6">
-              <div className="w-full md:w-1/2 flex justify-center py-2">
-                <RadarChart stats={profile.pillarXp} />
-              </div>
-
-              <div className="w-full md:w-1/2 space-y-2.5">
-                {Object.entries(theme.pillars).map(([pillarKey, pillar]) => {
-                  const xp = profile.pillarXp[pillarKey as keyof typeof profile.pillarXp] || 0;
-                  return (
-                    <div 
-                      key={pillarKey}
-                      className="p-3 rounded-2xl bg-slate-950 border-2 border-slate-800 flex items-center justify-between shadow-md"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-base">{pillar.badgeIcon}</span>
-                        <div>
-                          <div className="text-xs font-bold text-slate-100">{pillar.name}</div>
-                          <div className="text-[10px] text-slate-400">{pillar.categoryLabel}</div>
-                        </div>
-                      </div>
-                      <span className="text-xs font-mono font-bold text-shinobi-gold">
-                        {xp} XP
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* Equipamentos e Relíquias Ativas */}
-          <div className="bg-slate-900 border-2 border-slate-700/80 rounded-3xl p-5 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div>
-                <h3 className="font-cinzel text-base font-bold text-slate-100 flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-shinobi-crimson" />
-                  Relíquias & Buffs Equipados ({equippedList.length} Ativas)
-                </h3>
-                <p className="text-xs text-slate-400">
-                  Itens ativos concedem bônus de XP, dano na arena e escudos.
-                </p>
-              </div>
-              <button
-                onClick={() => setActiveSubTab('inventory')}
-                className="px-3 py-1.5 bg-shinobi-gold/20 border border-shinobi-gold/60 hover:bg-shinobi-gold/30 text-shinobi-gold text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
-              >
-                <Backpack className="w-3.5 h-3.5" />
-                <span>Ver Mochila ({profile.inventory.length})</span>
-              </button>
-            </div>
-
-            {equippedList.length === 0 ? (
-              <p className="text-xs text-slate-400 py-4 text-center">
-                Nenhuma relíquia equipada no momento. Abra a Mochila para equipar suas relíquias!
-              </p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {equippedList.map((item) => (
-                  <div key={item.id} className="p-3.5 rounded-2xl bg-slate-950 border-2 border-slate-800 flex items-center justify-between shadow-md">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">{item.icon}</span>
-                      <div>
-                        <div className="text-xs font-bold text-slate-100">{item.name}</div>
-                        <div className="text-[10px] text-shinobi-gold font-mono">{item.description}</div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => unequipItem(item.id)}
-                      className="text-[10px] font-mono text-slate-300 hover:text-rose-400 border border-slate-700 hover:border-rose-500/60 bg-slate-900 px-2.5 py-1 rounded-lg transition-colors"
-                    >
-                      Desequipar
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <button
-              onClick={() => setActiveSubTab('inventory')}
-              className="w-full py-2.5 bg-slate-950 border border-shinobi-gold/40 hover:border-shinobi-gold hover:bg-shinobi-gold/10 text-shinobi-gold text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow"
-            >
-              <PackageOpen className="w-4 h-4" />
-              <span>Abrir Mochila & Gerenciar Inventário Completo ({profile.inventory.length} Relíquias)</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* Alternar Modo Elite (Hard Mode) */}
-          <div className="bg-slate-900 border-2 border-slate-700/80 rounded-3xl p-5 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="space-y-1 text-center sm:text-left">
-              <div className="flex items-center justify-center sm:justify-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-rose-500" />
-                <h3 className="font-cinzel text-sm sm:text-base font-bold text-slate-100">
-                  Modo Elite (Treino Extremo)
-                </h3>
-              </div>
-              <p className="text-xs text-slate-400 max-w-md">
-                <strong>+20% de XP em todas as missões</strong>, mas sem Escudo de Chakra e sem tolerância a faltas nos desafios.
-                {hasActiveChallenge && ' Fica travado até o desafio atual terminar.'}
-              </p>
-              {eliteNotice && <p className="text-[11px] text-amber-300">{eliteNotice}</p>}
-            </div>
-
-            <button
-              onClick={() => {
-                const res = toggleHardMode();
-                if (!res.success) {
-                  soundFx.playError();
-                  setEliteNotice(res.reason || null);
-                  setTimeout(() => setEliteNotice(null), 4000);
-                } else {
-                  soundFx.playButtonClick();
-                }
-              }}
-              className={`px-5 py-2.5 rounded-xl font-bold text-xs font-mono transition-all ${
-                profile.isHardModeEnabled
-                  ? 'bg-rose-600 text-white shadow-glow-crimson'
-                  : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200'
-              }`}
-            >
-              {profile.isHardModeEnabled ? 'MODO ELITE ATIVO' : 'ATIVAR MODO ELITE'}
-            </button>
-          </div>
-        </div>
+        <ProfileOverview
+          onEditProfile={() => setIsEditModalOpen(true)}
+          onOpenInventory={() => setActiveSubTab('inventory')}
+        />
       )}
 
       {/* SUB-ABA 2: INVENTÁRIO & MOCHILA SHINOBI */}
       {activeSubTab === 'inventory' && (
         <div className="space-y-5 animate-in fade-in duration-300">
           {/* Cabeçalho da Mochila */}
-          <div className="pergaminho-bg rounded-2xl border border-shinobi-border p-5 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="pergaminho-bg rounded-2xl border border-shinobi-border p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded-full bg-shinobi-gold/20 text-shinobi-gold font-bold border border-shinobi-gold/40">
@@ -489,7 +146,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
           </div>
 
           {/* 1. PAINEL DE SLOTS DE EQUIPAMENTO ATIVO (4 SLOTS TEMÁTICOS) */}
-          <div className="bg-slate-900 border-2 border-slate-700/80 rounded-3xl p-5 shadow-2xl space-y-4">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="font-cinzel text-base font-bold text-slate-100 flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-shinobi-gold" />
@@ -513,9 +170,9 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
                 return (
                   <div
                     key={slot.type}
-                    className={`p-3.5 rounded-2xl border-2 transition-all flex flex-col justify-between ${
+                    className={`p-3.5 rounded-2xl border transition-all flex flex-col justify-between ${
                       equippedInSlot
-                        ? 'bg-slate-950 border-shinobi-gold/60 shadow-glow-gold/10'
+                        ? 'bg-slate-950 border-shinobi-gold/60 '
                         : 'bg-slate-950/60 border-dashed border-slate-800'
                     }`}
                   >
@@ -571,7 +228,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
           </div>
 
           {/* 2. GRADE DA MOCHILA (ITENS CONQUISTADOS) */}
-          <div className="bg-slate-900 border-2 border-slate-700/80 rounded-3xl p-5 shadow-2xl space-y-4">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl p-5 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
               <div>
                 <h3 className="font-cinzel text-base font-bold text-slate-100 flex items-center gap-2">
@@ -597,7 +254,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
                     onClick={() => setInventoryCategory(cat.id as any)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
                       inventoryCategory === cat.id
-                        ? 'bg-shinobi-gold text-slate-950 border-shinobi-gold font-bold shadow-glow-gold/30'
+                        ? 'bg-shinobi-gold text-slate-950 border-shinobi-gold font-bold '
                         : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
                     }`}
                   >
@@ -624,15 +281,15 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
                       common: 'border-slate-600 text-slate-300 bg-slate-800/40',
                       rare: 'border-cyan-500/60 text-cyan-300 bg-cyan-950/30',
                       epic: 'border-purple-500/60 text-purple-300 bg-purple-950/30',
-                      legendary: 'border-amber-500/80 text-amber-300 bg-amber-950/40 shadow-glow-gold/20',
+                      legendary: 'border-amber-500/80 text-amber-300 bg-amber-950/40 ',
                     };
 
                     return (
                       <div
                         key={item.id}
-                        className={`p-4 rounded-2xl border-2 transition-all flex flex-col justify-between shadow-lg relative ${
+                        className={`p-4 rounded-2xl border transition-all flex flex-col justify-between relative ${
                           isEquipped
-                            ? 'bg-slate-950 border-shinobi-gold/80 shadow-glow-gold/20 scale-[1.01]'
+                            ? 'bg-slate-950 border-shinobi-gold/80 scale-[1.01]'
                             : 'bg-slate-950/90 border-slate-800 hover:border-slate-600'
                         }`}
                       >
@@ -684,7 +341,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
                                 soundFx.playButtonClick();
                                 equipItem(item.id);
                               }}
-                              className="w-full py-2 bg-gradient-to-r from-shinobi-crimson to-shinobi-crimsonGlow hover:opacity-90 text-white font-bold text-xs rounded-xl shadow-glow-crimson transition-all flex items-center justify-center gap-1.5"
+                              className="w-full py-2 bg-shinobi-crimson hover:opacity-90 text-onaccent font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5"
                             >
                               <Swords className="w-3.5 h-3.5" />
                               <span>Equipar neste Slot</span>
@@ -699,7 +356,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
           </div>
 
           {/* 3. CATÁLOGO DE RELÍQUIAS DO MUNDO SHINOBI (A CONQUISTAR) */}
-          <div className="bg-slate-900 border-2 border-slate-700/80 rounded-3xl p-5 shadow-2xl space-y-4">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
                 <h3 className="font-cinzel text-base font-bold text-slate-100 flex items-center gap-2">
@@ -755,7 +412,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
 
       {/* SUB-ABA 3: HISTÓRICO DE MISSÕES & LOGS DE XP/RYŌ */}
       {activeSubTab === 'history' && (
-        <div className="bg-slate-900 border-2 border-slate-700/80 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-5 animate-in fade-in duration-200">
+        <div className="bg-slate-900 border border-slate-700/80 rounded-2xl p-5 sm:p-6 space-y-5 animate-in fade-in duration-200">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
             <div>
               <h3 className="font-cinzel text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2">
@@ -769,7 +426,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
 
             <button
               onClick={handleRecalibrate}
-              className="px-4 py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 text-xs font-bold rounded-xl shadow-glow-gold transition-all flex items-center gap-1.5 self-start sm:self-auto"
+              className="px-4 py-2.5 bg-amber-600 text-slate-950 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 self-start sm:self-auto"
               title="Confere nível, patente, sequência e mochila sem apagar nenhum progresso"
             >
               <RotateCcw className="w-4 h-4 stroke-[2.5]" />
@@ -778,14 +435,14 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
           </div>
 
           {recalibrateNotice && (
-            <div className="p-3.5 bg-emerald-950/80 border-2 border-emerald-500/60 rounded-2xl text-xs text-emerald-300 flex items-center gap-2 animate-in fade-in shadow-lg">
+            <div className="p-3.5 bg-emerald-950/80 border border-emerald-500/60 rounded-2xl text-xs text-emerald-300 flex items-center gap-2 animate-in fade-in ">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
               <span>{recalibrateNotice}</span>
             </div>
           )}
 
           {/* Seção dos Desafios e Ciclos */}
-          <div className="pergaminho-bg rounded-2xl border-2 border-shinobi-gold/60 p-4 shadow-lg space-y-3">
+          <div className="pergaminho-bg rounded-2xl border border-shinobi-gold/60 p-4 space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h4 className="font-cinzel text-sm font-bold text-slate-100 flex items-center gap-2">
@@ -803,7 +460,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
                 {hasActiveChallenge ? (
                   <button
                     onClick={openChallengeMapModal}
-                    className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-shinobi-gold border border-shinobi-gold/50 rounded-xl text-xs font-bold transition-all shadow flex items-center gap-1"
+                    className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-shinobi-gold border border-shinobi-gold/50 rounded-xl text-xs font-bold transition-all flex items-center gap-1"
                   >
                     <Map className="w-3.5 h-3.5" />
                     <span>Mapa da Jornada</span>
@@ -811,7 +468,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
                 ) : (
                   <button
                     onClick={openStartChallengeModal}
-                    className="px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 text-xs font-bold rounded-xl shadow-glow-gold transition-all flex items-center gap-1.5 animate-pulse"
+                    className="px-3.5 py-1.5 bg-amber-500 text-slate-950 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 "
                   >
                     <Zap className="w-3.5 h-3.5" />
                     <span>Iniciar Desafio</span>
@@ -830,7 +487,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
           </div>
 
           {/* Estatísticas da jornada */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3.5 rounded-2xl bg-slate-950 border-2 border-slate-800 text-center text-xs shadow-md">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3.5 rounded-2xl bg-slate-950 border border-slate-800 text-center text-xs ">
             <div className="p-2 bg-slate-900/80 rounded-xl border border-slate-800">
               <span className="text-slate-400 block text-[10px]">Dias Cumpridos</span>
               <span className="font-bold text-shinobi-orange font-mono text-sm">{completedDays}</span>
@@ -906,18 +563,6 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
       <EditProfileModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
-      />
-
-      {/* Modal do Mapa dos 66 Dias */}
-      <ChallengeMapModal
-        isOpen={isChallengeMapModalOpen}
-        onClose={closeChallengeMapModal}
-      />
-
-      {/* Modal da Área de Histórico de Desafios */}
-      <ChallengeHistoryModal
-        isOpen={isChallengeHistoryModalOpen}
-        onClose={closeChallengeHistoryModal}
       />
     </div>
   );

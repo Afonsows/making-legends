@@ -97,12 +97,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div className="modal-overlay z-[100] bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-slate-900 border-2 border-slate-700 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl p-6 space-y-4 my-auto relative z-[101]">
+    <div className="modal-overlay z-[100] bg-black/85 animate-in fade-in duration-200">
+      <div className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl overflow-hidden p-6 space-y-4 my-auto relative z-[101]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-shinobi-border pb-3">
           <div className="flex items-center gap-2.5">
-            <img src="/logo.png" alt="Making Legends" className="w-6 h-6 rounded-md border border-shinobi-crimson/50 shadow-glow-crimson object-cover" />
+            <img src="/logo.png" alt="Making Legends" className="w-6 h-6 rounded-md border border-shinobi-crimson/50 object-cover" />
             <h3 className="font-cinzel text-base font-bold text-slate-100">
               {currentUser ? 'Conta Shinobi Conectada' : 'Salvar Progresso na Nuvem'}
             </h3>
@@ -146,7 +146,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 onClick={() => setMode('signup')}
                 className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   mode === 'signup'
-                    ? 'bg-shinobi-gold text-shinobi-bg shadow-sm'
+                    ? 'bg-shinobi-gold text-shinobi-bg '
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
@@ -157,7 +157,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 onClick={() => setMode('login')}
                 className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   mode === 'login'
-                    ? 'bg-shinobi-gold text-shinobi-bg shadow-sm'
+                    ? 'bg-shinobi-gold text-shinobi-bg '
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
@@ -222,7 +222,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-gradient-to-r from-shinobi-crimson to-shinobi-crimsonGlow text-white font-bold text-xs rounded-xl shadow-glow-crimson hover:opacity-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full py-3 bg-shinobi-crimson text-onaccent font-bold text-xs rounded-xl hover:opacity-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {loading ? (
                 <span>Sincronizando com o Supabase...</span>

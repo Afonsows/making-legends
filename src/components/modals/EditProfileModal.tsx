@@ -210,8 +210,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
   };
 
   return (
-    <div className="modal-overlay z-[100] bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-slate-900 border-2 border-shinobi-gold/60 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col modal-panel my-auto relative z-[101]">
+    <div className="modal-overlay z-[100] bg-black/85 animate-in fade-in duration-200">
+      <div className="bg-slate-900 border border-shinobi-gold/60 w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col modal-panel my-auto relative z-[101]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-shinobi-border bg-slate-950/80">
           <div className="flex items-center gap-2.5">
@@ -238,12 +238,12 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
         {/* Scrollable Form Content */}
         <div className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1">
           {/* Card de Pré-visualização do Guerreiro */}
-          <div className="pergaminho-bg rounded-2xl border border-shinobi-gold/40 p-4 shadow-lg flex items-center gap-4">
+          <div className="pergaminho-bg rounded-2xl border border-shinobi-gold/40 p-4 flex items-center gap-4">
             <div className="relative flex-shrink-0">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-shinobi-card to-slate-950 border-2 border-shinobi-gold flex items-center justify-center text-3xl shadow-glow-gold/50">
+              <div className="w-16 h-16 rounded-2xl bg-shinobi-card border border-shinobi-gold flex items-center justify-center text-3xl ">
                 <span>{editAvatarEmoji}</span>
               </div>
-              <div className="absolute -bottom-1.5 -right-1.5 bg-shinobi-crimson text-white text-[10px] font-mono font-bold px-2 py-0.2 rounded-full border border-slate-900 shadow">
+              <div className="absolute -bottom-1.5 -right-1.5 bg-shinobi-crimson text-onaccent text-[10px] font-mono font-bold px-2 py-0.2 rounded-full border border-slate-900 ">
                 Nv. {profile.level}
               </div>
             </div>
@@ -297,7 +297,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
                     onClick={() => setActiveCategory(cat.id as any)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
                       activeCategory === cat.id
-                        ? 'bg-shinobi-gold text-slate-950 shadow-glow-gold/30 font-bold'
+                        ? 'bg-shinobi-gold text-slate-950 font-bold'
                         : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
                     }`}
                   >
@@ -318,13 +318,13 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
                       onClick={() => handleSelectAvatar(opt.emoji)}
                       className={`h-14 rounded-2xl text-2xl sm:text-3xl flex flex-col items-center justify-center border transition-all relative group ${
                         isSelected
-                          ? 'border-shinobi-gold bg-shinobi-gold/25 shadow-glow-gold scale-105 z-10'
+                          ? 'border-shinobi-gold bg-shinobi-gold/25 scale-105 z-10'
                           : 'border-slate-800 bg-slate-900/90 hover:bg-slate-800 hover:border-slate-600'
                       }`}
                     >
                       <span>{opt.emoji}</span>
                       {isSelected && (
-                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-shinobi-gold text-slate-950 rounded-full flex items-center justify-center text-[10px] font-bold shadow">
+                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-shinobi-gold text-slate-950 rounded-full flex items-center justify-center text-[10px] font-bold ">
                           ✓
                         </div>
                       )}
@@ -365,7 +365,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
                     }}
                     className={`py-2.5 px-3 rounded-xl border text-xs font-medium flex items-center justify-center gap-1.5 transition-all ${
                       editGender === 'male'
-                        ? 'border-shinobi-gold bg-shinobi-gold/15 text-shinobi-gold font-bold shadow-glow-gold/20'
+                        ? 'border-shinobi-gold bg-shinobi-gold/15 text-shinobi-gold font-bold '
                         : 'border-slate-800 bg-slate-950 text-slate-400'
                     }`}
                   >
@@ -379,7 +379,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
                     }}
                     className={`py-2.5 px-3 rounded-xl border text-xs font-medium flex items-center justify-center gap-1.5 transition-all ${
                       editGender === 'female'
-                        ? 'border-shinobi-gold bg-shinobi-gold/15 text-shinobi-gold font-bold shadow-glow-gold/20'
+                        ? 'border-shinobi-gold bg-shinobi-gold/15 text-shinobi-gold font-bold '
                         : 'border-slate-800 bg-slate-950 text-slate-400'
                     }`}
                   >
@@ -443,7 +443,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
             type="submit"
             form="profile-form"
             disabled={isSaving}
-            className="px-6 py-3 bg-gradient-to-r from-shinobi-gold to-amber-500 text-slate-950 font-bold text-xs rounded-xl shadow-glow-gold hover:opacity-95 transition-all flex items-center gap-2"
+            className="px-6 py-3 bg-shinobi-gold text-slate-950 font-bold text-xs rounded-xl hover:opacity-95 transition-all flex items-center gap-2"
           >
             {saveSuccess ? (
               <>

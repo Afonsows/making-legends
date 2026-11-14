@@ -23,12 +23,12 @@ export const BossVictoryModal: React.FC = () => {
       : `+${rewardItem.buffValue}% ${BUFF_LABEL[rewardItem.buffType]}${pillar ? ` ${pillar.name}` : ''}`;
 
   return (
-    <div className="modal-overlay z-[110] bg-black/85 backdrop-blur-md animate-in fade-in">
-      <div className="bg-shinobi-card washi-texture border-2 border-shinobi-orange w-full max-w-sm rounded-3xl overflow-hidden shadow-glow-orange p-6 text-center space-y-4 relative animate-in zoom-in-95">
+    <div className="modal-overlay z-[110] bg-black/85 animate-in fade-in">
+      <div className="bg-shinobi-card washi-texture border border-shinobi-orange w-full max-w-sm rounded-2xl overflow-hidden p-6 text-center space-y-4 relative animate-in zoom-in-95">
         <div className="absolute -top-6 -left-2 font-kanji text-[120px] leading-none text-white/[0.04] select-none pointer-events-none">勝</div>
 
         <div className="relative mx-auto w-24 h-24">
-          <div className="w-24 h-24 rounded-full bg-slate-950 border-2 border-shinobi-orange/70 flex items-center justify-center text-5xl grayscale opacity-80">
+          <div className="w-24 h-24 rounded-full bg-slate-950 border border-shinobi-orange/70 flex items-center justify-center text-5xl grayscale opacity-80">
             {defeatedBoss.avatarEmoji || '🥷'}
           </div>
           <span className="absolute -bottom-1 -right-2 hanko-stamp animate-stamp text-2xl px-1.5 py-1 bg-slate-950/80">勝</span>
@@ -60,7 +60,7 @@ export const BossVictoryModal: React.FC = () => {
         <div className="grid grid-cols-1 gap-2">
           {!isDuplicate && (<button
             onClick={() => claimVictoryReward(true)}
-            className="w-full py-3 bg-gradient-to-r from-shinobi-orange to-shinobi-crimson text-white font-bold text-xs rounded-xl shadow-glow-orange hover:brightness-110 transition-all flex items-center justify-center gap-1.5"
+            className="w-full py-3 bg-shinobi-orange text-onaccent font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5"
           >
             <Check className="w-4 h-4 stroke-[3]" />
             Equipar Relíquia e Enfrentar o Próximo

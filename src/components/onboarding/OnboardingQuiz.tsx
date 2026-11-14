@@ -4,7 +4,6 @@ import { useHabitStore } from '../../state/useHabitStore';
 import { generateStarterMissions } from '../../core/missionGenerator';
 import { useTheme } from '../../theme/ThemeContext';
 import { soundFx } from '../../utils/audio';
-import { ShinobiBackground } from '../ui/ShinobiBackground';
 import { supabase } from '../../services/supabase';
 import { syncService } from '../../services/syncService';
 import {
@@ -213,21 +212,20 @@ export const OnboardingQuiz: React.FC<OnboardingQuizProps> = ({ onFinishOnboardi
   return (
     <div className="app-shell bg-shinobi-bg text-slate-100 flex flex-col items-center justify-center px-4 pt-[calc(env(safe-area-inset-top)+1rem)] pb-[max(env(safe-area-inset-bottom),1rem)] relative">
       {/* Fundo Shinobi Animado em Loop: Fogueira, Shinobi, Lua Cheia, Brasas e Sakura */}
-      <ShinobiBackground opacity={1} />
 
       <div className="w-full max-w-xl relative z-10 space-y-6">
         {/* Header da Academia com Logo Oficial */}
         <div className="text-center space-y-3 flex flex-col items-center">
           <div className="relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-shinobi-crimson via-shinobi-gold to-shinobi-emerald rounded-2xl blur-md opacity-60 group-hover:opacity-100 transition duration-500 animate-pulse" />
+            <div className="absolute -inset-1 bg-shinobi-crimson rounded-2xl blur-md opacity-60 group-hover:opacity-100 transition duration-500 " />
             <img
               src="/logo.png"
               alt="Making Legends"
-              className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl border-2 border-white/20 shadow-2xl object-cover hover:scale-105 transition-transform duration-300"
+              className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl border border-white/20 object-cover transition-transform duration-300"
             />
           </div>
 
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-shinobi-card/90 border border-shinobi-gold/40 text-shinobi-gold text-xs font-mono font-bold shadow-glow-gold/20">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-shinobi-card/90 border border-shinobi-gold/40 text-shinobi-gold text-xs font-mono font-bold ">
             <span>🥷</span> Avaliação de Aptidão da Academia Shinobi
           </div>
           <h1 className="font-cinzel text-2xl sm:text-3xl font-bold tracking-tight text-slate-100">
@@ -240,7 +238,7 @@ export const OnboardingQuiz: React.FC<OnboardingQuizProps> = ({ onFinishOnboardi
 
         {/* MODAL / ABA DE LOGIN DIRETO PARA QUEM JÁ TEM CONTA */}
         {showLoginModal ? (
-          <div className="bg-slate-950/85 backdrop-blur-xl border border-slate-700/60 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-5 relative overflow-hidden shinobi-gradient-border">
+          <div className="bg-slate-950/85 border border-slate-700/60 rounded-2xl p-6 sm:p-8 space-y-5 relative overflow-hidden shinobi-gradient-border">
             <div className="flex items-center justify-between border-b border-shinobi-border pb-3">
               <h2 className="font-cinzel text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2">
                 <LogIn className="w-4 h-4 text-shinobi-gold" />
@@ -296,7 +294,7 @@ export const OnboardingQuiz: React.FC<OnboardingQuizProps> = ({ onFinishOnboardi
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3 bg-gradient-to-r from-shinobi-crimson to-shinobi-crimsonGlow text-white font-bold text-xs rounded-xl shadow-glow-crimson hover:opacity-95 transition-all flex items-center justify-center gap-2"
+                className="w-full py-3 bg-shinobi-crimson text-onaccent font-bold text-xs rounded-xl hover:opacity-95 transition-all flex items-center justify-center gap-2"
               >
                 {isLoading ? (
                   <>
@@ -314,7 +312,7 @@ export const OnboardingQuiz: React.FC<OnboardingQuizProps> = ({ onFinishOnboardi
           </div>
         ) : (
           /* FLUXO DO QUIZ (Passos 1 a 6) */
-          <div className="bg-slate-950/85 backdrop-blur-xl border border-slate-700/60 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden shinobi-gradient-border">
+          <div className="bg-slate-950/85 border border-slate-700/60 rounded-2xl p-6 sm:p-8 space-y-6 relative overflow-hidden shinobi-gradient-border">
             {/* Barra de Progresso do Quiz */}
             <div className="space-y-1">
               <div className="flex justify-between text-[11px] font-mono text-slate-400">
@@ -323,7 +321,7 @@ export const OnboardingQuiz: React.FC<OnboardingQuizProps> = ({ onFinishOnboardi
               </div>
               <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-shinobi-crimson to-shinobi-gold transition-all duration-300 rounded-full"
+                  className="h-full bg-shinobi-crimson transition-all duration-300 rounded-full"
                   style={{ width: `${(step / totalSteps) * 100}%` }}
                 />
               </div>
@@ -522,7 +520,7 @@ export const OnboardingQuiz: React.FC<OnboardingQuizProps> = ({ onFinishOnboardi
                         onClick={() => setUserGender('male')}
                         className={`py-2.5 px-3 rounded-xl border text-xs font-medium flex items-center justify-center gap-2 transition-all ${
                           userGender === 'male'
-                            ? 'border-shinobi-gold bg-shinobi-gold/15 text-shinobi-gold font-bold shadow-glow-gold/20'
+                            ? 'border-shinobi-gold bg-shinobi-gold/15 text-shinobi-gold font-bold '
                             : 'border-shinobi-border bg-shinobi-bg/60 text-slate-400 hover:text-slate-200'
                         }`}
                       >
@@ -534,7 +532,7 @@ export const OnboardingQuiz: React.FC<OnboardingQuizProps> = ({ onFinishOnboardi
                         onClick={() => setUserGender('female')}
                         className={`py-2.5 px-3 rounded-xl border text-xs font-medium flex items-center justify-center gap-2 transition-all ${
                           userGender === 'female'
-                            ? 'border-shinobi-gold bg-shinobi-gold/15 text-shinobi-gold font-bold shadow-glow-gold/20'
+                            ? 'border-shinobi-gold bg-shinobi-gold/15 text-shinobi-gold font-bold '
                             : 'border-shinobi-border bg-shinobi-bg/60 text-slate-400 hover:text-slate-200'
                         }`}
                       >
@@ -635,7 +633,7 @@ export const OnboardingQuiz: React.FC<OnboardingQuizProps> = ({ onFinishOnboardi
               <button
                 onClick={handleNext}
                 disabled={isLoading}
-                className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-shinobi-crimson to-shinobi-crimsonGlow text-white font-bold text-xs rounded-xl shadow-glow-crimson hover:opacity-95 transition-all flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-6 py-3 bg-shinobi-crimson text-onaccent font-bold text-xs rounded-xl hover:opacity-95 transition-all flex items-center justify-center gap-2"
               >
                 {isLoading ? (
                   <>

@@ -51,8 +51,8 @@ export const MissionHistoryModal: React.FC<MissionHistoryModalProps> = ({ isOpen
     : missionLogs.filter((l) => l.action === filterAction);
 
   return (
-    <div className="modal-overlay z-[100] bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-slate-900 border-2 border-shinobi-gold/60 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col modal-panel my-auto relative z-[101]">
+    <div className="modal-overlay z-[100] bg-black/85 animate-in fade-in duration-200">
+      <div className="bg-slate-900 border border-shinobi-gold/60 w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col modal-panel my-auto relative z-[101]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/80">
           <div className="flex items-center gap-2.5">
@@ -79,7 +79,7 @@ export const MissionHistoryModal: React.FC<MissionHistoryModalProps> = ({ isOpen
         {/* Scrollable Content */}
         <div className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1">
           {/* Card de Resumo de Auditoria com Botão de Sincronização */}
-          <div className="pergaminho-bg rounded-2xl border border-shinobi-gold/40 p-4 shadow-lg space-y-3">
+          <div className="pergaminho-bg rounded-2xl border border-shinobi-gold/40 p-4 space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
@@ -93,7 +93,7 @@ export const MissionHistoryModal: React.FC<MissionHistoryModalProps> = ({ isOpen
 
               <button
                 onClick={handleRecalibrate}
-                className="px-4 py-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-glow-gold transition-all flex items-center gap-1.5 self-start sm:self-auto"
+                className="px-4 py-2 bg-amber-600 text-slate-950 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 self-start sm:self-auto"
                 title="Recalcular e sincronizar todo o histórico acumulado"
               >
                 <RotateCcw className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -231,10 +231,10 @@ export const MissionHistoryModal: React.FC<MissionHistoryModalProps> = ({ isOpen
         </div>
 
         {/* Footer com Botão de Ação Destacado */}
-        <div className="p-4 sm:p-5 border-t-2 border-slate-800 bg-slate-950 flex items-center justify-end gap-3 flex-shrink-0">
+        <div className="p-4 sm:p-5 border-t border-slate-800 bg-slate-950 flex items-center justify-end gap-3 flex-shrink-0">
           <button
             onClick={onClose}
-            className="px-6 py-2.5 bg-gradient-to-r from-shinobi-gold to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 text-xs font-bold rounded-xl shadow-glow-gold transition-all flex items-center gap-2"
+            className="px-6 py-2.5 bg-shinobi-gold text-slate-950 text-xs font-bold rounded-xl transition-all flex items-center gap-2"
           >
             <CheckCircle2 className="w-4 h-4 text-slate-950 stroke-[2.5]" />
             <span>Concluído / Fechar</span>
