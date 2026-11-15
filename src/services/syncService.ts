@@ -37,6 +37,7 @@ interface CloudExtras {
   _deletedMissions?: Record<string, string>;
   _deletedCycles?: Record<string, string>;
   _dayWipe?: { from: string; at: string };
+  _measures?: UserProfile['measures'];
   _resetEpoch?: string;
   _updatedAt?: string;
 }
@@ -329,6 +330,7 @@ class SyncService {
       deletedMissions: extras._deletedMissions || {},
       deletedCycles: extras._deletedCycles || {},
       dayWipe: extras._dayWipe,
+      measures: extras._measures,
       resetEpoch: extras._resetEpoch,
     };
 
@@ -369,6 +371,7 @@ class SyncService {
       _deletedMissions: profile.deletedMissions,
       _deletedCycles: profile.deletedCycles,
       _dayWipe: profile.dayWipe,
+      _measures: profile.measures,
       _resetEpoch: profile.resetEpoch,
       _updatedAt: profile.updatedAt || new Date().toISOString(),
     };

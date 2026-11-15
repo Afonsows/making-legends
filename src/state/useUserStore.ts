@@ -9,6 +9,7 @@ import {
   RewardGrant,
   Mission,
   DayRecord,
+  Measure,
 } from '../core/types';
 import { PillarId, UserRankId } from '../theme/types';
 import { calculateXpGainWithBuffs } from '../core/xpEngine';
@@ -251,6 +252,14 @@ interface UserStoreState {
   /** Zera toda a progressão, preservando a identidade e as preferências do cadastro. */
   resetProgress: () => void;
   setProfileName: (name: string) => void;
+
+  // Antes e depois (medidas pessoais)
+  addMeasure: (data: { label: string; unit: string; goal: Measure['goal']; value?: number }) => string;
+  /** Registra (ou corrige) o valor de uma medida em um dia — hoje, se a data não for informada. */
+  logMeasure: (measureId: string, value: number, date?: string) => void;
+  removeMeasureEntry: (measureId: string, date: string) => void;
+  updateMeasure: (measureId: string, updates: Partial<Pick<Measure, 'label' | 'unit' | 'goal'>>) => void;
+  deleteMeasure: (measureId: string) => void;
   updateAvatar: (config: Partial<AvatarConfig>) => void;
   updateNotifications: (settings: Partial<NotificationSettings>) => void;
   toggleHardMode: () => { success: boolean; reason?: string };
@@ -560,6 +569,58 @@ export const useUserStore = create<UserStoreState>()(
             toasts: [],
           });
         },
+
+        addMeasure: ({ label, unit, goal, value }) => {
+          const at = stamp();
+          const id = `measure_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+          const measure: Measure = {
+            id,
+            label: label.trim(),
+            unit: unit.trim(),
+            goal,
+            entries: typeof value === 'number' && Number.isFinite(value) ? { [getTodayString()]: { value, at } } : {},
+            createdAt: at,
+            updatedAt: at,
+          };
+          set((state) => ({
+            profile: touch({ ...state.profile, measures: { ...(state.profile.measures || {}), [id]: measure } }),
+          }));
+          return id;
+        },
+
+        logMeasure: (measureId, value, date = getTodayString()) =>
+          set((state) => {
+            const measure = state.profile.measures?.[measureId];
+            if (!measure || measure.deletedAt || !Number.isFinite(value) || !isValidDateString(date)) return state;
+            const next: Measure = { ...measure, entries: { ...measure.entries, [date]: { value, at: stamp() } } };
+            return { profile: touch({ ...state.profile, measures: { ...state.profile.measures, [measureId]: next } }) };
+          }),
+
+        // A remoção fica registrada (valor nulo) para que o outro aparelho também apague
+        removeMeasureEntry: (measureId, date) =>
+          set((state) => {
+            const measure = state.profile.measures?.[measureId];
+            if (!measure || !measure.entries[date]) return state;
+            const next: Measure = { ...measure, entries: { ...measure.entries, [date]: { value: null, at: stamp() } } };
+            return { profile: touch({ ...state.profile, measures: { ...state.profile.measures, [measureId]: next } }) };
+          }),
+
+        updateMeasure: (measureId, updates) =>
+          set((state) => {
+            const measure = state.profile.measures?.[measureId];
+            if (!measure || measure.deletedAt) return state;
+            const next: Measure = { ...measure, ...updates, updatedAt: stamp() };
+            return { profile: touch({ ...state.profile, measures: { ...state.profile.measures, [measureId]: next } }) };
+          }),
+
+        deleteMeasure: (measureId) =>
+          set((state) => {
+            const measure = state.profile.measures?.[measureId];
+            if (!measure) return state;
+            const at = stamp();
+            const next: Measure = { ...measure, entries: {}, updatedAt: at, deletedAt: at };
+            return { profile: touch({ ...state.profile, measures: { ...state.profile.measures, [measureId]: next } }) };
+          }),
 
         setProfileName: (name) =>
           set((state) => ({ profile: touch({ ...state.profile, name: name.trim() || 'Aspirante Shinobi' }) })),

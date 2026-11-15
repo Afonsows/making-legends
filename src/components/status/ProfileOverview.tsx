@@ -9,6 +9,9 @@ import { PillarId } from '../../theme/types';
 import { soundFx } from '../../utils/audio';
 import { Bar, SectionHeader, Stat, Switch, pillarColor } from '../ui/kit';
 import { Pencil } from 'lucide-react';
+import { AchievementsSection } from './Achievements';
+import { BeforeAfterSection } from './BeforeAfter';
+import { WeekSummaryCard } from './WeekSummary';
 
 interface ProfileOverviewProps {
   onEditProfile: () => void;
@@ -249,6 +252,20 @@ export const ProfileOverview: React.FC<ProfileOverviewProps> = ({ onEditProfile,
           </div>
         </div>
       </div>
+
+      {/* Resumo semanal */}
+      <section>
+        <SectionHeader title="Semana" />
+        <div className="mt-2">
+          <WeekSummaryCard />
+        </div>
+      </section>
+
+      {/* Antes e depois */}
+      <BeforeAfterSection />
+
+      {/* Conquistas */}
+      <AchievementsSection />
 
       {/* XP por dia */}
       <section>

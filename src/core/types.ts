@@ -120,6 +120,28 @@ export interface ProtocolChallengeCycle {
   rewardRyo?: number;
 }
 
+/** Um registro de medida em um dia. `value: null` marca um registro removido (para mesclar aparelhos). */
+export interface MeasureEntry {
+  value: number | null;
+  at: string; // ISO de quando foi registrado
+}
+
+/**
+ * Medida pessoal acompanhada ao longo do tempo (peso, horas de tela, páginas lidas...).
+ * É a base do "antes e depois".
+ */
+export interface Measure {
+  id: string;
+  label: string;
+  unit: string;
+  /** Qual direção é melhora: subir ou descer. */
+  goal: 'up' | 'down';
+  entries: Record<string, MeasureEntry>; // YYYY-MM-DD → registro
+  createdAt: string;
+  updatedAt: string;   // última edição de nome/unidade/direção
+  deletedAt?: string;  // lápide de exclusão
+}
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -164,6 +186,7 @@ export interface UserProfile {
   soldierPillDates: string[];                  // dias com Pílula de Soldado ativa
   bossesDefeated: number;
   missionsCompletedTotal: number;
+  measures?: Record<string, Measure>;          // medidas do "antes e depois"
   updatedAt?: string;                          // ISO — usado na sincronização
 }
 

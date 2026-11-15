@@ -17,6 +17,14 @@ interface UIStoreState {
   isMissionFiltersOpen: boolean;
   toggleMissionFilters: () => void;
 
+  // Conquistas já anunciadas neste aparelho (null = ainda não inicializado)
+  seenAchievements: string[] | null;
+  setSeenAchievements: (ids: string[]) => void;
+
+  // Resumo semanal dispensado na tela "Hoje" (chave da semana + tipo)
+  dismissedWeekRecap: string | null;
+  dismissWeekRecap: (key: string) => void;
+
   // Modo Clean Global
   isCleanMode: boolean;
   toggleCleanMode: () => void;
@@ -74,6 +82,12 @@ export const useUIStore = create<UIStoreState>()(
 
       isMissionFiltersOpen: false,
       toggleMissionFilters: () => set((state) => ({ isMissionFiltersOpen: !state.isMissionFiltersOpen })),
+
+      seenAchievements: null,
+      setSeenAchievements: (ids) => set({ seenAchievements: ids }),
+
+      dismissedWeekRecap: null,
+      dismissWeekRecap: (key) => set({ dismissedWeekRecap: key }),
 
       isCleanMode: false,
       toggleCleanMode: () => set((state) => ({ isCleanMode: !state.isCleanMode })),

@@ -3,6 +3,7 @@ import { mergeLedgers, deriveTotals, LedgerState } from './ledger';
 import { mergeDayLogs } from './dayLog';
 import { isUserEndedCycle, REPLACED_REASON } from './cycle';
 import { isValidDateString } from './dateUtils';
+import { mergeMeasures } from './measures';
 
 /**
  * MESCLAGEM ENTRE APARELHOS
@@ -271,6 +272,7 @@ export function mergeSnapshots(local: SyncSnapshot, cloud: SyncSnapshot, options
     shieldedDates,
     shieldsThrough: [lp.shieldsThrough, cp.shieldsThrough].filter(isValidDateString).sort().pop(),
     dayWipe,
+    measures: mergeMeasures(lp.measures, cp.measures),
     deletedMissions,
     deletedCycles,
 

@@ -5,6 +5,7 @@ import { getTimeUntilMidnightString } from '../../core/dailyResetEngine';
 import { MissionCard } from './MissionCard';
 import { AddMissionModal } from './AddMissionModal';
 import { DailyCheckInCard } from './DailyCheckInCard';
+import { WeekRecapBanner } from '../status/WeekSummary';
 import { DailyScrollWidget } from '../cards/DailyScrollWidget';
 import { MissionHistoryModal } from '../modals/MissionHistoryModal';
 import { Mission, TimeOfDay } from '../../core/types';
@@ -118,6 +119,9 @@ export const MissionsView: React.FC<MissionsViewProps> = ({ onOpenCard }) => {
     <div className="pb-nav pt-2 px-4 space-y-6">
       {/* Desafio em curso + meta do dia */}
       <DailyCheckInCard />
+
+      {/* Resumo semanal: só no domingo e na segunda */}
+      <WeekRecapBanner />
 
       {/* Missões */}
       <section>

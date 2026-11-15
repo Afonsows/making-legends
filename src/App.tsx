@@ -27,6 +27,7 @@ import { AuthModal } from './components/auth/AuthModal';
 import { ToastHost } from './components/ui/ToastHost';
 import { useApplyTheme } from './components/ui/kit';
 import { useUIStore } from './state/useUIStore';
+import { useAchievementToasts } from './components/status/Achievements';
 import { useChallengeStore } from './state/useChallengeStore';
 import { soundFx } from './utils/audio';
 import { initReminderScheduler } from './utils/reminders';
@@ -47,6 +48,7 @@ export const AppContent: React.FC = () => {
   const activeTab = useUIStore((s) => s.activeTab);
   const setActiveTab = useUIStore((s) => s.setActiveTab);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  useAchievementToasts();
   const [isIosModalOpen, setIsIosModalOpen] = useState(false);
   const [isNotifModalOpen, setIsNotifModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
