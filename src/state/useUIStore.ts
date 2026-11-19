@@ -21,6 +21,10 @@ interface UIStoreState {
   seenAchievements: string[] | null;
   setSeenAchievements: (ids: string[]) => void;
 
+  // Desafios cujo fim (concluído ou encerrado no Modo Elite) já foi avisado neste aparelho
+  seenChallengeOutcomes: string[] | null;
+  setSeenChallengeOutcomes: (keys: string[]) => void;
+
   // Resumo semanal dispensado na tela "Hoje" (chave da semana + tipo)
   dismissedWeekRecap: string | null;
   dismissWeekRecap: (key: string) => void;
@@ -85,6 +89,9 @@ export const useUIStore = create<UIStoreState>()(
 
       seenAchievements: null,
       setSeenAchievements: (ids) => set({ seenAchievements: ids }),
+
+      seenChallengeOutcomes: null,
+      setSeenChallengeOutcomes: (keys) => set({ seenChallengeOutcomes: keys }),
 
       dismissedWeekRecap: null,
       dismissWeekRecap: (key) => set({ dismissedWeekRecap: key }),

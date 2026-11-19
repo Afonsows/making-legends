@@ -17,9 +17,8 @@ import { LevelUpModal } from './components/modals/LevelUpModal';
 import { BossVictoryModal } from './components/modals/BossVictoryModal';
 import { ChallengeResetModal } from './components/modals/ChallengeResetModal';
 import { ChallengeCompletionModal } from './components/modals/ChallengeCompletionModal';
-import { ChallengeMapModal } from './components/modals/ChallengeMapModal';
-import { ChallengeHistoryModal } from './components/modals/ChallengeHistoryModal';
-import { StartChallengeModal } from './components/challenges/StartChallengeModal';
+import { CreateChallengeModal } from './components/challenges/CreateChallengeModal';
+import { ChallengeDetailModal } from './components/challenges/ChallengeDetailModal';
 import { IosInstallModal } from './components/pwa/IosInstallModal';
 import { NotificationSettingsModal } from './components/pwa/NotificationSettingsModal';
 import { AuthModal } from './components/auth/AuthModal';
@@ -28,7 +27,9 @@ import { ToastHost } from './components/ui/ToastHost';
 import { useApplyTheme } from './components/ui/kit';
 import { useUIStore } from './state/useUIStore';
 import { useAchievementToasts } from './components/status/Achievements';
-import { useChallengeStore } from './state/useChallengeStore';
+import { useChallengeStore, migrateLegacyChallenges } from './state/useChallengeStore';
+import { useChallengeContext } from './state/challengeSelectors';
+import { activeMissionsOn } from './core/challenges';
 import { soundFx } from './utils/audio';
 import { initReminderScheduler } from './utils/reminders';
 import { initDailyResetEngine } from './core/dailyResetEngine';
@@ -36,12 +37,6 @@ import { initDailyResetEngine } from './core/dailyResetEngine';
 export const AppContent: React.FC = () => {
   const {
     profile,
-    isStartChallengeModalOpen,
-    closeStartChallengeModal,
-    isChallengeMapModalOpen,
-    closeChallengeMapModal,
-    isChallengeHistoryModalOpen,
-    closeChallengeHistoryModal,
   } = useUserStore();
   const { missions } = useHabitStore();
 
@@ -58,6 +53,8 @@ export const AppContent: React.FC = () => {
   // Enquanto não sabemos se há dados mais novos na nuvem, o "portão" fica fechado:
   // nenhum dia é encerrado e nenhum desafio é interrompido com dados desatualizados.
   useEffect(() => {
+    // Dados guardados no formato antigo de desafios passam para o modelo único
+    migrateLegacyChallenges();
     const user = useUserStore.getState();
     soundFx.setSoundEnabled(user.profile.notificationSettings.soundEnabled !== false);
     user.syncInventory();
@@ -119,6 +116,7 @@ export const AppContent: React.FC = () => {
 
   // Sincronização em segundo plano (agrupada) quando perfil, missões ou desafios mudam
   const challenges = useChallengeStore((s) => s.challenges);
+  const { ctx: challengeCtx, today: challengeToday } = useChallengeContext();
   useEffect(() => {
     if (currentUser?.id) syncService.schedule();
   }, [profile, missions, challenges, currentUser]);
@@ -135,7 +133,9 @@ export const AppContent: React.FC = () => {
     return <OnboardingQuiz onFinishOnboarding={() => setActiveTab('missions')} />;
   }
 
-  const pendingMissionsCount = missions.filter((m) => !m.isCompletedToday).length;
+  const pendingMissionsCount = activeMissionsOn(missions, challengeCtx.links, challengeCtx.index, challengeToday).filter(
+    (m) => !m.isCompletedToday
+  ).length;
 
   return (
     <div className="app-shell flex flex-col relative">
@@ -185,13 +185,9 @@ export const AppContent: React.FC = () => {
       <BossVictoryModal />
       <ChallengeResetModal />
       <ChallengeCompletionModal />
-      <StartChallengeModal
-        isOpen={isStartChallengeModalOpen}
-        onClose={closeStartChallengeModal}
-      />
-      {/* Mapa e histórico de ciclos: abertos a partir de qualquer aba */}
-      <ChallengeMapModal isOpen={isChallengeMapModalOpen} onClose={closeChallengeMapModal} />
-      <ChallengeHistoryModal isOpen={isChallengeHistoryModalOpen} onClose={closeChallengeHistoryModal} />
+      {/* Desafios: novo desafio e detalhe abrem de qualquer aba */}
+      <ChallengeDetailModal />
+      <CreateChallengeModal />
       <IosInstallModal
         isOpen={isIosModalOpen}
         onClose={() => setIsIosModalOpen(false)}

@@ -3,11 +3,10 @@ import { useUserStore } from '../../state/useUserStore';
 import { useHabitStore } from '../../state/useHabitStore';
 import { useTheme } from '../../theme/ThemeContext';
 import { getLevelProgress } from '../../core/xpEngine';
-import { calculateDailyXpProgress } from '../../core/streakEngine';
+import { useChallengeViews, useTodayXp } from '../../state/challengeSelectors';
 import { addDaysToDateString, getTodayString, parseDate } from '../../core/dateUtils';
 import { PillarId } from '../../theme/types';
-import { soundFx } from '../../utils/audio';
-import { Bar, SectionHeader, Stat, Switch, pillarColor } from '../ui/kit';
+import { Bar, SectionHeader, Stat, pillarColor } from '../ui/kit';
 import { Pencil } from 'lucide-react';
 import { AchievementsSection } from './Achievements';
 import { BeforeAfterSection } from './BeforeAfter';
@@ -159,21 +158,19 @@ const ConsistencyMap: React.FC<{ doneDates: Set<string>; shielded: Set<string> }
 
 /** Aba "Resumo" do Perfil: nível, indicadores, gráficos e os cinco pilares. */
 export const ProfileOverview: React.FC<ProfileOverviewProps> = ({ onEditProfile, onOpenInventory }) => {
-  const { profile, toggleHardMode, getEquippedItems, unequipItem } = useUserStore();
-  const missions = useHabitStore((s) => s.missions);
+  const { profile, getEquippedItems, unequipItem } = useUserStore();
+  const eliteChallenges = useChallengeViews().open.filter((v) => v.challenge.isEliteMode && v.stats.state === 'active');
   const { getRankByLevel, theme } = useTheme();
-  const [eliteNotice, setEliteNotice] = useState<string | null>(null);
 
   const rankInfo = getRankByLevel(profile.level);
   const { currentLevel, currentLevelXp, nextLevelXpThreshold, progressPercent } = getLevelProgress(profile.totalXp);
   const equipped = getEquippedItems();
-  const hasActiveChallenge = profile.activeChallenge?.status === 'active';
   const avatar =
     profile.avatarConfig.customEmoji ||
     (profile.gender === 'female' ? '🥷‍♀️' : rankInfo.badge === '🌱' ? '🥷' : rankInfo.badge);
 
   const today = getTodayString();
-  const todayXp = calculateDailyXpProgress(missions);
+  const todayXp = useTodayXp();
   const dayLog = profile.dayLog || {};
   const doneDates = new Set(Object.values(dayLog).filter((d) => d.completed).map((d) => d.date));
   if (todayXp.isUnlocked) doneDates.add(today);
@@ -336,32 +333,14 @@ export const ProfileOverview: React.FC<ProfileOverviewProps> = ({ onEditProfile,
         </div>
       </section>
 
-      {/* Modo Elite */}
+      {/* Modo Elite: agora é escolhido em cada desafio */}
       <div className="card p-5">
-        <div className="flex items-center gap-4">
-          <div className="min-w-0 flex-1">
-            <div className="text-[15px] font-semibold text-ink">Modo Elite</div>
-            <p className="text-[13px] text-ink2 mt-0.5 leading-snug">
-              +20% de XP em todas as missões, sem Escudo e sem tolerância a faltas.
-              {hasActiveChallenge && ' Fica travado até o desafio atual terminar.'}
-            </p>
-          </div>
-          <Switch
-            checked={profile.isHardModeEnabled}
-            label="Modo Elite"
-            onChange={() => {
-              const res = toggleHardMode();
-              if (!res.success) {
-                soundFx.playError();
-                setEliteNotice(res.reason || null);
-                setTimeout(() => setEliteNotice(null), 4000);
-              } else {
-                soundFx.playButtonClick();
-              }
-            }}
-          />
-        </div>
-        {eliteNotice && <p className="text-[13px] text-accent mt-3">{eliteNotice}</p>}
+        <div className="text-[15px] font-semibold text-ink">Modo Elite</div>
+        <p className="text-[13px] text-ink2 mt-0.5 leading-snug">
+          {eliteChallenges.length > 0
+            ? `Em vigor por ${eliteChallenges.map((v) => v.challenge.title).join(', ')}: +20% de XP, sem Escudo, e qualquer falta encerra o desafio.`
+            : 'Escolhido em cada desafio, ao criar ou editar: +20% de XP, sem Escudo, e qualquer falta encerra o desafio.'}
+        </p>
       </div>
     </div>
   );

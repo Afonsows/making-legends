@@ -35,18 +35,22 @@ Todos os números abaixo vêm do código (`src/core/*`) e são cobertos por test
 - Escudos extras: relíquia *Pedra de Selamento Ancestral*, *Elixir de Ervas da Montanha* (loja) ou *Pergaminho de Proteção* (loja, 1 por semana).
 - **Modo Elite**: sem escudos.
 
-## 4. Desafio (ciclo de 21 a 365 dias)
+## 4. Desafios (modelo único, de 7 a 365 dias)
 
-- Começa hoje ou em uma data futura (até 30 dias).
-- O dia N do desafio é sempre a data de início + (N − 1).
-- **Regra semanal**: 1 falta por semana do desafio é tolerada; **a 2ª falta na mesma semana encerra o ciclo**. No **Modo Elite**, qualquer falta encerra.
-- **Falta** = um dia do desafio que **já terminou** sem ser cumprido. O dia de hoje nunca é falta.
-- **O dia em que você cria o desafio nunca conta como falta** (nem os dias anteriores a ele). Criar um desafio às 22h não te deixa devendo nada. Desafios agendados para o futuro valem a partir do primeiro dia.
-- **O desafio se corrige sozinho**: se ele foi encerrado pela regra e depois os registros mostrarem que não deveria (marcações que chegaram de outro aparelho, ou um dia corrigido por você), ele **volta de onde parou** — desde que você ainda não tenha iniciado outro. Desafios encerrados por você não voltam sozinhos (dá para restaurar pelo histórico).
-- O Escudo de Chakra protege a **sequência**, não as faltas do desafio.
+- **Todo desafio é do mesmo tipo** e vários podem correr ao mesmo tempo. Cada um tem os **seus próprios hábitos** (missões). Hábitos fora de desafio são **avulsos**.
+- A tela **Hoje** mostra a meta do dia e, abaixo, **cada desafio em andamento com os hábitos dele**. Desafios que ainda vão começar aparecem com "Começa em N dias".
+- Começa hoje, em uma data futura (até 30 dias) ou no passado (para registrar dias já feitos; esses dias não contam como falta).
+- O dia N do desafio é sempre a data de início + (N − 1). Fases: Despertar, Forja e Mestria — cada uma com 1/3 da duração.
+- **Dia cumprido no desafio** = metade do XP dos hábitos dele que valem naquele dia.
+- **Falta** = um dia do desafio que **já terminou** sem ser cumprido. O dia de hoje nunca é falta, e o dia em que você cria o desafio (e os anteriores) também não.
+- **Faltas não encerram o desafio**: elas aparecem no mapa, na semana ("2 faltas na semana 3") e pesam na **adesão** (% dos dias encerrados que foram cumpridos).
+- **Modo Elite** (escolhido em cada desafio): +20% de XP, sem Escudo de Chakra e **a primeira falta encerra o desafio**. Se o dia da falta for corrigido (ou a marcação chegar de outro aparelho), o desafio **volta sozinho**.
 - O desafio é **concluído depois do último dia** (o último dia é jogado). Recompensa: **+10 XP e +15 Ryō por dia de duração** (ex.: 66 dias = +660 XP e +990 Ryō).
-- O Modo Elite é escolhido no início e fica travado até o desafio terminar.
-- Fases: Despertar, Forja e Mestria — cada uma com 1/3 da duração escolhida.
+- **Quando o desafio termina** (concluído, encerrado por você ou no Modo Elite), **os hábitos dele saem da tela Hoje**. O histórico continua no desafio, e dá para **começar outro com os mesmos hábitos** (cópia).
+- No menu ⋯ do desafio: **Concluir agora** (sem bônus), **Encerrar** (abandonar), **Reabrir**, **Editar** e **Excluir** (desfaz os hábitos, as marcações e as recompensas daquele desafio — e só dele).
+- **Retirar um hábito** que já tem histórico só o tira dos próximos dias; os dias em que ele contou continuam valendo. Sem histórico, ele é excluído.
+- Pelo **mapa** do desafio dá para abrir qualquer dia e corrigir as marcações (conta para o desafio e para a sequência, sem XP nem Ryō).
+- O Escudo de Chakra protege a **sequência**, não as faltas do desafio.
 
 ## 4.1 Quadro de operação (desafio personalizado em formato de quadro)
 
@@ -58,7 +62,8 @@ Para rotinas com muitas tarefas por dia (ex.: **Operação Afiliado · 40 dias**
 - Recompensas (só no próprio dia, estornáveis ao desmarcar): **+5 XP e +3 Ryō por tarefa**, **+25 XP e +15 Ryō por seção completa** e **+60 XP e +40 Ryō pelo dia cumprido** (seção e dia também causam dano no chefe).
 - Dias passados podem ser corrigidos pelo seletor de dia ou pelo mapa: contam para o desafio, sem XP nem Ryō.
 - Indicadores: dia N, fase (Despertar, Forja e Mestria), dias cumpridos, sequência (hoje em andamento não quebra), adesão média e **datas marcantes** com contagem regressiva.
-- O quadro é independente do desafio principal: não altera a presença diária nem a regra de faltas.
+- O quadro é um desafio como os outros (encerrar, reabrir, excluir, Modo Elite, bônus de conclusão), mas a meta do dia dele é por tarefas e não entra na meta de XP da sequência.
+- Marcações de dois aparelhos no mesmo dia se juntam célula a célula (vale a mudança mais recente de cada tarefa).
 - Regras em `src/core/board.ts` (testes em `src/tests/board.test.ts`).
 
 ## 5. Níveis e patentes
@@ -119,7 +124,8 @@ Registrar além do limite continua salvando os dados, só não paga XP. O Pomodo
   - reset completo: o mais recente zera todos os aparelhos.
 - Ao abrir o app (ou na virada do dia), **nenhum dia é fechado antes de os dados da nuvem chegarem**. Sem internet, o app decide com o que tem e se corrige quando a conexão voltar.
 - A sincronização acontece ao abrir, ao voltar para o app, ~1 s depois de qualquer alteração e ao sair.
-- Dados antigos são migrados automaticamente na primeira abertura, preservando XP, Ryō, nível e histórico.
+- Dados antigos são migrados automaticamente na primeira abertura, preservando XP, Ryō, nível e histórico. O antigo "desafio principal" vira um desafio comum com as missões dentro dele; se ele tinha sido encerrado pela antiga regra de faltas, volta a ficar em andamento.
+  - desafios: por desafio — definição e decisões (encerrar, reabrir) da edição mais recente; nenhum desafio criado em um aparelho some pelo outro.
 
 ## 11. Como o sistema é construído (para manutenção)
 
@@ -130,10 +136,11 @@ A regra de ouro: **nada é somado "na mão" nem decidido no momento em que o app
 | `ledger.ts` | Livro-razão: cada ganho ou gasto é um lançamento com chave única. XP, nível, patente e Ryō são **derivados** dele. |
 | `dayLog.ts` | Registro diário: um dia é calculado pelas missões marcadas. Dia passado só melhora, nunca piora sozinho. |
 | `streak.ts` | Sequência e Escudo de Chakra. |
-| `cycle.ts` | Desafio: faltas por semana, carência do dia de criação, conclusão e restauração. |
-| `progression.ts` | `reconcileProgression`: o **único** lugar que decide dias, escudos, sequência e desafio. |
+| `challenges.ts` | Desafios: estado (em curso, concluído, encerrado), dia, faltas, adesão e mapa **calculados** das marcações; conversão do formato antigo; mesclagem. |
+| `cycle.ts` | Leitura dos ciclos do formato antigo. |
+| `progression.ts` | `reconcileProgression`: o **único** lugar que decide dias, escudos e sequência. |
 | `syncMerge.ts` | Regras de mesclagem entre aparelhos. |
 
 - Os stores (`src/state`) só guardam dados e chamam `reconcile()` depois de qualquer mudança. Rodar `reconcile()` várias vezes não altera nada.
 - `src/services/syncService.ts` só transporta dados; as regras ficam em `syncMerge.ts`.
-- Testes (`npm test`): regras puras (`engines`, `progression`), stores com viagem no tempo (`stores`) e dois aparelhos sincronizando contra uma nuvem em memória (`sync`).
+- Testes (`npm test`): regras puras (`engines`, `progression`, `challenges`, `board`), stores com viagem no tempo (`stores`) e dois aparelhos sincronizando contra uma nuvem em memória (`sync`).

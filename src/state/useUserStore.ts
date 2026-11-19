@@ -5,7 +5,6 @@ import {
   AvatarConfig,
   NotificationSettings,
   Item,
-  ProtocolChallengeCycle,
   RewardGrant,
   Mission,
   DayRecord,
@@ -18,16 +17,19 @@ import {
   computeCurrentStreak,
   computeBestStreak,
   countCompletedDays,
-  evaluateChallengeCycle,
-  asActiveCandidate,
-  getChallengeCompletionReward,
-  getCycleTargetDays,
   buildDayLogFromLegacy,
   recomputeDay,
   reconcileProgression,
   ShieldContext,
-  ABANDONED_REASON,
 } from '../core/streakEngine';
+import {
+  challengeRewardKey,
+  challengeStats,
+  getChallengeCompletionReward,
+  habitActiveOn,
+  legacyStatusOf,
+  makeChallengeContext,
+} from '../core/challenges';
 import {
   LedgerState,
   LEGACY_BASE_KEY,
@@ -41,13 +43,14 @@ import {
   emptyPillarXp,
 } from '../core/ledger';
 import { stableStringify } from '../core/syncMerge';
-import { getTodayString, addDaysToDateString, getWeekKey, isValidDateString, daysBetween } from '../core/dateUtils';
+import { getTodayString, addDaysToDateString, getWeekKey, isValidDateString } from '../core/dateUtils';
 import { allGameItems, STARTER_ITEMS } from '../core/itemsData';
 import { teachingCards } from '../core/cardsData';
 import { soundFx } from '../utils/audio';
 import { triggerLevelUpConfetti, triggerDayCompleteConfetti, triggerChallengeCompleteConfetti } from '../utils/confetti';
 import { useHabitStore } from './useHabitStore';
-import { useChallengeStore } from './useChallengeStore';
+import { useChallengeStore, setChallengesSilently } from './useChallengeStore';
+import { useUIStore } from './useUIStore';
 import { useDuelStore } from './useDuelStore';
 
 // ─────────────────────────────────────────────────────────────
@@ -126,6 +129,7 @@ export const createDefaultProfile = (): UserProfile => ({
   soldierPillDates: [],
   bossesDefeated: 0,
   missionsCompletedTotal: 0,
+  habitLinks: {},
 });
 
 function readPersistedMissions(): Mission[] {
@@ -161,6 +165,7 @@ export function migrateProfile(
   p.revoked = asRecord<string>(p.revoked);
   p.deletedMissions = asRecord<string>(p.deletedMissions);
   p.deletedCycles = asRecord<string>(p.deletedCycles);
+  p.habitLinks = asRecord(p.habitLinks);
   p.shieldedDates = Array.isArray(p.shieldedDates) ? p.shieldedDates.filter(isValidDateString) : [];
   p.purchasedItems = Array.isArray(p.purchasedItems) ? p.purchasedItems : [];
   p.extraShieldWeeks = Array.isArray(p.extraShieldWeeks) ? p.extraShieldWeeks : [];
@@ -194,19 +199,8 @@ export function migrateProfile(
   }
   if (typeof p.bossesDefeated !== 'number') p.bossesDefeated = 0;
 
-  if (p.activeChallenge) {
-    const cycle = p.activeChallenge;
-    if (cycle.status !== 'active') {
-      p.challengeHistory = [cycle, ...p.challengeHistory.filter((c) => c.id !== cycle.id)];
-      p.activeChallenge = undefined;
-    } else {
-      cycle.targetDays = getCycleTargetDays(cycle);
-      cycle.isEliteMode = cycle.isEliteMode ?? p.isHardModeEnabled;
-      if (!isValidDateString(cycle.startDate)) cycle.startDate = today;
-      // Cortesia de migração: faltas anteriores à atualização não encerram o desafio.
-      if (options.isLegacy && !cycle.graceBefore) cycle.graceBefore = today;
-    }
-  }
+  // Ciclos do formato antigo (activeChallenge/challengeHistory) ficam como estão até
+  // a conversão para o modelo único (`migrateLegacyChallenges`), que os retira do perfil.
 
   p.bestStreak = Math.max(p.bestStreak || 0, computeBestStreak(p.dayLog, p.shieldedDates));
   p.currentStreak = computeCurrentStreak(p.dayLog, p.shieldedDates, today);
@@ -234,15 +228,18 @@ interface UserStoreState {
   profile: UserProfile;
   /**
    * 'pending' enquanto os dados da nuvem ainda não chegaram. Nesse intervalo
-   * nenhum dia é fechado e nenhum desafio é encerrado (ver `reconcile`).
+   * nenhum dia é fechado, nenhum bônus de desafio é pago e nenhum aviso de
+   * desafio encerrado aparece (ver `reconcile`).
    */
   cloudGate: 'open' | 'pending';
   activeLevelUpModal: { oldLevel: number; newLevel: number; oldRank: UserRankId; newRank: UserRankId } | null;
-  activeResetModal: { cycle: ProtocolChallengeCycle } | null;
-  activeCompletionModal: { cycle: ProtocolChallengeCycle } | null;
-  isChallengeHistoryModalOpen: boolean;
-  isChallengeMapModalOpen: boolean;
+  /** Desafio no Modo Elite encerrado por uma falta (aviso). */
+  activeResetModal: { challengeId: string } | null;
+  /** Desafio que chegou ao fim (comemoração). */
+  activeCompletionModal: { challengeId: string } | null;
   isStartChallengeModalOpen: boolean;
+  /** Ao abrir "novo desafio": de onde levar os hábitos (id de um desafio ou 'loose' para os avulsos). */
+  startChallengeSource: string | null;
   toasts: Toast[];
 
   // Perfil
@@ -262,7 +259,6 @@ interface UserStoreState {
   deleteMeasure: (measureId: string) => void;
   updateAvatar: (config: Partial<AvatarConfig>) => void;
   updateNotifications: (settings: Partial<NotificationSettings>) => void;
-  toggleHardMode: () => { success: boolean; reason?: string };
   completeOnboarding: (name: string, gender?: 'male' | 'female', email?: string, whatsapp?: string) => void;
 
   // Recompensas (livro-razão)
@@ -286,10 +282,10 @@ interface UserStoreState {
   buySoldierPill: () => { success: boolean; reason?: string };
   buyShieldScroll: () => { success: boolean; reason?: string };
 
-  // Dias, sequência e desafio
+  // Dias, sequência e desafios
   /**
-   * Ponto ÚNICO de reconciliação: recalcula dias, escudos, sequência e desafio
-   * a partir dos dados atuais. Idempotente — pode ser chamado a qualquer momento.
+   * Ponto ÚNICO de reconciliação: recalcula dias, escudos, sequência e o estado
+   * dos desafios a partir dos dados atuais. Idempotente — pode ser chamado a qualquer momento.
    */
   reconcile: (options?: { silent?: boolean }) => void;
   refreshToday: (options?: { silent?: boolean }) => void;
@@ -297,24 +293,14 @@ interface UserStoreState {
   recalculateStreak: () => { currentStreak: number; bestStreak: number };
   /** Recalcula um dia passado depois de uma correção manual das missões. */
   correctPastDay: (date: string) => void;
+  /** Recalcula exatamente dias passados (meta inclusa) depois de excluir hábitos ou um desafio. */
+  recomputePastDays: (dates: string[]) => void;
   setCloudGate: (gate: 'open' | 'pending') => void;
   /** Recebe o perfil já mesclado pela sincronização. */
   applySyncedProfile: (profile: UserProfile) => void;
-  startChallenge: (params?: { title?: string; targetDays?: number; startDate?: string; missions?: Mission[]; isEliteMode?: boolean }) => ProtocolChallengeCycle;
-  startNewChallengeCycle: () => void;
-  abandonChallenge: () => void;
-  deleteActiveChallenge: () => void;
-  updateActiveChallenge: (updates: { title?: string; targetDays?: number; isEliteMode?: boolean }) => void;
-  deleteHistoryCycle: (cycleId: string) => void;
-  clearChallengeHistory: () => void;
-  restoreArchivedCycle: (cycleId: string) => boolean;
   dismissResetModal: () => void;
   dismissCompletionModal: () => void;
-  openChallengeHistoryModal: () => void;
-  closeChallengeHistoryModal: () => void;
-  openChallengeMapModal: () => void;
-  closeChallengeMapModal: () => void;
-  openStartChallengeModal: () => void;
+  openStartChallengeModal: (source?: string | null) => void;
   closeStartChallengeModal: () => void;
 
   // Notificações visuais
@@ -381,49 +367,109 @@ export const useUserStore = create<UserStoreState>()(
         }
       };
 
-      /** Paga o bônus de conclusão (uma única vez) e abre o modal de vitória. */
-      const celebrateCompletion = (cycle: ProtocolChallengeCycle) => {
-        const target = getCycleTargetDays(cycle);
-        const reward = getChallengeCompletionReward(target);
-        const key = `challenge:${cycle.id}`;
-        get().grantReward({
-          key,
-          label: `Desafio concluído: ${cycle.title || `${target} dias`}`,
-          baseXp: reward.xp,
-          baseRyo: reward.ryo,
-          pillarId: 'chakra',
-          applyXpBuffs: false,
-          applyRyoBuffs: false,
+      /**
+       * Desafios: o estado de cada um é CALCULADO das marcações. Aqui só se
+       * reflete esse estado (espelho `status`, Modo Elite em vigor, bônus de
+       * conclusão) e se avisa uma única vez, por aparelho, quando um desafio
+       * termina ou cai no Modo Elite.
+       */
+      const reconcileChallenges = (today: string, settlePast: boolean) => {
+        const challenges = useChallengeStore.getState().challenges;
+        const missions = useHabitStore.getState().missions;
+        const ctx = makeChallengeContext(challenges, missions, get().profile.habitLinks);
+        const stats = new Map(challenges.map((c) => [c.id, challengeStats(c, ctx, today)]));
+
+        // Espelho do estado no campo antigo (telas e quadro de operação)
+        const mirrored = challenges.map((c) => {
+          const status = legacyStatusOf(stats.get(c.id)!.state);
+          return c.status === status ? c : { ...c, status };
         });
-        const paid = get().profile.grants[key];
-        const finished: ProtocolChallengeCycle = { ...cycle, rewardXp: paid?.xp ?? reward.xp, rewardRyo: paid?.ryo ?? reward.ryo };
-        set((state) => ({
-          profile: {
-            ...state.profile,
-            challengeHistory: (state.profile.challengeHistory || []).map((c) => (c.id === cycle.id ? finished : c)),
-          },
-          activeCompletionModal: { cycle: finished },
-        }));
-        soundFx.playChallengeComplete();
-        triggerChallengeCompleteConfetti();
+        if (mirrored.some((c, i) => c !== challenges[i])) setChallengesSilently(mirrored);
+
+        // Bônus de conclusão: só quando o desafio chega ao fim (estornável se deixar de valer)
+        if (settlePast) {
+          challenges.forEach((c) => {
+            const key = challengeRewardKey(c.id);
+            const has = Boolean(get().profile.grants?.[key]);
+            const earned = stats.get(c.id)!.finishedNaturally;
+            if (earned && !has) {
+              const reward = getChallengeCompletionReward(c.targetDays);
+              get().grantReward({
+                key,
+                label: `Desafio concluído: ${c.title}`,
+                baseXp: reward.xp,
+                baseRyo: reward.ryo,
+                pillarId: 'chakra',
+                applyXpBuffs: false,
+                applyRyoBuffs: false,
+                date: stats.get(c.id)!.endDate,
+              });
+            } else if (!earned && has) {
+              get().revokeReward(key);
+            }
+          });
+        }
+
+        // Avisos (uma vez por aparelho). Na primeira vez, só registra o que já existe.
+        if (!settlePast || !get().profile.hasCompletedOnboarding) return stats;
+        const outcomes = challenges
+          .map((c) => ({ id: c.id, state: stats.get(c.id)!.state, natural: stats.get(c.id)!.finishedNaturally }))
+          .filter((o) => o.state === 'failed' || o.natural)
+          .map((o) => ({ ...o, key: `${o.id}:${o.state}` }));
+        const ui = useUIStore.getState();
+        const seen = ui.seenChallengeOutcomes;
+        if (seen === null) {
+          ui.setSeenChallengeOutcomes(outcomes.map((o) => o.key));
+          return stats;
+        }
+        const fresh = outcomes.filter((o) => !seen.includes(o.key));
+        if (fresh.length === 0) return stats;
+        ui.setSeenChallengeOutcomes([...seen, ...fresh.map((o) => o.key)]);
+        const failed = fresh.find((o) => o.state === 'failed');
+        const done = fresh.find((o) => o.natural);
+        if (done && !get().activeCompletionModal) {
+          set({ activeCompletionModal: { challengeId: done.id } });
+          soundFx.playChallengeComplete();
+          triggerChallengeCompleteConfetti();
+        } else if (failed && !get().activeResetModal) {
+          set({ activeResetModal: { challengeId: failed.id } });
+          soundFx.playChallengeFailed();
+        }
+        return stats;
+      };
+
+      /** Quais missões valem em cada dia (hábitos de desafios encerrados ou retirados, não). */
+      const missionFilter = () => {
+        const ctx = makeChallengeContext(
+          useChallengeStore.getState().challenges,
+          useHabitStore.getState().missions,
+          get().profile.habitLinks
+        );
+        return (mission: Mission, date: string) => habitActiveOn(mission, ctx.links, ctx.index, date);
       };
 
       const reconcile = (options?: { silent?: boolean }) => {
         const today = getTodayString();
         const missions = useHabitStore.getState().missions;
-        const before = get().profile;
         const settlePast = get().cloudGate !== 'pending';
 
+        // Desafios primeiro: o Modo Elite em vigor muda bônus de XP e escudos
+        const stats = reconcileChallenges(today, settlePast);
+        const challenges = useChallengeStore.getState().challenges;
+        const running = challenges.filter((c) => stats.get(c.id)?.state === 'active');
+        const eliteNow = running.some((c) => c.isEliteMode);
+        const mainDay = running.find((c) => c.format !== 'board') || running[0];
+        if (get().profile.isHardModeEnabled !== eliteNow) patchProfile({ isHardModeEnabled: eliteNow });
+
+        const before = get().profile;
         const result = reconcileProgression(
           {
             dayLog: before.dayLog,
             shieldedDates: before.shieldedDates,
             shieldsThrough: before.shieldsThrough,
-            activeChallenge: before.activeChallenge,
-            challengeHistory: before.challengeHistory || [],
             bestStreak: before.bestStreak,
           },
-          { today, missions, shield: shieldContext(before), settlePast }
+          { today, missions, shield: shieldContext(before), settlePast, isActive: missionFilter() }
         );
 
         const unlockedCards = getReconciledUnlockedCards(result.completedDays);
@@ -431,9 +477,7 @@ export const useUserStore = create<UserStoreState>()(
           dayLog: result.dayLog,
           shieldedDates: result.shieldedDates,
           shieldsThrough: result.shieldsThrough,
-          activeChallenge: result.activeChallenge,
-          challengeHistory: result.challengeHistory,
-          currentProtocolDay: result.activeChallenge?.currentDay || 0,
+          currentProtocolDay: mainDay ? stats.get(mainDay.id)!.dayNumber : 0,
           currentStreak: result.currentStreak,
           bestStreak: result.bestStreak,
           weeklyShieldsMax: result.weeklyShieldsMax,
@@ -452,7 +496,7 @@ export const useUserStore = create<UserStoreState>()(
         }
         patchProfile(patch);
 
-        // ── Reações aos eventos (som, avisos, modais) ──
+        // ── Reações aos eventos (som, avisos) ──
         result.events.forEach((event) => {
           if (event.type === 'shields_used') {
             soundFx.playShield();
@@ -464,27 +508,12 @@ export const useUserStore = create<UserStoreState>()(
                   ? 'Uma falta foi absorvida e sua sequência foi preservada.'
                   : `${event.dates.length} faltas foram absorvidas e sua sequência foi preservada.`,
             });
-          } else if (event.type === 'cycle_failed') {
-            set({ activeResetModal: { cycle: event.cycle } });
-            soundFx.playChallengeFailed();
-          } else if (event.type === 'cycle_completed') {
-            celebrateCompletion(event.cycle);
-          } else if (event.type === 'cycle_restored') {
-            set({ activeResetModal: null });
-            get().pushToast({
-              kind: 'success',
-              title: 'Desafio restaurado!',
-              message: 'Os registros atualizados mostram que o ciclo não deveria ter sido encerrado. Ele voltou de onde parou.',
-            });
           }
         });
 
-        // O aviso de "desafio interrompido" não pode sobreviver a um ciclo que voltou a valer
-        // (ex.: a sincronização trouxe o mesmo ciclo ainda ativo de outro aparelho)
+        // O aviso de "desafio encerrado" não sobrevive a um desafio que voltou a valer
         const openReset = get().activeResetModal;
-        if (openReset && get().profile.activeChallenge?.id === openReset.cycle.id) {
-          set({ activeResetModal: null });
-        }
+        if (openReset && stats.get(openReset.challengeId)?.state !== 'failed') set({ activeResetModal: null });
 
         // ── Estipêndio do Dia Cumprido ──
         const record = get().profile.dayLog[today];
@@ -533,9 +562,8 @@ export const useUserStore = create<UserStoreState>()(
         activeLevelUpModal: null,
         activeResetModal: null,
         activeCompletionModal: null,
-        isChallengeHistoryModalOpen: false,
-        isChallengeMapModalOpen: false,
         isStartChallengeModalOpen: false,
+        startChallengeSource: null,
         toasts: [],
 
         updateProfile: (updates) => set((state) => ({ profile: touch({ ...state.profile, ...updates }) })),
@@ -563,9 +591,8 @@ export const useUserStore = create<UserStoreState>()(
             activeLevelUpModal: null,
             activeResetModal: null,
             activeCompletionModal: null,
-            isChallengeHistoryModalOpen: false,
-            isChallengeMapModalOpen: false,
             isStartChallengeModalOpen: false,
+            startChallengeSource: null,
             toasts: [],
           });
         },
@@ -640,21 +667,6 @@ export const useUserStore = create<UserStoreState>()(
           if (settings.soundEnabled !== undefined) soundFx.setSoundEnabled(settings.soundEnabled);
         },
 
-        toggleHardMode: () => {
-          const { profile } = get();
-          if (profile.activeChallenge && profile.activeChallenge.status === 'active') {
-            return {
-              success: false,
-              reason: 'O Modo Elite é definido no início do desafio e fica travado até ele terminar.',
-            };
-          }
-          set((state) => ({
-            profile: touch({ ...state.profile, isHardModeEnabled: !state.profile.isHardModeEnabled }),
-          }));
-          reconcile({ silent: true });
-          return { success: true };
-        },
-
         completeOnboarding: (name, gender = 'male', email, whatsapp) => {
           set((state) => ({
             profile: touch({
@@ -670,7 +682,9 @@ export const useUserStore = create<UserStoreState>()(
               hasCompletedOnboarding: true,
               lastActiveDate: getTodayString(),
             }),
+            // As missões sugeridas no questionário viram os hábitos do primeiro desafio
             isStartChallengeModalOpen: true,
+            startChallengeSource: 'loose',
           }));
         },
 
@@ -831,7 +845,6 @@ export const useUserStore = create<UserStoreState>()(
 
         checkDayTransition: () => {
           useHabitStore.getState().resetDailyMissionsIfNewDay();
-          useChallengeStore.getState().autoCompleteExpiredChallenges();
           reconcile({ silent: true });
         },
 
@@ -845,8 +858,25 @@ export const useUserStore = create<UserStoreState>()(
           const today = getTodayString();
           if (!isValidDateString(date) || date >= today) return;
           const missions = useHabitStore.getState().missions;
-          const record: DayRecord = recomputeDay(get().profile.dayLog[date], missions, date, stamp());
+          const record: DayRecord = recomputeDay(get().profile.dayLog[date], missions, date, stamp(), missionFilter());
           set((state) => ({ profile: touch({ ...state.profile, dayLog: { ...state.profile.dayLog, [date]: record } }) }));
+          reconcile({ silent: true });
+        },
+
+        recomputePastDays: (dates) => {
+          const today = getTodayString();
+          const valid = Array.from(new Set(dates.filter((d) => isValidDateString(d) && d < today)));
+          if (valid.length === 0) return;
+          const missions = useHabitStore.getState().missions;
+          const isActive = missionFilter();
+          const at = stamp();
+          set((state) => {
+            const dayLog = { ...state.profile.dayLog };
+            valid.forEach((date) => {
+              dayLog[date] = recomputeDay(dayLog[date], missions, date, at, isActive, { recomputeTarget: true });
+            });
+            return { profile: touch({ ...state.profile, dayLog }) };
+          });
           reconcile({ silent: true });
         },
 
@@ -862,202 +892,10 @@ export const useUserStore = create<UserStoreState>()(
           get().checkDayTransition();
         },
 
-        startChallenge: (params) => {
-          const { profile } = get();
-          const today = getTodayString();
-          if (profile.activeChallenge && profile.activeChallenge.status === 'active') {
-            get().abandonChallenge();
-          }
-          const history = get().profile.challengeHistory || [];
-          const targetDays = Math.min(365, Math.max(7, Math.round(params?.targetDays || 66)));
-          let startDate = params?.startDate && isValidDateString(params.startDate) ? params.startDate : today;
-          if (daysBetween(today, startDate) > 30) startDate = addDaysToDateString(today, 30);
-          const cycleNumber = history.length + 1;
-          const isEliteMode = Boolean(params?.isEliteMode);
-
-          const cycle: ProtocolChallengeCycle = {
-            id: `cycle_${cycleNumber}_${Date.now()}`,
-            cycleNumber,
-            title: params?.title?.trim() || `Desafio ${targetDays} Dias — Ciclo #${cycleNumber}`,
-            targetDays,
-            isEliteMode,
-            startDate,
-            createdOn: today,
-            graceBefore: startDate < today ? today : undefined,
-            status: 'active',
-            currentDay: startDate === today ? 1 : 0,
-            daysCompleted: 0,
-            checkIns: {},
-            totalXpEarned: 0,
-            createdAt: stamp(),
-          };
-
-          if (params?.missions && params.missions.length > 0) {
-            useHabitStore.getState().setCustomMissionList(params.missions);
-          }
-
-          set((state) => ({
-            profile: touch({
-              ...state.profile,
-              activeChallenge: cycle,
-              currentProtocolDay: cycle.currentDay,
-              isHardModeEnabled: isEliteMode,
-            }),
-            activeResetModal: null,
-            activeCompletionModal: null,
-            isStartChallengeModalOpen: false,
-          }));
-
-          soundFx.playChallengeStart();
-          triggerLevelUpConfetti();
-          reconcile({ silent: true });
-          return get().profile.activeChallenge || cycle;
-        },
-
-        abandonChallenge: () => {
-          const { profile } = get();
-          const cycle = profile.activeChallenge;
-          if (!cycle || cycle.status !== 'active') return;
-          const archived: ProtocolChallengeCycle = {
-            ...cycle,
-            status: 'failed',
-            endedBy: 'user',
-            endDate: getTodayString(),
-            failedReason: ABANDONED_REASON,
-          };
-          set((state) => ({
-            profile: touch({
-              ...state.profile,
-              activeChallenge: undefined,
-              currentProtocolDay: 0,
-              challengeHistory: [archived, ...(state.profile.challengeHistory || [])],
-            }),
-          }));
-        },
-
-        deleteActiveChallenge: () => {
-          const cycle = get().profile.activeChallenge;
-          if (cycle) {
-            const from = cycle.startDate;
-            const at = stamp();
-
-            // 1. Estorna tudo o que foi ganho desde o início do ciclo (compras não são reembolsadas)
-            Object.values(get().profile.grants || {})
-              .filter((grant) => grant.date >= from && grant.key !== LEGACY_BASE_KEY && !grant.key.startsWith('shop:'))
-              .forEach((grant) => get().revokeReward(grant.key));
-
-            // 2. O desafio oficial usa as missões diárias: remove as marcações do período
-            //    e deixa lápides para que outros aparelhos também as removam.
-            const today = getTodayString();
-            const erased: string[] = [];
-            useHabitStore.setState((state) => ({
-              missions: state.missions.map((mission) => {
-                (mission.completedDates || []).forEach((date) => date >= from && erased.push(`mission:${mission.id}:${date}`));
-                const completedDates = (mission.completedDates || []).filter((date) => date < from);
-                return { ...mission, completedDates, isCompletedToday: completedDates.includes(today) };
-              }),
-            }));
-            get().forgetRewards(erased);
-
-            // 3. Apaga os dias consolidados do período
-            set((state) => ({
-              profile: touch({
-                ...state.profile,
-                activeChallenge: undefined,
-                currentProtocolDay: 0,
-                dayLog: Object.fromEntries(Object.entries(state.profile.dayLog).filter(([date]) => date < from)),
-                shieldedDates: state.profile.shieldedDates.filter((date) => date < from),
-                dayWipe: { from, at },
-                deletedCycles: { ...state.profile.deletedCycles, [cycle.id]: at },
-              }),
-            }));
-          }
-          set({ activeResetModal: null, activeCompletionModal: null });
-          reconcile({ silent: true });
-        },
-
-        updateActiveChallenge: (updates) => {
-          const { profile } = get();
-          if (!profile.activeChallenge) return;
-          const current = profile.activeChallenge;
-          const nextDays = updates.targetDays !== undefined ? Math.max(7, Math.min(365, Math.round(updates.targetDays))) : (current.targetDays || 66);
-          const updatedCycle: ProtocolChallengeCycle = {
-            ...current,
-            title: updates.title !== undefined ? updates.title.trim() : current.title,
-            targetDays: nextDays,
-            isEliteMode: updates.isEliteMode !== undefined ? updates.isEliteMode : current.isEliteMode,
-          };
-          set((state) => ({
-            profile: touch({
-              ...state.profile,
-              activeChallenge: updatedCycle,
-              isHardModeEnabled: updatedCycle.isEliteMode ?? state.profile.isHardModeEnabled,
-            }),
-          }));
-          reconcile({ silent: true });
-        },
-
-        deleteHistoryCycle: (cycleId) => {
-          get().revokeReward(`challenge:${cycleId}`);
-          const at = stamp();
-          set((state) => ({
-            profile: touch({
-              ...state.profile,
-              challengeHistory: (state.profile.challengeHistory || []).filter((c) => c.id !== cycleId),
-              deletedCycles: { ...state.profile.deletedCycles, [cycleId]: at },
-            }),
-          }));
-        },
-
-        clearChallengeHistory: () => {
-          const history = get().profile.challengeHistory || [];
-          history.forEach((cycle) => get().revokeReward(`challenge:${cycle.id}`));
-          const at = stamp();
-          set((state) => ({
-            profile: touch({
-              ...state.profile,
-              challengeHistory: [],
-              deletedCycles: { ...state.profile.deletedCycles, ...Object.fromEntries(history.map((c) => [c.id, at])) },
-            }),
-          }));
-        },
-
-        startNewChallengeCycle: () => {
-          get().abandonChallenge();
-          set({ isStartChallengeModalOpen: true, activeResetModal: null });
-        },
-
-        restoreArchivedCycle: (cycleId) => {
-          const { profile } = get();
-          if (profile.activeChallenge && profile.activeChallenge.status === 'active') return false;
-          const history = profile.challengeHistory || [];
-          const target = history.find((c) => c.id === cycleId);
-          if (!target || target.status !== 'failed') return false;
-
-          const result = evaluateChallengeCycle(asActiveCandidate(target), profile.dayLog, getTodayString());
-          if (result.outcome === 'failed') return false;
-
-          set((state) => ({
-            profile: touch({
-              ...state.profile,
-              activeChallenge: { ...result.cycle, status: 'active' },
-              challengeHistory: history.filter((c) => c.id !== cycleId),
-              isHardModeEnabled: Boolean(result.cycle.isEliteMode),
-            }),
-            activeResetModal: null,
-          }));
-          reconcile({ silent: true });
-          return true;
-        },
-
         dismissResetModal: () => set({ activeResetModal: null }),
         dismissCompletionModal: () => set({ activeCompletionModal: null }),
-        openChallengeHistoryModal: () => set({ isChallengeHistoryModalOpen: true }),
-        closeChallengeHistoryModal: () => set({ isChallengeHistoryModalOpen: false }),
-        openChallengeMapModal: () => set({ isChallengeMapModalOpen: true }),
-        closeChallengeMapModal: () => set({ isChallengeMapModalOpen: false }),
-        openStartChallengeModal: () => set({ isStartChallengeModalOpen: true }),
-        closeStartChallengeModal: () => set({ isStartChallengeModalOpen: false }),
+        openStartChallengeModal: (source = null) => set({ isStartChallengeModalOpen: true, startChallengeSource: source }),
+        closeStartChallengeModal: () => set({ isStartChallengeModalOpen: false, startChallengeSource: null }),
 
         pushToast: (toast) => {
           const id = `toast_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;

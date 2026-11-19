@@ -60,16 +60,21 @@ export interface AchievementFacts {
 
 /** Reúne os números em que as conquistas se baseiam. */
 export function collectAchievementFacts(profile: UserProfile, challenges: UserChallenge[] = []): AchievementFacts {
-  const cycles = [...(profile.challengeHistory || []), ...(profile.activeChallenge ? [profile.activeChallenge] : [])];
-  const doneCycles = cycles.filter((c) => c.status === 'completed');
-  const doneCustom = challenges.filter((c) => !c.isOfficial66 && c.status === 'completed').length;
+  // Ciclos ainda no formato antigo (antes da conversão) + desafios do modelo único
+  const legacy = [...(profile.challengeHistory || []), ...(profile.activeChallenge ? [profile.activeChallenge] : [])]
+    .filter((c) => c.status === 'completed')
+    .map((c) => ({ targetDays: c.targetDays || 66, isEliteMode: Boolean(c.isEliteMode) }));
+  const current = challenges
+    .filter((c) => !c.isOfficial66 && c.status === 'completed')
+    .map((c) => ({ targetDays: c.targetDays, isEliteMode: Boolean(c.isEliteMode) }));
+  const doneCycles = [...legacy, ...current];
   const pillarValues = PILLARS.map((p) => profile.pillarXp?.[p] || 0);
   const measures = activeMeasures(profile.measures).map(summarizeMeasure);
 
   return {
     bestStreak: Math.max(profile.bestStreak || 0, profile.currentStreak || 0),
     daysCompleted: Object.values(profile.dayLog || {}).filter((d) => d.completed).length,
-    challengesCompleted: doneCycles.length + doneCustom,
+    challengesCompleted: doneCycles.length,
     longChallengeCompleted: doneCycles.filter((c) => (c.targetDays || 66) >= 66).length,
     eliteChallengeCompleted: doneCycles.filter((c) => c.isEliteMode).length,
     missionsCompleted: profile.missionsCompletedTotal || 0,

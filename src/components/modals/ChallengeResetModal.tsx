@@ -1,80 +1,61 @@
 import React from 'react';
 import { useUserStore } from '../../state/useUserStore';
+import { useChallengeStore } from '../../state/useChallengeStore';
+import { useChallengeView } from '../../state/challengeSelectors';
 import { formatDateBR } from '../../core/dateUtils';
-import { History, Flame } from 'lucide-react';
+import { Stat } from '../ui/kit';
+import { Flame } from 'lucide-react';
 
+/** Aviso único quando um desafio no Modo Elite é encerrado por uma falta. */
 export const ChallengeResetModal: React.FC = () => {
-  const { activeResetModal, dismissResetModal, openChallengeHistoryModal, openStartChallengeModal } = useUserStore();
-  if (!activeResetModal) return null;
-
-  const { cycle } = activeResetModal;
-  const targetDays = cycle.targetDays || 66;
+  const { activeResetModal, dismissResetModal, openStartChallengeModal } = useUserStore();
+  const openDetailModal = useChallengeStore((s) => s.openDetailModal);
+  const view = useChallengeView(activeResetModal?.challengeId || null);
+  if (!activeResetModal || !view) return null;
+  const { challenge, stats } = view;
 
   return (
-    <div className="modal-overlay z-[110] bg-black/90 animate-in fade-in">
-      <div className="washi-texture bg-slate-900 border border-rose-500/70 w-full max-w-lg rounded-2xl overflow-hidden flex flex-col my-auto relative animate-in zoom-in-95">
-        <div className="p-6 bg-rose-950/80 border-b border-rose-500/30 text-center space-y-2 relative overflow-hidden">
-          <div className="absolute -top-4 right-2 font-kanji text-[110px] leading-none text-rose-500/10 select-none pointer-events-none">敗</div>
-          <div className="font-kanji text-5xl text-rose-400 leading-none">折</div>
-          <h3 className="font-cinzel text-xl sm:text-2xl text-slate-100">O desafio foi interrompido</h3>
-          <p className="text-xs text-rose-300 font-mono">{cycle.failedReason || 'Faltas acima do permitido na semana'}</p>
+    <div className="modal-overlay z-[115] animate-in fade-in">
+      <div className="bg-bg border border-line w-full max-w-md rounded-2xl overflow-hidden modal-panel my-auto p-6 text-center animate-pop">
+        <div className="t-label !text-accent">Modo Elite · desafio encerrado</div>
+        <h3 className="t-title text-[28px] text-ink mt-2.5">{challenge.title}</h3>
+        <p className="text-[13px] text-ink2 mt-2 leading-snug">
+          No Modo Elite qualquer falta encerra o desafio
+          {stats.failedOn ? `. A falta foi em ${formatDateBR(stats.failedOn)}.` : '.'} Se um dia foi marcado e não sincronizou, corrija-o no
+          mapa do desafio: ele volta sozinho.
+        </p>
+
+        <div className="grid grid-cols-3 gap-3 mt-6 pt-5 border-t border-line text-left">
+          <Stat value={stats.daysCompleted} label="Cumpridos" />
+          <Stat value={`${stats.adherence}%`} label="Adesão" />
+          <Stat value={stats.bestStreak} label="Melhor sequência" />
         </div>
+        <p className="text-[13px] text-ink2 mt-5 leading-snug">Seu XP, nível, relíquias e pergaminhos continuam com você.</p>
 
-        <div className="p-6 space-y-4 text-xs">
-          <p className="text-slate-300 text-[12px] leading-relaxed text-center italic">
-            "Cair faz parte do caminho ninja. O que define um shinobi é se ele se levanta."
-          </p>
-
-          <div className="grid grid-cols-3 gap-2.5 p-3.5 rounded-2xl bg-slate-950 border border-slate-800 text-center">
-            <div>
-              <span className="text-slate-400 block text-[10px]">Ciclo</span>
-              <span className="font-bold text-rose-300 font-mono text-sm">#{cycle.cycleNumber || 1}</span>
-            </div>
-            <div>
-              <span className="text-slate-400 block text-[10px]">Dias cumpridos</span>
-              <span className="font-bold text-slate-100 font-mono text-sm">
-                {cycle.daysCompleted || 0} / {targetDays}
-              </span>
-            </div>
-            <div>
-              <span className="text-slate-400 block text-[10px]">XP no ciclo</span>
-              <span className="font-bold text-shinobi-gold font-mono text-sm">{cycle.totalXpEarned || 0}</span>
-            </div>
-          </div>
-
-          <div className="p-3 bg-slate-950/70 border border-slate-800 rounded-xl text-slate-300 text-[11px] leading-relaxed">
-            Seu XP, nível, relíquias e pergaminhos continuam com você — só o ciclo foi encerrado
-            {cycle.endDate ? ` em ${formatDateBR(cycle.endDate)}` : ''}. Um novo desafio começa apenas quando você decidir.
-          </div>
-        </div>
-
-        <div className="p-5 border-t border-slate-800 bg-slate-950 flex flex-col sm:flex-row items-center justify-between gap-2.5">
+        <div className="flex flex-col gap-2 mt-6">
           <button
+            type="button"
+            className="btn btn-primary w-full"
             onClick={() => {
               dismissResetModal();
-              openChallengeHistoryModal();
+              openStartChallengeModal(challenge.id);
             }}
-            className="w-full sm:w-auto px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
           >
-            <History className="w-4 h-4 text-amber-400" />
-            Ver Histórico
+            <Flame className="w-4 h-4" /> Recomeçar com estes hábitos
           </button>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex gap-2">
             <button
-              onClick={dismissResetModal}
-              className="flex-1 sm:flex-initial px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-400 border border-slate-700 rounded-xl text-xs font-bold transition-all"
-            >
-              Depois
-            </button>
-            <button
+              type="button"
+              className="btn btn-ghost flex-1"
               onClick={() => {
                 dismissResetModal();
-                openStartChallengeModal();
+                openDetailModal(challenge.id);
               }}
-              className="flex-1 sm:flex-initial px-5 py-2.5 bg-shinobi-orange text-onaccent text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2"
             >
-              <Flame className="w-4 h-4" />
-              Recomeçar
+              Ver mapa
+            </button>
+            <button type="button" className="btn btn-ghost flex-1" onClick={dismissResetModal}>
+              Depois
             </button>
           </div>
         </div>

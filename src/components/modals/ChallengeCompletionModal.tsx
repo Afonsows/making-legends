@@ -1,118 +1,72 @@
 import React from 'react';
 import { useUserStore } from '../../state/useUserStore';
-import { Trophy, Sparkles, History, Flame, ArrowRight, CheckCircle2, RotateCcw } from 'lucide-react';
+import { useChallengeStore } from '../../state/useChallengeStore';
+import { useChallengeView } from '../../state/challengeSelectors';
+import { challengeRewardKey } from '../../core/challenges';
 import { formatDateBR } from '../../core/dateUtils';
+import { isBoard } from '../../core/board';
+import { Stat } from '../ui/kit';
+import { Trophy } from 'lucide-react';
 
+/** Comemoração quando um desafio chega ao fim. Oferece começar outro com os mesmos hábitos. */
 export const ChallengeCompletionModal: React.FC = () => {
-  const { 
-    activeCompletionModal, 
-    dismissCompletionModal, 
-    openStartChallengeModal, 
-    openChallengeHistoryModal 
-  } = useUserStore();
-
-  if (!activeCompletionModal) return null;
-
-  const { cycle } = activeCompletionModal;
-  const targetDays = cycle.targetDays || 66;
-
-  const handleStartNext = () => {
-    dismissCompletionModal();
-    openStartChallengeModal();
-  };
-
-  const handleOpenHistory = () => {
-    dismissCompletionModal();
-    openChallengeHistoryModal();
-  };
+  const { activeCompletionModal, dismissCompletionModal, openStartChallengeModal } = useUserStore();
+  const grant = useUserStore((s) => (activeCompletionModal ? s.profile.grants?.[challengeRewardKey(activeCompletionModal.challengeId)] : undefined));
+  const openDetailModal = useChallengeStore((s) => s.openDetailModal);
+  const view = useChallengeView(activeCompletionModal?.challengeId || null);
+  if (!activeCompletionModal || !view) return null;
+  const { challenge, stats } = view;
 
   return (
-    <div className="modal-overlay z-[100] bg-black/90 animate-in fade-in duration-300">
-      <div className="bg-slate-900 border border-shinobi-gold w-full max-w-lg rounded-2xl overflow-hidden flex flex-col my-auto relative z-[101]">
-        {/* Top Banner Dourado de Vitória */}
-        <div className="p-6 bg-amber-950/80 border-b border-shinobi-gold/40 text-center space-y-2 relative overflow-hidden">
-          <div className="w-24 h-24 rounded-full bg-amber-500/10 border border-shinobi-orange flex items-center justify-center mx-auto ">
-            <span className="hanko-stamp animate-stamp text-5xl px-2 py-1.5">完</span>
-          </div>
+    <div className="modal-overlay z-[115] animate-in fade-in">
+      <div className="bg-bg border border-line w-full max-w-md rounded-2xl overflow-hidden modal-panel my-auto p-6 text-center animate-pop">
+        <div className="w-14 h-14 rounded-full border border-gold/60 text-gold flex items-center justify-center mx-auto">
+          <Trophy className="w-7 h-7" />
+        </div>
+        <div className="t-label mt-5 !text-ok">Desafio concluído</div>
+        <h3 className="t-title text-[28px] text-ink mt-2.5">{challenge.title}</h3>
+        <p className="text-[13px] text-ink2 mt-2 tabular">
+          {formatDateBR(challenge.startDate)} a {formatDateBR(stats.endDate)} · {stats.targetDays} dias
+        </p>
 
-          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-shinobi-gold/20 border border-shinobi-gold/50 text-shinobi-gold text-[10px] font-mono font-bold">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>MESTRIA SHINOBI ALCANÇADA</span>
-          </div>
-
-          <h3 className="font-cinzel text-xl sm:text-2xl text-slate-100">
-            Juramento Cumprido!
-          </h3>
-
-          <p className="text-xs text-amber-300 font-mono">
-            {cycle.title || `Desafio de ${targetDays} dias`}{cycle.endDate ? ` • ${formatDateBR(cycle.startDate)} a ${formatDateBR(cycle.endDate)}` : ''}
+        <div className="grid grid-cols-3 gap-3 mt-6 pt-5 border-t border-line text-left">
+          <Stat value={stats.daysCompleted} label="Cumpridos" />
+          <Stat value={`${stats.adherence}%`} label="Adesão" />
+          <Stat value={stats.bestStreak} label="Melhor sequência" />
+        </div>
+        {grant && (
+          <p className="text-[15px] text-ink mt-5">
+            Bônus de conclusão: <strong className="tabular">+{grant.xp} XP</strong> e <strong className="tabular">+{grant.ryo} Ryō</strong>
           </p>
-        </div>
+        )}
+        <p className="text-[13px] text-ink2 mt-3 leading-snug">Os hábitos dele saíram da tela Hoje. O histórico fica guardado no desafio.</p>
 
-        {/* Corpo Explicativo */}
-        <div className="p-6 space-y-4 text-xs">
-          <div className="pergaminho-bg rounded-2xl border border-shinobi-gold/40 p-4 space-y-2 ">
-            <h4 className="font-cinzel text-slate-100 text-sm flex items-center gap-1.5">
-              <span>{targetDays} dias de disciplina forjados</span>
-            </h4>
-            <p className="text-slate-300 text-[11px] leading-relaxed">
-              Você manteve a palavra até o último dia. O ciclo foi guardado com honra no seu <strong>Histórico de Desafios</strong> e a vila te recompensou: <strong className="text-amber-300">+{cycle.rewardXp || 0} XP</strong> e <strong className="text-amber-300">+{cycle.rewardRyo || 0} Ryō</strong>.
-            </p>
-          </div>
-
-          {/* Resumo do Ciclo Concluído */}
-          <div className="grid grid-cols-3 gap-2.5 p-3.5 rounded-2xl bg-slate-950 border border-slate-800 text-center">
-            <div className="p-2 bg-slate-900/80 rounded-xl border border-slate-800">
-              <span className="text-slate-400 block text-[10px]">Ciclo</span>
-              <span className="font-bold text-shinobi-gold font-mono text-sm">
-                Ciclo #{cycle.cycleNumber || 1}
-              </span>
-            </div>
-
-            <div className="p-2 bg-slate-900/80 rounded-xl border border-slate-800">
-              <span className="text-slate-400 block text-[10px]">Presenças</span>
-              <span className="font-bold text-emerald-400 font-mono text-sm">
-                {cycle.daysCompleted || 0} / {targetDays}
-              </span>
-            </div>
-
-            <div className="p-2 bg-slate-900/80 rounded-xl border border-slate-800">
-              <span className="text-slate-400 block text-[10px]">XP Conquistado</span>
-              <span className="font-bold text-amber-300 font-mono text-sm">
-                {cycle.totalXpEarned || 0} XP
-              </span>
-            </div>
-          </div>
-
-          <div className="p-3 bg-slate-950/70 border border-slate-800 rounded-xl text-center text-slate-300 text-[11px]">
-            O próximo ciclo <strong>não inicia automaticamente</strong>. Descanse ou personalize suas próximas metas para iniciar quando estiver pronto!
-          </div>
-        </div>
-
-        {/* Botões de Ação */}
-        <div className="p-5 border-t border-slate-800 bg-slate-950 flex flex-col sm:flex-row items-center justify-between gap-2.5">
-          <button
-            onClick={handleOpenHistory}
-            className="w-full sm:w-auto px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
-          >
-            <History className="w-4 h-4 text-amber-400" />
-            <span>Ver Histórico</span>
-          </button>
-
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex flex-col gap-2 mt-6">
+          {!isBoard(challenge) && (
             <button
-              onClick={dismissCompletionModal}
-              className="flex-1 sm:flex-initial px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-400 border border-slate-700 rounded-xl text-xs font-bold transition-all text-center"
+              type="button"
+              className="btn btn-primary w-full"
+              onClick={() => {
+                dismissCompletionModal();
+                openStartChallengeModal(challenge.id);
+              }}
             >
-              Decidir Depois
+              Começar outro com estes hábitos
             </button>
-
+          )}
+          <div className="flex gap-2">
             <button
-              onClick={handleStartNext}
-              className="flex-1 sm:flex-initial px-5 py-2.5 bg-shinobi-orange text-slate-950 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5"
+              type="button"
+              className="btn btn-ghost flex-1"
+              onClick={() => {
+                dismissCompletionModal();
+                openDetailModal(challenge.id);
+              }}
             >
-              <Flame className="w-4 h-4" />
-              <span>Próximo Desafio</span>
+              Ver desafio
+            </button>
+            <button type="button" className="btn btn-ghost flex-1" onClick={dismissCompletionModal}>
+              Fechar
             </button>
           </div>
         </div>

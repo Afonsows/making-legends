@@ -14,8 +14,6 @@ import {
   computeCurrentStreak,
   computeBestStreak,
   applyShieldsToClosedDays,
-  evaluateChallengeCycle,
-  getCycleDayNumber,
   buildDayLogFromLegacy,
 } from '../core/streakEngine';
 import { addDaysToDateString, daysBetween, getWeekKey, isValidDateString } from '../core/dateUtils';
@@ -228,74 +226,8 @@ describe('sequência e Escudo de Chakra', () => {
   });
 });
 
-describe('desafio (ciclo)', () => {
+describe('migração de dados antigos', () => {
   const start = '2026-11-02';
-  const fill = (from: number, to: number, completed: boolean, log: Record<string, DayRecord> = {}) => {
-    for (let n = from; n <= to; n++) {
-      const d = addDaysToDateString(start, n - 1);
-      log[d] = day(d, completed);
-    }
-    return log;
-  };
-
-  it('numera os dias a partir da data de início', () => {
-    expect(getCycleDayNumber(cycle(start), start)).toBe(1);
-    expect(getCycleDayNumber(cycle(start), addDaysToDateString(start, 65))).toBe(66);
-    expect(getCycleDayNumber(cycle(start), addDaysToDateString(start, -2))).toBe(-1);
-  });
-
-  it('tolera 1 falta por semana', () => {
-    const log = fill(1, 7, true);
-    log[addDaysToDateString(start, 2)] = day(addDaysToDateString(start, 2), false);
-    const res = evaluateChallengeCycle(cycle(start), log, addDaysToDateString(start, 7));
-    expect(res.outcome).toBe('active');
-    expect(res.cycle.daysCompleted).toBe(6);
-    expect(res.cycle.currentDay).toBe(8);
-  });
-
-  it('encerra com 2 faltas na mesma semana', () => {
-    const log = fill(1, 7, true);
-    log[addDaysToDateString(start, 1)] = day(addDaysToDateString(start, 1), false);
-    log[addDaysToDateString(start, 4)] = day(addDaysToDateString(start, 4), false);
-    const res = evaluateChallengeCycle(cycle(start), log, addDaysToDateString(start, 7));
-    expect(res.outcome).toBe('failed');
-    expect(res.failedWeek).toBe(1);
-    expect(res.cycle.endDate).toBe(addDaysToDateString(start, 4));
-  });
-
-  it('faltas em semanas diferentes não somam', () => {
-    const log = fill(1, 14, true);
-    log[addDaysToDateString(start, 6)] = day(addDaysToDateString(start, 6), false); // dia 7 (semana 1)
-    log[addDaysToDateString(start, 7)] = day(addDaysToDateString(start, 7), false); // dia 8 (semana 2)
-    expect(evaluateChallengeCycle(cycle(start), log, addDaysToDateString(start, 14)).outcome).toBe('active');
-  });
-
-  it('Modo Elite não tolera faltas', () => {
-    const log = fill(1, 3, true);
-    log[addDaysToDateString(start, 1)] = day(addDaysToDateString(start, 1), false);
-    expect(evaluateChallengeCycle(cycle(start, 66, true), log, addDaysToDateString(start, 3)).outcome).toBe('failed');
-  });
-
-  it('hoje (ainda aberto) nunca conta como falta', () => {
-    const res = evaluateChallengeCycle(cycle(start), {}, start);
-    expect(res.outcome).toBe('active');
-    expect(res.cycle.currentDay).toBe(1);
-  });
-
-  it('só conclui DEPOIS do último dia — o último dia é jogado', () => {
-    const log = fill(1, 21, true);
-    expect(evaluateChallengeCycle(cycle(start, 21), log, addDaysToDateString(start, 20)).outcome).toBe('active');
-    const done = evaluateChallengeCycle(cycle(start, 21), log, addDaysToDateString(start, 21));
-    expect(done.outcome).toBe('completed');
-    expect(done.cycle.daysCompleted).toBe(21);
-    expect(done.cycle.endDate).toBe(addDaysToDateString(start, 20));
-  });
-
-  it('desafio agendado para o futuro fica aguardando', () => {
-    const res = evaluateChallengeCycle(cycle(addDaysToDateString(start, 3)), {}, start);
-    expect(res.outcome).toBe('active');
-    expect(res.cycle.currentDay).toBe(0);
-  });
 
   it('migração preserva dias já conquistados', () => {
     const legacyCycle = cycle(start);

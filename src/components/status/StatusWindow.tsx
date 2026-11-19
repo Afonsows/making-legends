@@ -4,7 +4,6 @@ import { useHabitStore } from '../../state/useHabitStore';
 import { useTheme } from '../../theme/ThemeContext';
 import { getLevelProgress } from '../../core/xpEngine';
 import { getDefaultRyoReward } from '../../core/ryoEngine';
-import { evaluateProtocolStatus } from '../../core/streakEngine';
 import { soundFx } from '../../utils/audio';
 import { 
   Shield, 
@@ -41,8 +40,8 @@ import { EditProfileModal } from '../modals/EditProfileModal';
 import { ProfileOverview } from './ProfileOverview';
 import { Segmented } from '../ui/kit';
 import { ShopPanel } from './ShopPanel';
-import { ChallengeMapModal } from '../modals/ChallengeMapModal';
-import { ChallengeHistoryModal } from '../modals/ChallengeHistoryModal';
+import { useChallengeViews } from '../../state/challengeSelectors';
+import { useUIStore } from '../../state/useUIStore';
 
 interface StatusWindowProps {
   onOpenAvatarCustomizer?: () => void;
@@ -51,24 +50,18 @@ interface StatusWindowProps {
 export const StatusWindow: React.FC<StatusWindowProps> = () => {
   const { 
     profile, 
-    toggleHardMode, 
     equipItem, 
     unequipItem, 
     getEquippedItems,
     updateProfile,
-    isChallengeMapModalOpen,
-    openChallengeMapModal,
-    closeChallengeMapModal,
-    isChallengeHistoryModalOpen,
-    openChallengeHistoryModal,
-    closeChallengeHistoryModal,
     openStartChallengeModal
   } = useUserStore();
+  const setActiveTab = useUIStore((s) => s.setActiveTab);
+  const challengeViews = useChallengeViews();
   const { missionLogs, recalibrateFromMissions, missions } = useHabitStore();
   const { getRankByLevel, theme } = useTheme();
 
-  const protocolStatus = evaluateProtocolStatus(profile, missions);
-  const hasActiveChallenge = protocolStatus.hasActiveChallenge;
+  const hasActiveChallenge = challengeViews.open.length > 0;
 
   // Sub-abas do Pergaminho de Status
   const [activeSubTab, setActiveSubTab] = useState<'stats' | 'inventory' | 'shop' | 'history'>('stats');
@@ -441,47 +434,39 @@ export const StatusWindow: React.FC<StatusWindowProps> = () => {
             </div>
           )}
 
-          {/* Seção dos Desafios e Ciclos */}
+          {/* Desafios */}
           <div className="pergaminho-bg rounded-2xl border border-shinobi-gold/60 p-4 space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h4 className="font-cinzel text-sm font-bold text-slate-100 flex items-center gap-2">
                   <Award className="w-4 h-4 text-shinobi-gold" />
-                  {hasActiveChallenge && profile.activeChallenge
-                    ? `${profile.activeChallenge.title || 'Desafio dos 66 Dias'} — Ciclo Atual #${profile.activeChallenge.cycleNumber || 1}`
-                    : 'Desafio — Nenhum Ciclo em Andamento'}
+                  {hasActiveChallenge
+                    ? `${challengeViews.open.length} ${challengeViews.open.length === 1 ? 'desafio em andamento' : 'desafios em andamento'}`
+                    : 'Nenhum desafio em andamento'}
                 </h4>
                 <p className="text-[11px] text-slate-400">
-                  {profile.challengeHistory?.length || 0} ciclos arquivados no histórico • {hasActiveChallenge && profile.activeChallenge ? `Meta de ${profile.activeChallenge.targetDays} dias • Regra de no máximo 1 falta/semana` : 'Aguardando você iniciar um novo desafio personalizado'}
+                  {challengeViews.ended.length} {challengeViews.ended.length === 1 ? 'encerrado' : 'encerrados'} no histórico
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
                 {hasActiveChallenge ? (
                   <button
-                    onClick={openChallengeMapModal}
+                    onClick={() => setActiveTab('challenges')}
                     className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-shinobi-gold border border-shinobi-gold/50 rounded-xl text-xs font-bold transition-all flex items-center gap-1"
                   >
                     <Map className="w-3.5 h-3.5" />
-                    <span>Mapa da Jornada</span>
+                    <span>Ver desafios</span>
                   </button>
                 ) : (
                   <button
-                    onClick={openStartChallengeModal}
+                    onClick={() => openStartChallengeModal()}
                     className="px-3.5 py-1.5 bg-amber-500 text-slate-950 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 "
                   >
                     <Zap className="w-3.5 h-3.5" />
-                    <span>Iniciar Desafio</span>
+                    <span>Novo desafio</span>
                   </button>
                 )}
-
-                <button
-                  onClick={openChallengeHistoryModal}
-                  className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-amber-400 border border-amber-500/40 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
-                >
-                  <History className="w-3.5 h-3.5" />
-                  <span>Área de Histórico</span>
-                </button>
               </div>
             </div>
           </div>

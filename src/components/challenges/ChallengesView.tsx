@@ -1,17 +1,15 @@
 import React, { useState } from 'react';
-import { useChallengeStore, buildSyncedOfficial66Challenge } from '../../state/useChallengeStore';
+import { useChallengeStore } from '../../state/useChallengeStore';
 import { useUserStore } from '../../state/useUserStore';
-import { useHabitStore } from '../../state/useHabitStore';
-import { evaluateProtocolStatus, getTodayString } from '../../core/streakEngine';
-import { CreateChallengeModal } from './CreateChallengeModal';
-import { ChallengeDetailModal } from './ChallengeDetailModal';
+import { ChallengeView, useChallengeViews } from '../../state/challengeSelectors';
 import { EditChallengeModal } from './EditChallengeModal';
+import { challengeProgressLine, challengeStateLabel } from './challengeText';
 import { UserChallenge } from '../../core/types';
+import { isBoard } from '../../core/board';
 import { Bar, Menu, SectionHeader, Stat } from '../ui/kit';
-import { ChevronRight, History, Map, Pencil, Plus, Trash2 } from 'lucide-react';
-import { boardCells, boardStats, isBoard } from '../../core/board';
+import { Ban, CheckCircle2, ChevronDown, LayoutGrid, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
 
-/** Dia corrente e percentual de um desafio personalizado. */
+/** Dia corrente e percentual de um desafio (por tempo). Mantido para telas que ainda o usam. */
 export function getChallengeProgress(challenge: Pick<UserChallenge, 'startDate' | 'targetDays'>, today: string) {
   const start = new Date(challenge.startDate + 'T00:00:00');
   const now = new Date(today + 'T00:00:00');
@@ -21,207 +19,179 @@ export function getChallengeProgress(challenge: Pick<UserChallenge, 'startDate' 
   return { daysElapsed, percent };
 }
 
-export const ChallengesView: React.FC = () => {
-  const {
-    challenges,
-    isCreateModalOpen,
-    isDetailModalOpen,
-    selectedChallengeForModal,
-    openCreateModal,
-    closeCreateModal,
-    openDetailModal,
-    closeDetailModal,
-    deleteChallenge,
-  } = useChallengeStore();
-
-  const {
-    profile,
-    openChallengeMapModal,
-    openChallengeHistoryModal,
-    openStartChallengeModal,
-    deleteActiveChallenge,
-  } = useUserStore();
-  const { missions } = useHabitStore();
-
-  const [editingChallenge, setEditingChallenge] = useState<UserChallenge | null>(null);
-
-  const todayStr = getTodayString();
-  const status = evaluateProtocolStatus(profile, missions);
-  const official = buildSyncedOfficial66Challenge(profile, missions);
-  const customChallenges = challenges.filter((c) => !c.isOfficial66 && c.id !== 'challenge_official_66');
-
-  const activeCount = (status.hasActiveChallenge ? 1 : 0) + customChallenges.filter((c) => c.status === 'active').length;
-  const habitsCount =
-    missions.length +
-    customChallenges.reduce((acc, c) => acc + (isBoard(c) ? boardCells(c, todayStr).length : c.habits?.length || 0), 0);
-  const doneToday = missions.filter((m) => m.isCompletedToday).length;
-  const daysCompleted = profile.activeChallenge?.daysCompleted ?? 0;
-
-  const handleDeleteOfficial = () => {
-    if (
-      window.confirm(
-        'Excluir o desafio ativo? As marcações, os dias cumpridos e as recompensas (XP e Ryō) obtidos desde o início dele serão desfeitos. Esta ação não pode ser revertida.'
+/** Ações do menu ⋯ de um desafio (mesmas na lista e no detalhe). */
+export function useChallengeActions() {
+  const { closeChallenge, reopenChallenge, deleteChallenge } = useChallengeStore();
+  return {
+    finish: (c: UserChallenge) => {
+      if (window.confirm(`Marcar "${c.title}" como concluído agora? Ele sai da tela Hoje e o bônus de conclusão não é pago antes do fim.`))
+        closeChallenge(c.id, 'completed');
+    },
+    abandon: (c: UserChallenge) => {
+      if (window.confirm(`Encerrar "${c.title}"? Os hábitos dele saem da tela Hoje; o histórico fica guardado e dá para reabrir depois.`))
+        closeChallenge(c.id, 'abandoned');
+    },
+    reopen: (c: UserChallenge) => reopenChallenge(c.id),
+    remove: (c: UserChallenge) => {
+      if (
+        window.confirm(
+          `Excluir "${c.title}" de vez? Os hábitos, as marcações e as recompensas (XP e Ryō) deste desafio serão desfeitos. Esta ação não pode ser revertida.`
+        )
       )
-    ) {
-      deleteActiveChallenge();
-    }
+        deleteChallenge(c.id);
+    },
   };
+}
 
-  const handleDeleteCustom = (challenge: UserChallenge) => {
-    if (window.confirm(`Excluir o desafio "${challenge.title}"? Todos os hábitos dele serão removidos.`)) {
-      deleteChallenge(challenge.id);
-    }
-  };
+const ChallengeRow: React.FC<{ view: ChallengeView; onOpen: () => void; onEdit: () => void }> = ({ view, onOpen, onEdit }) => {
+  const { challenge, stats } = view;
+  const actions = useChallengeActions();
+  const open = stats.state === 'active' || stats.state === 'scheduled';
+  const board = isBoard(challenge);
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => e.key === 'Enter' && onOpen()}
+      className="card p-4 cursor-pointer"
+    >
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <div className={`t-label truncate ${stats.state === 'completed' ? '!text-ok' : ''}`}>
+            {challengeStateLabel(challenge, stats)}
+            {challenge.isEliteMode && <span className="text-accent"> · Elite</span>}
+            {board && <span> · Quadro</span>}
+          </div>
+          <h3 className="text-[16px] font-semibold text-ink leading-snug mt-2">{challenge.title}</h3>
+          <div className="text-[13px] text-ink2 mt-1 tabular">
+            {stats.state === 'active' && (
+              <span className={stats.today.completed ? 'text-ok font-semibold' : ''}>
+                {stats.today.done}/{stats.today.total} hoje ·{' '}
+              </span>
+            )}
+            {challengeProgressLine(stats)}
+          </div>
+        </div>
+        <div className="-mt-2 -mr-2" onClick={(e) => e.stopPropagation()}>
+          <Menu
+            label={`Opções de ${challenge.title}`}
+            items={[
+              { label: 'Editar desafio', icon: Pencil, onSelect: onEdit },
+              { label: 'Concluir agora', icon: CheckCircle2, onSelect: () => actions.finish(challenge), hidden: stats.state !== 'active' },
+              { label: 'Encerrar', icon: Ban, onSelect: () => actions.abandon(challenge), hidden: !open },
+              { label: 'Reabrir', icon: RotateCcw, onSelect: () => actions.reopen(challenge), hidden: !challenge.closedAt },
+              { label: 'Excluir', icon: Trash2, onSelect: () => actions.remove(challenge), danger: true },
+            ]}
+          />
+        </div>
+      </div>
+      <Bar
+        value={stats.state === 'scheduled' ? 0 : stats.timePct}
+        color={stats.state === 'completed' ? 'rgb(var(--ok))' : open ? undefined : 'rgb(var(--ink-3))'}
+        className="mt-3"
+      />
+    </div>
+  );
+};
+
+export const ChallengesView: React.FC = () => {
+  const openDetailModal = useChallengeStore((s) => s.openDetailModal);
+  const { profile, openStartChallengeModal } = useUserStore();
+  const { open, ended } = useChallengeViews();
+  const [editing, setEditing] = useState<UserChallenge | null>(null);
+  const [showEnded, setShowEnded] = useState(false);
+
+  const running = open.filter((v) => v.stats.state === 'active');
+  const habitsToday = running.reduce((acc, v) => acc + v.stats.today.total, 0);
+  const doneToday = running.reduce((acc, v) => acc + v.stats.today.done, 0);
+  const completedCount = ended.filter((v) => v.stats.state === 'completed').length;
 
   return (
     <div className="pb-nav pt-2 px-4 space-y-6">
       {/* Resumo */}
       <div className="card p-5 grid grid-cols-3 gap-4">
-        <Stat value={activeCount} label="Ativos" />
-        <Stat value={habitsCount} label="Hábitos" />
+        <Stat value={running.length} label="Em curso" />
+        <Stat value={doneToday} suffix={`/${habitsToday}`} label="Hoje" />
         <Stat value={profile.currentStreak} suffix="dias" label="Sequência" />
       </div>
 
-      {/* Desafio principal */}
+      {/* Em andamento */}
       <section>
-        <SectionHeader title="Desafio principal">
-          <Menu
-            label="Opções do desafio principal"
-            items={[
-              { label: 'Mapa do desafio', icon: Map, onSelect: openChallengeMapModal, hidden: !status.hasActiveChallenge },
-              { label: 'Histórico de ciclos', icon: History, onSelect: openChallengeHistoryModal },
-              { label: 'Editar desafio', icon: Pencil, onSelect: () => setEditingChallenge(official), hidden: !status.hasActiveChallenge },
-              { label: 'Excluir desafio', icon: Trash2, onSelect: handleDeleteOfficial, danger: true, hidden: !status.hasActiveChallenge },
-            ]}
-          />
-        </SectionHeader>
-
-        {status.hasActiveChallenge ? (
+        <SectionHeader title="Em andamento" meta={open.length || undefined}>
           <button
             type="button"
-            onClick={() => openDetailModal('challenge_official_66')}
-            className="card mt-2 w-full p-5 text-left block"
+            onClick={() => openStartChallengeModal()}
+            className="icon-btn !bg-ink !text-bg"
+            aria-label="Novo desafio"
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="t-label truncate">
-                  Ciclo {profile.activeChallenge?.cycleNumber || 1} · {status.phaseName}
-                  {profile.activeChallenge?.isEliteMode && <span className="text-accent"> · Elite</span>}
-                </div>
-                <h3 className="text-lg font-bold text-ink mt-2.5 leading-tight">{official.title}</h3>
-              </div>
-              <ChevronRight className="w-5 h-5 text-ink3 shrink-0 mt-0.5" />
-            </div>
-
-            <div className="flex items-baseline gap-2 mt-4">
-              <span className="t-label">Dia</span>
-              <span className="t-num text-[40px] text-ink">{status.currentDay}</span>
-              <span className="t-num text-base text-ink3">/{status.targetDays}</span>
-            </div>
-            <Bar value={status.protocolProgressPercent} className="mt-3.5" />
-
-            <div className="grid grid-cols-3 gap-4 mt-5 pt-5 border-t border-line">
-              <Stat value={daysCompleted} label="Cumpridos" />
-              <Stat value={doneToday} suffix={`/${missions.length}`} label="Hoje" />
-              <Stat value={status.totalDaysRemaining} label="Restam" />
-            </div>
-          </button>
-        ) : (
-          <div className="card mt-2 p-5">
-            <h3 className="t-title text-[24px] text-ink">Nenhum desafio em curso</h3>
-            <p className="text-sm text-ink2 mt-2 leading-snug">
-              O desafio principal usa suas missões diárias. Cada dia com 50% do XP conta como presença.
-            </p>
-            <button type="button" onClick={openStartChallengeModal} className="btn btn-primary w-full mt-4">
-              Iniciar desafio
-            </button>
-          </div>
-        )}
-      </section>
-
-      {/* Desafios personalizados */}
-      <section>
-        <SectionHeader title="Seus desafios" meta={customChallenges.length || undefined}>
-          <button type="button" onClick={openCreateModal} className="icon-btn !bg-ink !text-bg" aria-label="Criar desafio">
             <Plus className="w-5 h-5" strokeWidth={2.5} />
           </button>
         </SectionHeader>
 
-        {customChallenges.length > 0 ? (
+        {open.length > 0 ? (
           <div className="mt-2 space-y-2.5">
-            {customChallenges.map((challenge) => {
-              const board = isBoard(challenge) ? boardStats(challenge, todayStr) : null;
-              const { daysElapsed, percent } = board
-                ? { daysElapsed: board.dayNumber, percent: board.timePct }
-                : getChallengeProgress(challenge, todayStr);
-              const total = board ? board.today.total : challenge.habits?.length || 0;
-              const done = board ? board.today.done : challenge.habits?.filter((h) => h.completedDates.includes(todayStr)).length || 0;
-              const completed = challenge.status === 'completed';
-              return (
-                <div
-                  key={challenge.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openDetailModal(challenge.id)}
-                  onKeyDown={(e) => e.key === 'Enter' && openDetailModal(challenge.id)}
-                  className="card p-4 cursor-pointer"
-                >
-                  <div className="flex items-start gap-2">
-                    <div className="min-w-0 flex-1">
-                      <h3 className="text-[15px] font-semibold text-ink leading-snug">{challenge.title}</h3>
-                      <div className="text-[13px] text-ink2 mt-1 tabular">
-                        {completed ? (
-                          <span className="text-ok font-semibold">Concluído</span>
-                        ) : (
-                          <>
-                            Dia {daysElapsed} de {challenge.targetDays}
-                          </>
-                        )}
-                        <span className="text-ink3">
-                          {' '}
-                          · {done}/{total} hoje
-                        </span>
-                        {board && (
-                          <span className={board.today.completed ? 'text-ok font-semibold' : 'text-ink3'}>
-                            {' '}
-                            · {board.today.completed ? 'meta batida' : `${board.today.pct}%`}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="-mt-2 -mr-2" onClick={(e) => e.stopPropagation()}>
-                      <Menu
-                        label={`Opções de ${challenge.title}`}
-                        items={[
-                          { label: 'Editar desafio', icon: Pencil, onSelect: () => setEditingChallenge(challenge) },
-                          { label: 'Excluir desafio', icon: Trash2, onSelect: () => handleDeleteCustom(challenge), danger: true },
-                        ]}
-                      />
-                    </div>
-                  </div>
-                  <Bar value={percent} color={completed ? 'rgb(var(--ok))' : undefined} className="mt-3" />
-                </div>
-              );
-            })}
+            {open.map((view) => (
+              <ChallengeRow
+                key={view.challenge.id}
+                view={view}
+                onOpen={() => openDetailModal(view.challenge.id)}
+                onEdit={() => setEditing(view.challenge)}
+              />
+            ))}
           </div>
         ) : (
           <div className="card mt-2 px-5 py-8 text-center">
-            <p className="text-[15px] font-semibold text-ink">Nenhum desafio personalizado</p>
+            <p className="text-[15px] font-semibold text-ink">Nenhum desafio em andamento</p>
             <p className="text-[13px] text-ink2 mt-1 max-w-xs mx-auto">
-              Crie um desafio de 21, 30, 90 dias ou mais, com hábitos próprios e marcação diária.
+              Um desafio de hábitos (21, 30, 66 dias…) ou um quadro de operação para rotinas com muitas tarefas.
             </p>
-            <button type="button" onClick={openCreateModal} className="btn btn-ghost btn-sm mt-4">
-              <Plus className="w-4 h-4" /> Criar desafio
+            <button type="button" onClick={() => openStartChallengeModal()} className="btn btn-primary btn-sm mt-4">
+              <Plus className="w-4 h-4" /> Novo desafio
             </button>
           </div>
         )}
+        {open.length > 1 && (
+          <p className="text-xs text-ink3 mt-3 px-1 flex items-center gap-1.5">
+            <LayoutGrid className="w-3.5 h-3.5" /> Os desafios correm juntos; cada um aparece em Hoje com os seus hábitos.
+          </p>
+        )}
       </section>
 
-      <CreateChallengeModal isOpen={isCreateModalOpen} onClose={closeCreateModal} />
-      <ChallengeDetailModal isOpen={isDetailModalOpen} onClose={closeDetailModal} challenge={selectedChallengeForModal} />
-      {editingChallenge && (
-        <EditChallengeModal isOpen={!!editingChallenge} onClose={() => setEditingChallenge(null)} challenge={editingChallenge} />
+      {/* Encerrados */}
+      {ended.length > 0 && (
+        <section>
+          <button
+            type="button"
+            onClick={() => setShowEnded((v) => !v)}
+            className="w-full flex items-center justify-between min-h-[2.75rem] px-1"
+            aria-expanded={showEnded}
+          >
+            <span className="flex items-baseline gap-2">
+              <span className="text-[17px] font-bold text-ink">Encerrados</span>
+              <span className="text-[13px] text-ink3 tabular">
+                {ended.length} · {completedCount} {completedCount === 1 ? 'concluído' : 'concluídos'}
+              </span>
+            </span>
+            <ChevronDown className={`w-5 h-5 text-ink3 transition-transform ${showEnded ? 'rotate-180' : ''}`} />
+          </button>
+          {showEnded && (
+            <div className="mt-2 space-y-2.5 animate-in fade-in">
+              {ended.map((view) => (
+                <ChallengeRow
+                  key={view.challenge.id}
+                  view={view}
+                  onOpen={() => openDetailModal(view.challenge.id)}
+                  onEdit={() => setEditing(view.challenge)}
+                />
+              ))}
+            </div>
+          )}
+        </section>
       )}
+
+      {editing && <EditChallengeModal isOpen onClose={() => setEditing(null)} challenge={editing} />}
     </div>
   );
 };

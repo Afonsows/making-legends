@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { ThemeConfig, PillarId, UserRankId, MissionRank } from './types';
 import { shinobiTheme } from './shinobi.theme';
 import { getRankIdFromLevel } from '../core/xpEngine';
-import { getPhaseBounds } from '../core/streakEngine';
+import { challengePhase } from '../core/challenges';
 
 interface ThemeContextType {
   theme: ThemeConfig;
@@ -30,8 +30,9 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   /** Fase do desafio proporcional à duração escolhida (terços). */
   const getPhaseInfo = (day: number, targetDays: number = 66) => {
-    const { p1, p2 } = getPhaseBounds(targetDays);
-    const phase = day <= p1 ? 1 : day <= p2 ? 2 : 3;
+    const p1 = Math.max(1, Math.ceil(targetDays / 3));
+    const p2 = Math.min(targetDays, p1 * 2);
+    const phase = challengePhase(day, targetDays).index;
     const ranges = { 1: `Dias 1–${p1}`, 2: `Dias ${p1 + 1}–${p2}`, 3: `Dias ${p2 + 1}–${targetDays}` };
     return { ...theme.protocolPhases[phase], daysRange: ranges[phase] };
   };

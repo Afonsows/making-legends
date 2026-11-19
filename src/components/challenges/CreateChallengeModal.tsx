@@ -1,429 +1,361 @@
-import React, { useState } from 'react';
-import { useChallengeStore } from '../../state/useChallengeStore';
-import { PillarId } from '../../theme/types';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useChallengeStore, HabitDraft } from '../../state/useChallengeStore';
+import { useHabitStore, getRankRewards } from '../../state/useHabitStore';
+import { useUserStore } from '../../state/useUserStore';
+import { useChallengeViews, useLooseMissions } from '../../state/challengeSelectors';
+import { useTheme } from '../../theme/ThemeContext';
 import { BOARD_TEMPLATES } from '../../core/board';
-import { LayoutGrid } from 'lucide-react';
-import { 
-  X, 
-  Sparkles, 
-  Flame, 
-  Target, 
-  Plus, 
-  Trash2, 
-  Calendar, 
-  Check, 
-  AlertCircle,
-  Clock,
-  Award
-} from 'lucide-react';
+import { MAX_CHALLENGE_DAYS, MIN_CHALLENGE_DAYS, getChallengeCompletionReward } from '../../core/challenges';
+import { addDaysToDateString, getTodayString } from '../../core/dateUtils';
+import { Mission } from '../../core/types';
+import { MissionRank, PillarId } from '../../theme/types';
+import { Segmented, Sheet, Switch, pillarColor } from '../ui/kit';
+import { Plus, X } from 'lucide-react';
 
-interface CreateChallengeModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
+const DURATIONS = [21, 30, 40, 66, 90];
+const PILLARS: PillarId[] = ['taijutsu', 'ninjutsu', 'chakra', 'espirito', 'genjutsu'];
+const RANKS: MissionRank[] = ['E', 'D', 'C', 'B', 'A', 'S'];
 
-interface DurationSuggestion {
-  days: number;
-  label: string;
-  badge?: string;
-  isPopular?: boolean;
-  color: string;
-}
+const draftFrom = (m: Mission): HabitDraft => ({
+  title: m.title,
+  description: m.description,
+  pillarId: m.pillarId,
+  rank: m.rank,
+  xpReward: m.xpReward,
+  ryoReward: m.ryoReward,
+  timeOfDay: m.timeOfDay,
+  isCustom: true,
+});
 
-export const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({
-  isOpen,
-  onClose,
-}) => {
+const newDraft = (title: string, pillarId: PillarId, rank: MissionRank): HabitDraft => {
+  const r = getRankRewards(rank);
+  return { title, pillarId, rank, xpReward: r.xp, ryoReward: r.ryo, timeOfDay: 'anytime', isCustom: true };
+};
+
+/**
+ * Novo desafio. Desafio de hábitos (o padrão) ou quadro de operação.
+ * Os hábitos podem vir de outro desafio (copiados) ou dos avulsos (passam a pertencer a este).
+ */
+export const CreateChallengeModal: React.FC = () => {
+  const { isStartChallengeModalOpen: isOpen, startChallengeSource, closeStartChallengeModal } = useUserStore();
   const { createChallenge, createBoardChallenge } = useChallengeStore();
+  const missions = useHabitStore((s) => s.missions);
+  const { all } = useChallengeViews();
+  const loose = useLooseMissions();
+  const { getPillar } = useTheme();
 
-  const suggestions: DurationSuggestion[] = [
-    { days: 21, label: 'Hábito Básico', color: 'bg-blue-600/30 border-blue-500/50' },
-    { days: 40, label: 'Transformação', color: 'bg-purple-600/30 border-purple-500/50' },
-    { 
-      days: 66, 
-      label: 'Formação de Hábito', 
-      badge: '⭐ MAIS POPULAR', 
-      isPopular: true, 
-      color: 'bg-amber-500/30 border-shinobi-gold' 
-    },
-    { days: 90, label: 'Trimestre Épico', color: 'bg-cyan-600/30 border-cyan-500/50' },
-    { days: 365, label: 'Ano Lendário', color: 'bg-emerald-600/30 border-emerald-500/50' },
-    { days: 1000, label: 'Mestria Absoluta', color: 'bg-rose-600/30 border-rose-500/50' },
-  ];
-
+  const today = getTodayString();
+  const [kind, setKind] = useState<'habits' | 'board'>('habits');
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('Disciplina & Foco');
-  const [targetDays, setTargetDays] = useState<number>(66);
-  const [customDaysInput, setCustomDaysInput] = useState<string>('66');
-  const [isCustomMode, setIsCustomMode] = useState<boolean>(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [days, setDays] = useState('30');
+  const [startMode, setStartMode] = useState<'today' | 'date'>('today');
+  const [startDate, setStartDate] = useState(today);
+  const [elite, setElite] = useState(false);
+  const [source, setSource] = useState<string>('new');
+  const [drafts, setDrafts] = useState<HabitDraft[]>([]);
+  const [moveIds, setMoveIds] = useState<string[]>([]);
+  const [newTitle, setNewTitle] = useState('');
+  const [newPillar, setNewPillar] = useState<PillarId>('chakra');
+  const [newRank, setNewRank] = useState<MissionRank>('D');
+  const [error, setError] = useState<string | null>(null);
 
-  // Lista de hábitos a serem inseridos no novo desafio
-  const [habitsList, setHabitsList] = useState<{ title: string; description: string; color: string; pillarId: PillarId }[]>([
-    { title: 'Hábito Principal', description: 'Meta diária prioritária', color: '#10b981', pillarId: 'chakra' },
-  ]);
+  // Origens possíveis dos hábitos: desafios com hábitos e os avulsos
+  const sources = useMemo(
+    () => [
+      { id: 'new', label: 'Começar do zero' },
+      ...(loose.length > 0 ? [{ id: 'loose', label: `Avulsos (${loose.length})` }] : []),
+      ...all
+        .filter((v) => v.challenge.format !== 'board' && v.habits.length > 0)
+        .map((v) => ({ id: v.challenge.id, label: v.challenge.title })),
+    ],
+    [all, loose.length]
+  );
+
+  const applySource = (id: string) => {
+    setSource(id);
+    if (id === 'loose') {
+      setDrafts([]);
+      setMoveIds(loose.map((m) => m.id));
+      return;
+    }
+    setMoveIds([]);
+    const from = all.find((v) => v.challenge.id === id);
+    setDrafts(from ? from.habits.map(draftFrom) : []);
+    if (from) {
+      setDays(String(from.challenge.targetDays));
+      setElite(Boolean(from.challenge.isEliteMode));
+    }
+  };
+
+  // Ao abrir: limpa e aplica a origem pedida (fim de um desafio, primeiro acesso…)
+  useEffect(() => {
+    if (!isOpen) return;
+    setKind('habits');
+    setTitle('');
+    setDays('30');
+    setStartMode('today');
+    setStartDate(today);
+    setElite(false);
+    setError(null);
+    setNewTitle('');
+    applySource(startChallengeSource && sources.some((s) => s.id === startChallengeSource) ? startChallengeSource : 'new');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const handleSelectSuggestion = (days: number) => {
-    setTargetDays(days);
-    setCustomDaysInput(String(days));
-    setIsCustomMode(false);
-    setErrorMessage(null);
+  const target = Math.round(Number(days));
+  const reward = getChallengeCompletionReward(Number.isFinite(target) ? target : 0);
+  const moved = missions.filter((m) => moveIds.includes(m.id));
+  const total = drafts.length + moved.length;
+
+  const addDraft = () => {
+    if (!newTitle.trim()) return;
+    setDrafts((list) => [...list, newDraft(newTitle.trim(), newPillar, newRank)]);
+    setNewTitle('');
   };
 
-  const handleCustomDaysChange = (val: string) => {
-    setCustomDaysInput(val);
-    const num = parseInt(val, 10);
-    if (!isNaN(num)) {
-      setTargetDays(num);
-      if (num < 21) {
-        setErrorMessage('O desafio deve ter no mínimo 21 dias para formação de hábito.');
-      } else {
-        setErrorMessage(null);
-      }
-    }
-  };
-
-  const handleAddHabitField = () => {
-    setHabitsList([
-      ...habitsList,
-      {
-        title: `Hábito #${habitsList.length + 1}`,
-        description: 'Executar diariamente sem falhar',
-        color: '#06b6d4',
-        pillarId: 'ninjutsu',
-      },
-    ]);
-  };
-
-  const handleRemoveHabitField = (index: number) => {
-    if (habitsList.length <= 1) return;
-    setHabitsList(habitsList.filter((_, idx) => idx !== index));
-  };
-
-  const handleUpdateHabitField = (index: number, field: string, value: string) => {
-    const updated = [...habitsList];
-    updated[index] = { ...updated[index], [field]: value };
-    setHabitsList(updated);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim()) {
-      setErrorMessage('Digite um título para o seu desafio.');
-      return;
-    }
-
-    if (targetDays < 21) {
-      setErrorMessage('Cada desafio tem de ser feito com no mínimo 21 dias.');
-      return;
-    }
-
-    const filteredHabits = habitsList
-      .filter((h) => h.title.trim().length > 0)
-      .map((h) => ({
-        title: h.title.trim(),
-        description: h.description.trim(),
-        color: h.color,
-        pillarId: h.pillarId,
-      }));
-
-    const result = createChallenge({
-      title: title.trim(),
-      description: description.trim(),
-      targetDays,
-      category,
-      initialHabits: filteredHabits.length > 0 ? filteredHabits : undefined,
+  const submit = () => {
+    if (!Number.isFinite(target) || target < MIN_CHALLENGE_DAYS || target > MAX_CHALLENGE_DAYS)
+      return setError(`A duração vai de ${MIN_CHALLENGE_DAYS} a ${MAX_CHALLENGE_DAYS} dias.`);
+    const res = createChallenge({
+      title: title.trim() || `Desafio ${target} dias`,
+      targetDays: target,
+      startDate: startMode === 'today' ? today : startDate,
+      isEliteMode: elite,
+      habits: drafts,
+      moveMissionIds: moveIds,
     });
-
-    if (!result.success && result.error) {
-      setErrorMessage(result.error);
-    } else {
-      onClose();
-    }
+    if (!res.success) return setError(res.error || 'Não foi possível criar o desafio.');
+    closeStartChallengeModal();
   };
 
   return (
-    <div className="modal-overlay z-[100] animate-in fade-in">
-      <div className="bg-bg border border-line w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col modal-panel my-auto relative z-[101]">
-        {/* Sheen superior */}
-        <div className="absolute top-0 inset-x-0 h-[1.5px] bg-transparent pointer-events-none" />
-        <div className="hidden" />
-
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-white/10 bg-white/[0.02] relative z-10">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-shinobi-gold/20 border border-shinobi-gold/40 flex items-center justify-center text-shinobi-gold">
-              <Target className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-cinzel font-bold text-slate-100 text-base sm:text-lg flex items-center gap-2">
-                <span>Criar Novo Desafio</span>
-              </h3>
-              <p className="text-[11px] text-slate-400">
-                Defina sua meta de transformação com no mínimo 21 dias
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-100 rounded-xl hover:bg-white/10 transition-colors"
-          >
-            <X className="w-5 h-5" />
+    <Sheet
+      isOpen
+      onClose={closeStartChallengeModal}
+      title="Novo desafio"
+      subtitle="Ele roda junto com os que já estão em andamento"
+      zIndex={110}
+      footer={
+        kind === 'habits' ? (
+          <button type="button" onClick={submit} className="btn btn-primary w-full">
+            Começar desafio · {total} {total === 1 ? 'hábito' : 'hábitos'}
           </button>
-        </div>
+        ) : undefined
+      }
+    >
+      <div className="space-y-6">
+        <Segmented
+          options={[
+            { id: 'habits', label: 'Hábitos' },
+            { id: 'board', label: 'Quadro de operação' },
+          ]}
+          value={kind}
+          onChange={setKind}
+        />
 
-        {/* Form Content */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-5 overflow-y-auto flex-1">
-          {/* Mensagem de Erro / Alerta */}
-          {errorMessage && (
-            <div className="p-3 bg-rose-950/80 border border-rose-500 rounded-xl text-xs text-rose-300 flex items-center gap-2 animate-in fade-in">
-              <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0" />
-              <span>{errorMessage}</span>
-            </div>
-          )}
-
-          {/* Quadro de operação (modelos prontos) */}
-          <div className="space-y-2">
-            <div>
-              <h4 className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
-                <LayoutGrid className="w-3.5 h-3.5 text-shinobi-gold" />
-                <span>Quadro de operação</span>
-              </h4>
-              <p className="text-[11px] text-slate-400">
-                Para rotinas com muitas tarefas por dia: seções que se fecham sozinhas, listas e tabelas compactas. Começa hoje e é todo personalizável.
-              </p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {BOARD_TEMPLATES.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => {
-                    createBoardChallenge(t.id);
-                    onClose();
-                  }}
-                  className="p-3 rounded-2xl border border-slate-800 bg-slate-950/70 hover:border-shinobi-gold text-left transition-colors"
-                >
-                  <span className="block text-sm font-bold text-slate-100">
-                    {t.icon} {t.title}
-                  </span>
-                  <span className="block text-[11px] text-slate-400 mt-1 leading-snug">{t.subtitle}</span>
-                  <span className="block text-[10px] font-mono text-shinobi-gold mt-1.5">{t.targetDays} dias · começa hoje</span>
-                </button>
-              ))}
-            </div>
-            <div className="flex items-center gap-3 pt-2">
-              <span className="h-px flex-1 bg-slate-800" />
-              <span className="text-[10px] uppercase tracking-widest text-slate-500">ou desafio de hábitos</span>
-              <span className="h-px flex-1 bg-slate-800" />
-            </div>
+        {kind === 'board' ? (
+          <div className="space-y-2.5">
+            <p className="text-[13px] text-ink2 leading-snug">
+              Para rotinas com muitas tarefas por dia: seções em lista ou tabela que se fecham sozinhas. Começa hoje e é todo editável.
+            </p>
+            {BOARD_TEMPLATES.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => {
+                  createBoardChallenge(t.id);
+                  closeStartChallengeModal();
+                }}
+                className="card w-full p-4 text-left hover:border-ink3"
+              >
+                <span className="block text-[15px] font-semibold text-ink">
+                  {t.icon} {t.title}
+                </span>
+                <span className="block text-[13px] text-ink2 mt-1 leading-snug">{t.subtitle}</span>
+                <span className="block text-xs text-ink3 mt-2 tabular">{t.targetDays} dias · começa hoje</span>
+              </button>
+            ))}
           </div>
-
-          {/* Título e Categoria */}
-          <div className="space-y-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-200 mb-1">
-                Nome do Desafio <span className="text-rose-400">*</span>
-              </label>
+        ) : (
+          <>
+            <label className="block">
+              <span className="t-label">Nome</span>
               <input
-                type="text"
+                className="field mt-2"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Ex: Desafio 21 Dias de Foco Total, Protocolo 90 Dias..."
-                className="w-full bg-slate-950/90 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-shinobi-gold transition-colors"
+                placeholder={`Desafio ${Number.isFinite(target) ? target : 30} dias`}
               />
+            </label>
+
+            <div>
+              <span className="t-label">Duração</span>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {DURATIONS.map((d) => (
+                  <button key={d} type="button" onClick={() => setDays(String(d))} className={`chip ${target === d ? 'chip-on' : ''}`}>
+                    {d} dias
+                  </button>
+                ))}
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={MIN_CHALLENGE_DAYS}
+                  max={MAX_CHALLENGE_DAYS}
+                  value={days}
+                  onChange={(e) => setDays(e.target.value)}
+                  className="field !w-24 !h-9"
+                  aria-label="Duração em dias"
+                />
+              </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-200 mb-1">
-                Descrição ou Motivação
-              </label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Qual o objetivo central deste desafio? Qual a transformação esperada?"
-                rows={2}
-                className="w-full bg-slate-950/90 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-shinobi-gold transition-colors resize-none"
+              <span className="t-label">Início</span>
+              <Segmented
+                className="mt-2"
+                options={[
+                  { id: 'today', label: 'Hoje' },
+                  { id: 'date', label: 'Escolher data' },
+                ]}
+                value={startMode}
+                onChange={setStartMode}
               />
-            </div>
-          </div>
-
-          {/* Seleção de Duração em Dias com Sugestões */}
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-shinobi-gold" />
-                <span>Duração do Desafio (Mínimo 21 dias)</span>
-              </label>
-              <span className="text-xs font-mono font-bold text-shinobi-gold">
-                {targetDays} dias selecionados
-              </span>
-            </div>
-
-            {/* Grid de Sugestões: 21, 40, 66 (Popular), 90, 365, 1000 */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {suggestions.map((sug) => {
-                const isSelected = targetDays === sug.days && !isCustomMode;
-                return (
-                  <button
-                    key={sug.days}
-                    type="button"
-                    onClick={() => handleSelectSuggestion(sug.days)}
-                    className={`p-3 rounded-2xl border text-left transition-all relative overflow-hidden flex flex-col justify-between min-h-[74px] select-none active:scale-[0.98] ${
-                      isSelected
-                        ? ' bg-amber-500/25 border border-shinobi-gold text-slate-100 scale-[1.02]'
-                        : `bg-slate-950/70 border-slate-800 hover:border-slate-600 text-slate-300 hover:bg-slate-900`
-                    }`}
-                  >
-                    {/* Badge do 66 Dias: Mais Popular */}
-                    {sug.badge && (
-                      <span className="absolute top-1.5 right-1.5 bg-amber-500 text-slate-950 text-[9px] font-extrabold px-2 py-0.5 rounded-full ">
-                        {sug.badge}
-                      </span>
-                    )}
-
-                    <div className="space-y-0.5">
-                      <span className="font-mono text-base sm:text-lg font-extrabold text-slate-100 flex items-center gap-1">
-                        {sug.days} <span className="text-[11px] text-slate-400 font-normal">dias</span>
-                      </span>
-                      <span className="text-[11px] text-slate-400 block font-medium">
-                        {sug.label}
-                      </span>
-                    </div>
-
-                    {isSelected && (
-                      <div className="mt-1 flex items-center gap-1 text-[10px] text-shinobi-gold font-bold font-mono">
-                        <Check className="w-3 h-3 stroke-[3]" /> Selecionado
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Opção de Duração Personalizada (>= 21) */}
-            <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-300">
-                  Ou digite quantos dias quiser (mínimo 21):
-                </span>
-                <span className="text-[10px] text-slate-500 font-mono">
-                  Validação: ≥ 21 dias
-                </span>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <input
-                  type="number"
-                  min="21"
-                  max="5000"
-                  value={customDaysInput}
-                  onChange={(e) => {
-                    setIsCustomMode(true);
-                    handleCustomDaysChange(e.target.value);
-                  }}
-                  className="w-32 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm font-mono font-bold text-shinobi-gold focus:outline-none focus:border-shinobi-gold transition-colors"
-                />
-                <span className="text-xs text-slate-400">
-                  dias corridos de acompanhamento
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Seção de Missões / Hábitos Iniciais do Desafio */}
-          <div className="space-y-3 pt-2 border-t border-slate-800">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-xs font-bold text-slate-200">
-                  Missões / Hábitos do Desafio ({habitsList.length})
-                </h4>
-                <p className="text-[11px] text-slate-400">
-                  Cada hábito terá régua de 7 dias e matriz de consistência de 6 meses
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleAddHabitField}
-                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-shinobi-gold border border-shinobi-gold/40 text-xs font-bold rounded-xl transition-all flex items-center gap-1"
-              >
-                <Plus className="w-3.5 h-3.5" /> Adicionar Hábito
-              </button>
-            </div>
-
-            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-              {habitsList.map((habit, idx) => (
-                <div
-                  key={idx}
-                  className="p-3 rounded-2xl bg-slate-950/70 border border-slate-800 flex items-center gap-2.5"
-                >
+              {startMode === 'date' && (
+                <>
                   <input
-                    type="color"
-                    value={habit.color}
-                    onChange={(e) => handleUpdateHabitField(idx, 'color', e.target.value)}
-                    className="w-7 h-7 rounded-lg border-0 bg-transparent cursor-pointer flex-shrink-0"
-                    title="Escolha a cor do indicador"
+                    type="date"
+                    className="field mt-2"
+                    value={startDate}
+                    max={addDaysToDateString(today, 30)}
+                    onChange={(e) => setStartDate(e.target.value)}
                   />
+                  <p className="text-xs text-ink3 mt-1.5">
+                    Data no passado serve para registrar dias já feitos; esses dias não contam como falta.
+                  </p>
+                </>
+              )}
+            </div>
 
-                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <input
-                      type="text"
-                      value={habit.title}
-                      onChange={(e) => handleUpdateHabitField(idx, 'title', e.target.value)}
-                      placeholder="Nome do hábito (Ex: Leitura)"
-                      required
-                      className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-shinobi-gold"
-                    />
+            <div>
+              <span className="t-label">Hábitos</span>
+              {sources.length > 1 && (
+                <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-5 px-5 mt-2">
+                  {sources.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => applySource(s.id)}
+                      className={`chip shrink-0 max-w-[14rem] ${source === s.id ? 'chip-on' : ''}`}
+                    >
+                      <span className="truncate">{s.id === 'new' || s.id === 'loose' ? s.label : `Copiar de ${s.label}`}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
 
-                    <input
-                      type="text"
-                      value={habit.description}
-                      onChange={(e) => handleUpdateHabitField(idx, 'description', e.target.value)}
-                      placeholder="Meta (Ex: Ler 15 min por dia)"
-                      className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-shinobi-gold"
-                    />
-                  </div>
-
-                  {habitsList.length > 1 && (
+              <div className="card mt-3 divide-y divide-line overflow-hidden">
+                {moved.map((m) => (
+                  <div key={m.id} className="flex items-center gap-3 px-4 py-3">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: pillarColor(m.pillarId) }} />
+                    <span className="text-[15px] font-semibold text-ink flex-1 min-w-0 truncate">{m.title}</span>
+                    <span className="text-xs text-ink3 shrink-0">avulso → este desafio</span>
                     <button
                       type="button"
-                      onClick={() => handleRemoveHabitField(idx)}
-                      className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-slate-900 transition-colors"
-                      title="Remover"
+                      className="icon-btn !w-8 !h-8 -mr-2"
+                      aria-label={`Tirar ${m.title}`}
+                      onClick={() => setMoveIds((ids) => ids.filter((id) => id !== m.id))}
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <X className="w-4 h-4" />
                     </button>
-                  )}
+                  </div>
+                ))}
+                {drafts.map((d, i) => (
+                  <div key={`${d.title}_${i}`} className="flex items-center gap-3 px-4 py-3">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: pillarColor(d.pillarId) }} />
+                    <span className="text-[15px] font-semibold text-ink flex-1 min-w-0 truncate">{d.title}</span>
+                    <span className="text-xs text-ink3 shrink-0 tabular">
+                      {getPillar(d.pillarId).categoryLabel} · {d.xpReward} XP
+                    </span>
+                    <button
+                      type="button"
+                      className="icon-btn !w-8 !h-8 -mr-2"
+                      aria-label={`Tirar ${d.title}`}
+                      onClick={() => setDrafts((list) => list.filter((_, j) => j !== i))}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+
+                <div className="px-4 py-3 space-y-2.5">
+                  <div className="flex gap-2">
+                    <input
+                      className="field flex-1"
+                      value={newTitle}
+                      onChange={(e) => setNewTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          addDraft();
+                        }
+                      }}
+                      placeholder="Novo hábito (ex.: Leitura 20 min)"
+                    />
+                    <button type="button" onClick={addDraft} className="icon-btn !bg-ink !text-bg shrink-0" aria-label="Adicionar hábito">
+                      <Plus className="w-5 h-5" strokeWidth={2.5} />
+                    </button>
+                  </div>
+                  <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+                    {PILLARS.map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setNewPillar(p)}
+                        className={`chip !h-8 shrink-0 ${newPillar === p ? 'chip-on' : ''}`}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: pillarColor(p) }} />
+                        {getPillar(p).categoryLabel}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-ink3 mr-1">Esforço</span>
+                    {RANKS.map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setNewRank(r)}
+                        className={`chip !h-8 !px-2.5 ${newRank === r ? 'chip-on' : ''}`}
+                        title={`${getRankRewards(r).xp} XP`}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                    <span className="text-xs text-ink3 ml-auto tabular whitespace-nowrap shrink-0">{getRankRewards(newRank).xp} XP</span>
+                  </div>
                 </div>
-              ))}
+              </div>
             </div>
-          </div>
 
-          {/* Footer com Ações */}
-          <div className="p-4 sm:p-5 border-t border-white/10 bg-white/[0.02] -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 flex items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-slate-400 hover:text-slate-200 text-xs font-semibold rounded-xl transition-colors"
-            >
-              Cancelar
-            </button>
+            <div className="flex items-start gap-4">
+              <div className="min-w-0 flex-1">
+                <div className="text-[15px] font-semibold text-ink">Modo Elite</div>
+                <p className="text-[13px] text-ink2 mt-0.5 leading-snug">
+                  +20% de XP, sem Escudo de Chakra, e qualquer falta encerra o desafio. Sem ele, faltas só pesam na adesão.
+                </p>
+              </div>
+              <Switch checked={elite} label="Modo Elite" onChange={setElite} />
+            </div>
 
-            <button
-              type="submit"
-              className="px-6 py-2.5 bg-shinobi-gold text-slate-950 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5"
-            >
-              <Sparkles className="w-4 h-4 text-slate-950" />
-              <span>Iniciar Desafio ({targetDays} Dias)</span>
-            </button>
-          </div>
-        </form>
+            <p className="text-xs text-ink3 leading-snug">
+              Cada dia conta como cumprido com metade do XP dos hábitos dele. Ao chegar ao fim: +{reward.xp} XP e +{reward.ryo} Ryō.
+            </p>
+            {error && <p className="text-[13px] text-accent">{error}</p>}
+          </>
+        )}
       </div>
-    </div>
+    </Sheet>
   );
 };

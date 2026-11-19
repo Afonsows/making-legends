@@ -29,7 +29,18 @@ export interface DailyXpProgress {
   remainingXpToUnlock: number;
 }
 
-export function calculateDailyXpProgress(missions: Mission[], date: string = getTodayString()): DailyXpProgress {
+/** Diz se uma missão vale em uma data (hábitos de desafios encerrados ou retirados não valem). */
+export type MissionFilter = (mission: Mission, date: string) => boolean;
+
+const onDate = (missions: Mission[], date: string, isActive?: MissionFilter): Mission[] =>
+  isActive ? (missions || []).filter((m) => isActive(m, date)) : missions || [];
+
+export function calculateDailyXpProgress(
+  allMissions: Mission[],
+  date: string = getTodayString(),
+  isActive?: MissionFilter
+): DailyXpProgress {
+  const missions = onDate(allMissions, date, isActive);
   const totalTargetXp = (missions || []).reduce((acc, m) => acc + Math.max(0, m.xpReward || 0), 0);
   const currentXp = (missions || [])
     .filter((m) => (m.completedDates || []).includes(date))
@@ -61,8 +72,14 @@ const sameRecord = (a: DayRecord | undefined, b: DayRecord): boolean =>
  * Atualiza o registro de um dia com base nas missões.
  * Dia aberto: valor exato. Dia fechado: meta congelada e progresso que só sobe.
  */
-export function settleDay(previous: DayRecord | undefined, missions: Mission[], date: string, today: string): DayRecord {
-  const progress = calculateDailyXpProgress(missions, date);
+export function settleDay(
+  previous: DayRecord | undefined,
+  missions: Mission[],
+  date: string,
+  today: string,
+  isActive?: MissionFilter
+): DayRecord {
+  const progress = calculateDailyXpProgress(missions, date, isActive);
 
   if (date >= today) {
     const open: DayRecord = {
@@ -94,10 +111,13 @@ export function recomputeDay(
   previous: DayRecord | undefined,
   missions: Mission[],
   date: string,
-  editedAt: string = new Date().toISOString()
+  editedAt: string = new Date().toISOString(),
+  isActive?: MissionFilter,
+  options: { recomputeTarget?: boolean } = {}
 ): DayRecord {
-  const progress = calculateDailyXpProgress(missions, date);
-  const xpTarget = previous && previous.xpTarget > 0 ? previous.xpTarget : progress.totalTargetXp;
+  const progress = calculateDailyXpProgress(missions, date, isActive);
+  const xpTarget =
+    !options.recomputeTarget && previous && previous.xpTarget > 0 ? previous.xpTarget : progress.totalTargetXp;
   return {
     date,
     xpEarned: progress.currentXp,
@@ -131,7 +151,7 @@ export function settleDayLog(
   dayLog: Record<string, DayRecord>,
   missions: Mission[],
   today: string,
-  options: { closePast?: boolean } = {}
+  options: { closePast?: boolean; isActive?: MissionFilter } = {}
 ): SettleResult {
   const closePast = options.closePast !== false;
   const source = dayLog || {};
@@ -139,7 +159,7 @@ export function settleDayLog(
   const changedDates: string[] = [];
 
   const apply = (date: string) => {
-    const record = settleDay(next[date], missions, date, today);
+    const record = settleDay(next[date], missions, date, today, options.isActive);
     if (record !== next[date]) {
       next[date] = record;
       changedDates.push(date);

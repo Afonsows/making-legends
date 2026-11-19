@@ -32,7 +32,9 @@ import { useUserStore, createDefaultProfile } from '../state/useUserStore';
 import { useHabitStore, initialMissions } from '../state/useHabitStore';
 import { useDuelStore } from '../state/useDuelStore';
 import { useToolStore, TOOL_LIMITS } from '../state/useToolStore';
-import { useChallengeStore } from '../state/useChallengeStore';
+import { useChallengeStore, migrateLegacyChallenges } from '../state/useChallengeStore';
+import { isMissionActiveOn } from '../state/useHabitStore';
+import { challengeStats, makeChallengeContext } from '../core/challenges';
 import { useUIStore } from '../state/useUIStore';
 import { originalAdversaries } from '../core/adversariesData';
 import { getTodayString, addDaysToDateString } from '../core/dateUtils';
@@ -51,14 +53,19 @@ function resetAll() {
     activeCompletionModal: null,
     toasts: [],
   });
-  useHabitStore.setState({ missions: initialMissions.map((m) => ({ ...m, completedDates: [] })), missionLogs: [] });
+  // Hábitos que já existiam antes das datas simuladas nos testes
+  useHabitStore.setState({
+    missions: initialMissions.map((m) => ({ ...m, completedDates: [], createdAt: '2026-01-01T00:00:00.000Z' })),
+    missionLogs: [],
+  });
   useDuelStore.setState({
     adversaries: originalAdversaries.map((a) => ({ ...a })),
     currentAdversaryIndex: 0,
     combatLogs: [],
     activeVictoryModal: null,
   });
-  useChallengeStore.setState({ challenges: [] });
+  useChallengeStore.setState({ challenges: [], selectedChallengeId: null, isDetailModalOpen: false });
+  useUIStore.setState({ seenChallengeOutcomes: [] });
   useToolStore.setState({ nutritionLogs: {}, trainingLogs: [], bodyJournal: {}, pomodoroSessionsCompletedToday: 0 });
 }
 
@@ -219,42 +226,66 @@ describe('ferramentas: limites diários', () => {
   });
 });
 
+/** Cria um desafio levando os hábitos avulsos atuais (como era o antigo "desafio principal"). */
+function startChallenge(opts: { title?: string; targetDays?: number; startDate?: string; isEliteMode?: boolean } = {}) {
+  const res = useChallengeStore.getState().createChallenge({
+    title: opts.title || 'Desafio',
+    targetDays: opts.targetDays || 21,
+    startDate: opts.startDate,
+    isEliteMode: opts.isEliteMode,
+    moveMissionIds: useHabitStore.getState().missions.map((m) => m.id),
+  });
+  return res.challenge!;
+}
+
+const viewOf = (id: string) => {
+  const { challenges } = useChallengeStore.getState();
+  const ctx = makeChallengeContext(challenges, useHabitStore.getState().missions, useUserStore.getState().profile.habitLinks);
+  return challengeStats(challenges.find((c) => c.id === id)!, ctx, getTodayString());
+};
+
+const activeToday = () => useHabitStore.getState().missions.filter((m) => isMissionActiveOn(m));
+
 describe('desafios', () => {
   beforeEach(resetAll);
 
-  it('iniciar respeita título, duração e Modo Elite escolhidos', () => {
-    const cycle = useUserStore.getState().startChallenge({ title: 'Meu Desafio', targetDays: 30, isEliteMode: true });
-    expect(cycle.title).toBe('Meu Desafio');
-    expect(cycle.targetDays).toBe(30);
-    expect(cycle.isEliteMode).toBe(true);
+  it('criar respeita título, duração e Modo Elite; vários desafios correm juntos', () => {
+    const a = startChallenge({ title: 'Meu Desafio', targetDays: 30, isEliteMode: true });
+    expect(a).toMatchObject({ title: 'Meu Desafio', targetDays: 30, isEliteMode: true, v: 2 });
     expect(useUserStore.getState().profile.isHardModeEnabled).toBe(true);
-    expect(useUserStore.getState().toggleHardMode().success).toBe(false);
+
+    const b = useChallengeStore.getState().createChallenge({ title: 'Leitura', targetDays: 21, habits: [{ ...initialMissions[2], title: 'Ler' }] });
+    expect(b.success).toBe(true);
+    expect(useChallengeStore.getState().challenges.map((c) => c.title).sort()).toEqual(['Leitura', 'Meu Desafio']);
+    expect(viewOf(a.id).state).toBe('active');
+    expect(viewOf(b.challenge!.id).state).toBe('active');
   });
 
-  it('preserva a data de início no passado para permitir completar o histórico', () => {
-    const cycle = useUserStore.getState().startChallenge({ startDate: addDaysToDateString(getTodayString(), -10) });
-    expect(cycle.startDate).toBe(addDaysToDateString(getTodayString(), -10));
+  it('início no passado é preservado para completar o histórico, sem gerar faltas', () => {
+    const c = startChallenge({ startDate: addDaysToDateString(getTodayString(), -10) });
+    expect(c.startDate).toBe(addDaysToDateString(getTodayString(), -10));
+    expect(c.graceBefore).toBe(getTodayString());
+    expect(viewOf(c.id).daysMissed).toBe(0);
   });
 
-  it('hábito de desafio personalizado paga hoje e estorna ao desmarcar', () => {
-    const res = useChallengeStore.getState().createChallenge({ title: 'Leitura', targetDays: 21, initialHabits: [{ title: 'Ler' }] });
-    const ch = res.challenge!;
+  it('hábito novo do desafio: marcar hoje paga, desmarcar estorna exatamente', () => {
+    const res = useChallengeStore.getState().createChallenge({ title: 'Leitura', targetDays: 21, habits: [{ ...initialMissions[2], title: 'Ler' }] });
+    const id = useHabitStore.getState().missions.find((m) => m.title === 'Ler')!.id;
+    expect(useUserStore.getState().profile.habitLinks?.[id]?.challengeId).toBe(res.challenge!.id);
     const before = snapshot();
-    useChallengeStore.getState().toggleHabitDay(ch.id, ch.habits[0].id, getTodayString());
+    useHabitStore.getState().toggleCompleteMission(id);
     expect(useUserStore.getState().profile.totalXp).toBeGreaterThan(before.totalXp);
-    useChallengeStore.getState().toggleHabitDay(ch.id, ch.habits[0].id, getTodayString());
+    useHabitStore.getState().toggleCompleteMission(id);
     expect(snapshot()).toEqual(before);
   });
 
-  it('missões do desafio principal podem ser marcadas em dias passados, nunca no futuro', () => {
+  it('hábitos podem ser marcados em dias passados do desafio, nunca no futuro nem antes do início', () => {
+    startChallenge({ startDate: addDaysToDateString(getTodayString(), -3) });
     const m = useHabitStore.getState().missions[0];
-    const res = useChallengeStore
-      .getState()
-      .toggleHabitDay('challenge_official_66', m.id, addDaysToDateString(getTodayString(), -1));
-    expect(res.blockedReason).toBeUndefined();
+    expect(useHabitStore.getState().toggleMissionOnDate(m.id, addDaysToDateString(getTodayString(), -1)).success).toBe(true);
     expect(useHabitStore.getState().missions[0].completedDates).toContain(addDaysToDateString(getTodayString(), -1));
-    const future = useChallengeStore.getState().toggleHabitDay('challenge_official_66', m.id, addDaysToDateString(getTodayString(), 1));
-    expect(future.blockedReason).toBeDefined();
+    expect(useHabitStore.getState().toggleMissionOnDate(m.id, addDaysToDateString(getTodayString(), 1)).success).toBe(false);
+    expect(useHabitStore.getState().toggleMissionOnDate(m.id, addDaysToDateString(getTodayString(), -5)).success).toBe(false);
   });
 });
 
@@ -277,41 +308,59 @@ describe('virada de dia (viagem no tempo)', () => {
     useUserStore.getState().checkDayTransition();
   };
 
-  it('escudo protege a 1ª falta da semana e o desafio cai na 2ª', () => {
-    useUserStore.getState().startChallenge({ targetDays: 21 });
+  it('faltas NÃO encerram: o escudo protege a sequência e o desafio segue, com as faltas contadas', () => {
+    const c = startChallenge({ targetDays: 21 });
     completeDay();
     nextDay();
     completeDay();
     expect(useUserStore.getState().profile.currentStreak).toBe(2);
 
-    nextDay(2); // pulou um dia inteiro (quarta) → escudo
+    nextDay(2); // pulou a quarta → escudo
     let p = useUserStore.getState().profile;
     expect(p.shieldedDates).toHaveLength(1);
     expect(p.currentStreak).toBe(2);
-    expect(p.activeChallenge?.status).toBe('active');
-    expect(p.activeChallenge?.currentDay).toBe(4);
 
     completeDay();
-    nextDay(2); // nova falta na mesma semana → desafio encerrado
-    p = useUserStore.getState().profile;
-    expect(p.activeChallenge).toBeUndefined();
-    expect(p.challengeHistory?.[0].status).toBe('failed');
-    expect(useUserStore.getState().activeResetModal).not.toBeNull();
+    nextDay(2); // nova falta na mesma semana: antes encerrava o desafio
+    const s = viewOf(c.id);
+    expect(s.state).toBe('active');
+    expect(s.daysMissed).toBe(2);
+    expect(s.missesThisWeek).toBe(2);
+    expect(s.dayNumber).toBe(6); // começou seg 02/11; hoje é sáb 07/11
+    expect(useUserStore.getState().activeResetModal).toBeNull();
+    expect(activeToday()).toHaveLength(6);
     vi.useRealTimers();
   });
 
-  it('conclui o desafio após o último dia e paga o bônus', () => {
-    useUserStore.getState().startChallenge({ targetDays: 7 });
+  it('Modo Elite: a primeira falta encerra, avisa uma vez e os hábitos saem de Hoje', () => {
+    const c = startChallenge({ targetDays: 21, isEliteMode: true });
+    completeDay();
+    nextDay(2); // terça perdida
+    expect(viewOf(c.id).state).toBe('failed');
+    expect(useUserStore.getState().activeResetModal?.challengeId).toBe(c.id);
+    expect(activeToday()).toHaveLength(0);
+    expect(useUserStore.getState().profile.isHardModeEnabled).toBe(false);
+
+    useUserStore.getState().dismissResetModal();
+    nextDay();
+    expect(useUserStore.getState().activeResetModal).toBeNull(); // não avisa de novo
+    vi.useRealTimers();
+  });
+
+  it('conclui depois do último dia: paga o bônus, comemora e os hábitos saem de Hoje', () => {
+    const c = startChallenge({ targetDays: 7 });
     for (let i = 0; i < 7; i++) {
       completeDay();
       nextDay();
     }
     const state = useUserStore.getState();
-    expect(state.profile.activeChallenge).toBeUndefined();
-    expect(state.profile.challengeHistory?.[0].status).toBe('completed');
-    expect(state.profile.challengeHistory?.[0].daysCompleted).toBe(7);
-    expect(state.activeCompletionModal?.cycle.rewardRyo).toBeGreaterThan(0);
+    expect(viewOf(c.id).state).toBe('completed');
+    expect(viewOf(c.id).daysCompleted).toBe(7);
+    expect(state.profile.grants[`challenge:${c.id}`].ryo).toBeGreaterThan(0);
+    expect(state.activeCompletionModal?.challengeId).toBe(c.id);
     expect(state.profile.currentStreak).toBe(7);
+    expect(activeToday()).toHaveLength(0);
+    expect(useChallengeStore.getState().challenges[0].status).toBe('completed');
     vi.useRealTimers();
   });
 
@@ -322,7 +371,7 @@ describe('virada de dia (viagem no tempo)', () => {
     }
     const cards = useUserStore.getState().profile.unlockedCards;
     expect(cards.length).toBeGreaterThanOrEqual(3);
-    useUserStore.getState().startChallenge({ targetDays: 21 });
+    startChallenge({ targetDays: 21 });
     expect(useUserStore.getState().profile.unlockedCards).toEqual(cards);
     vi.useRealTimers();
   });
@@ -360,108 +409,98 @@ describe('arquitetura: totais derivados e autocorreção', () => {
     vi.useRealTimers();
   });
 
-  it('reconciliar repetidas vezes não muda nada (nem regrava o perfil)', () => {
-    useUserStore.getState().startChallenge({ targetDays: 21 });
+  it('reconciliar repetidas vezes não muda nada (nem regrava o perfil nem os desafios)', () => {
+    startChallenge({ targetDays: 21 });
     tick(3, 1);
     useUserStore.getState().reconcile();
     const before = useUserStore.getState().profile;
+    const challenges = useChallengeStore.getState().challenges;
     for (let i = 0; i < 5; i++) useUserStore.getState().reconcile();
     expect(useUserStore.getState().profile).toBe(before);
+    expect(useChallengeStore.getState().challenges).toBe(challenges);
     vi.useRealTimers();
   });
 
-  it('criar o desafio à noite e não cumprir o próprio dia não gera falta', () => {
-    useUserStore.getState().startChallenge({ targetDays: 66 }); // 09/11 às 21h, sem missões feitas
+  it('Modo Elite criado à noite: o próprio dia não é falta; a primeira falta real encerra', () => {
+    const c = startChallenge({ targetDays: 66, isEliteMode: true }); // 09/11 às 21h, sem missões feitas
     goTo(10);
     tick(3, 1); // dia 10 cumprido
+    goTo(11, 9);
+    expect(viewOf(c.id).state).toBe('active');
+    expect(useUserStore.getState().activeResetModal).toBeNull();
     goTo(12); // dia 11 inteiro perdido
-    const state = useUserStore.getState();
-    expect(state.profile.activeChallenge?.status).toBe('active');
-    expect(state.activeResetModal).toBeNull();
-    expect(state.profile.activeChallenge?.daysCompleted).toBe(1);
-
-    goTo(14); // dias 12 e 13 perdidos: 2ª e 3ª faltas reais da semana → agora sim encerra
-    expect(useUserStore.getState().profile.activeChallenge).toBeUndefined();
-    expect(useUserStore.getState().profile.challengeHistory?.[0].endedBy).toBe('rule');
+    expect(viewOf(c.id).state).toBe('failed');
+    expect(viewOf(c.id).failedOn).toBe('2026-11-11');
     vi.useRealTimers();
   });
 
-  it('aparelho atrasado: o ciclo encerrado por engano volta quando as marcações chegam', () => {
+  it('aparelho atrasado: o desafio Elite "encerrado" volta sozinho quando as marcações chegam', () => {
     vi.setSystemTime(new Date(2026, 10, 8, 10, 0, 0));
     resetAll();
-    useUserStore.getState().startChallenge({ targetDays: 66, startDate: '2026-11-09' }); // agendado: sem carência
+    const c = startChallenge({ targetDays: 66, startDate: '2026-11-09', isEliteMode: true }); // agendado: sem carência
     goTo(9);
     tick(3, 1);
-    // Este aparelho ficou fechado nos dias 10 e 11 (cumpridos no celular) e abre no dia 12
-    goTo(12);
-    expect(useUserStore.getState().profile.activeChallenge).toBeUndefined();
+    goTo(12); // dias 10 e 11 cumpridos no celular, ainda não chegaram
+    expect(viewOf(c.id).state).toBe('failed');
     expect(useUserStore.getState().activeResetModal).not.toBeNull();
 
-    // A sincronização traz as marcações do celular
     const merged = useHabitStore.getState().missions.map((m, i) =>
       i === 3 || i === 1 ? { ...m, completedDates: [...m.completedDates, '2026-11-10', '2026-11-11'] } : m
     );
     useHabitStore.getState().replaceMissions(merged);
     useUserStore.getState().checkDayTransition();
 
-    const state = useUserStore.getState();
-    expect(state.profile.activeChallenge?.status).toBe('active');
-    expect(state.profile.activeChallenge?.daysCompleted).toBe(3);
-    expect(state.profile.challengeHistory).toEqual([]);
-    expect(state.activeResetModal).toBeNull();
-    expect(state.profile.currentStreak).toBe(3);
+    expect(viewOf(c.id).state).toBe('active');
+    expect(viewOf(c.id).daysCompleted).toBe(3);
+    expect(useUserStore.getState().activeResetModal).toBeNull();
+    expect(useUserStore.getState().profile.currentStreak).toBe(3);
     vi.useRealTimers();
   });
 
-  it('com a nuvem pendente, abrir o app no dia seguinte não fecha o dia anterior', () => {
-    useUserStore.getState().startChallenge({ targetDays: 66 });
+  it('com a nuvem pendente, nada é fechado nem avisado; com a nuvem aberta, as faltas reais valem', () => {
+    const c = startChallenge({ targetDays: 66, startDate: '2026-11-09', isEliteMode: true });
     useUserStore.getState().setCloudGate('pending');
     goTo(13);
-    expect(useUserStore.getState().profile.activeChallenge?.status).toBe('active');
     expect(useUserStore.getState().profile.dayLog['2026-11-10']).toBeUndefined();
+    expect(useUserStore.getState().activeResetModal).toBeNull();
     useUserStore.getState().setCloudGate('open');
-    // Sem dados novos, as faltas reais (dias 10, 11 e 12) valem
-    expect(useUserStore.getState().profile.activeChallenge).toBeUndefined();
+    expect(viewOf(c.id).state).toBe('failed');
+    expect(useUserStore.getState().activeResetModal?.challengeId).toBe(c.id);
     vi.useRealTimers();
   });
 
-  it('corrigir um dia passado reavalia o desafio na hora', () => {
+  it('corrigir um dia passado reavalia o desafio na hora, sem pagar recompensa', () => {
     vi.setSystemTime(new Date(2026, 10, 8, 10, 0, 0));
     resetAll();
-    useUserStore.getState().startChallenge({ targetDays: 66, startDate: '2026-11-09' });
+    const c = startChallenge({ targetDays: 66, startDate: '2026-11-09', isEliteMode: true });
     goTo(9);
     tick(3, 1);
-    goTo(12); // dias 10 e 11 perdidos → encerrado
-    expect(useUserStore.getState().profile.activeChallenge).toBeUndefined();
+    goTo(11); // dia 10 perdido → encerrado (Elite)
+    expect(viewOf(c.id).state).toBe('failed');
 
     const ms = useHabitStore.getState().missions;
     useHabitStore.getState().toggleMissionOnDate(ms[3].id, '2026-11-10');
     useHabitStore.getState().toggleMissionOnDate(ms[1].id, '2026-11-10');
     expect(useUserStore.getState().profile.dayLog['2026-11-10'].completed).toBe(true);
-    expect(useUserStore.getState().profile.activeChallenge?.status).toBe('active');
-    // Marcação retroativa não paga recompensa
+    expect(viewOf(c.id).state).toBe('active');
     expect(useUserStore.getState().profile.grants[`retro:${ms[3].id}:2026-11-10`].xp).toBe(0);
 
-    // Desfazer a correção volta a encerrar (o dia recalcula exatamente)
     useHabitStore.getState().toggleMissionOnDate(ms[3].id, '2026-11-10');
     expect(useUserStore.getState().profile.dayLog['2026-11-10'].completed).toBe(false);
-    expect(useUserStore.getState().profile.activeChallenge).toBeUndefined();
+    expect(viewOf(c.id).state).toBe('failed');
     vi.useRealTimers();
   });
 
   it('excluir missão e desafio deixa lápides para os outros aparelhos', () => {
-    useUserStore.getState().startChallenge({ targetDays: 30 });
-    const cycleId = useUserStore.getState().profile.activeChallenge!.id;
+    const c = startChallenge({ targetDays: 30 });
     const m = useHabitStore.getState().missions[0];
     useHabitStore.getState().toggleCompleteMission(m.id);
-    useUserStore.getState().deleteActiveChallenge();
+    useChallengeStore.getState().deleteChallenge(c.id);
     const p = useUserStore.getState().profile;
-    expect(p.deletedCycles[cycleId]).toBeDefined();
+    expect(p.deletedCycles[c.id]).toBeDefined();
+    expect(p.deletedMissions[m.id]).toBeDefined();
     expect(p.revoked[`mission:${m.id}:2026-11-09`]).toBeDefined();
-    expect(p.dayWipe?.from).toBe('2026-11-09');
-
-    useHabitStore.getState().deleteMission(m.id);
-    expect(useUserStore.getState().profile.deletedMissions[m.id]).toBeDefined();
+    expect(useHabitStore.getState().missions).toEqual([]);
     vi.useRealTimers();
   });
 });
@@ -490,28 +529,22 @@ describe('loja', () => {
 });
 
 
-describe('liberdade do usuário: desafios, missões e clean mode', () => {
+describe('liberdade do usuário: desafios, hábitos e preferências', () => {
   beforeEach(resetAll);
 
-  it('permite cancelar e excluir o desafio ativo livremente', () => {
-    useUserStore.getState().startChallenge({ title: 'Desafio Teste', targetDays: 30 });
-    expect(useUserStore.getState().profile.activeChallenge).toBeDefined();
-    expect(useUserStore.getState().profile.activeChallenge?.title).toBe('Desafio Teste');
-
-    useUserStore.getState().deleteActiveChallenge();
-    expect(useUserStore.getState().profile.activeChallenge).toBeUndefined();
-    expect(useUserStore.getState().profile.currentProtocolDay).toBe(0);
+  it('encerrar tira os hábitos de Hoje; reabrir traz de volta', () => {
+    const c = startChallenge({ title: 'Desafio Teste', targetDays: 30 });
+    expect(activeToday()).toHaveLength(6);
+    useChallengeStore.getState().closeChallenge(c.id, 'abandoned');
+    expect(viewOf(c.id).state).toBe('abandoned');
+    expect(activeToday()).toHaveLength(0);
+    useChallengeStore.getState().reopenChallenge(c.id);
+    expect(viewOf(c.id).state).toBe('active');
+    expect(activeToday()).toHaveLength(6);
   });
 
   it('reseta a progressão sem apagar a identidade do perfil', () => {
-    useUserStore.setState((state) => ({
-      profile: {
-        ...state.profile,
-        name: 'Afonso',
-        email: 'afonso@example.com',
-        challengeHistory: [{ id: 'old', cycleNumber: 1, startDate: getTodayString(), status: 'failed', currentDay: 1, daysCompleted: 0, checkIns: {}, totalXpEarned: 0, createdAt: new Date().toISOString() }],
-      },
-    }));
+    useUserStore.setState((state) => ({ profile: { ...state.profile, name: 'Afonso', email: 'afonso@example.com' } }));
     seedRyo(450);
     useHabitStore.getState().toggleCompleteMission(useHabitStore.getState().missions[3].id);
     expect(useUserStore.getState().profile.totalXp).toBeGreaterThan(0);
@@ -523,58 +556,97 @@ describe('liberdade do usuário: desafios, missões e clean mode', () => {
     expect(profile.email).toBe('afonso@example.com');
     expect(profile.totalXp).toBe(0);
     expect(profile.ryo).toBe(0);
-    expect(profile.challengeHistory).toEqual([]);
     expect(profile.hasCompletedOnboarding).toBe(true);
   });
 
-  it('excluir o desafio ativo estorna XP e Ryō obtidos no ciclo', () => {
-    useUserStore.getState().startChallenge({ title: 'Desafio com recompensa', targetDays: 30 });
+  it('excluir um desafio estorna só o que ELE deu; outro desafio e os avulsos ficam intactos', () => {
+    const keep = useChallengeStore.getState().createChallenge({ title: 'Fica', targetDays: 21, habits: [{ ...initialMissions[2], title: 'Ler' }] }).challenge!;
+    const gone = useChallengeStore.getState().createChallenge({ title: 'Sai', targetDays: 21, habits: [{ ...initialMissions[1], title: 'Treinar' }] }).challenge!;
+    const ms = useHabitStore.getState().missions;
+    const ler = ms.find((m) => m.title === 'Ler')!;
+    const treinar = ms.find((m) => m.title === 'Treinar')!;
+    const avulsa = ms[0];
+    useHabitStore.getState().toggleCompleteMission(avulsa.id);
+    useHabitStore.getState().toggleCompleteMission(ler.id);
     const before = snapshot();
-    useHabitStore.getState().toggleCompleteMission(useHabitStore.getState().missions[0].id);
+    useHabitStore.getState().toggleCompleteMission(treinar.id);
     expect(useUserStore.getState().profile.totalXp).toBeGreaterThan(before.totalXp);
 
-    useUserStore.getState().deleteActiveChallenge();
+    useChallengeStore.getState().deleteChallenge(gone.id);
     expect(snapshot()).toEqual(before);
-    expect(useHabitStore.getState().missions[0].completedDates).toEqual([]);
+    expect(useChallengeStore.getState().challenges.map((c) => c.id)).toEqual([keep.id]);
+    expect(useHabitStore.getState().missions.find((m) => m.id === treinar.id)).toBeUndefined();
+    expect(useHabitStore.getState().missions.find((m) => m.id === ler.id)?.isCompletedToday).toBe(true);
+    expect(useHabitStore.getState().missions.find((m) => m.id === avulsa.id)?.isCompletedToday).toBe(true);
   });
 
-  it('permite editar o desafio ativo (título e dias)', () => {
-    useUserStore.getState().startChallenge({ title: 'Desafio Original', targetDays: 21 });
-    useUserStore.getState().updateActiveChallenge({ title: 'Desafio Renomeado', targetDays: 45 });
-    expect(useUserStore.getState().profile.activeChallenge?.title).toBe('Desafio Renomeado');
-    expect(useUserStore.getState().profile.activeChallenge?.targetDays).toBe(45);
+  it('permite editar o desafio (título e duração)', () => {
+    const c = startChallenge({ title: 'Desafio Original', targetDays: 21 });
+    useChallengeStore.getState().updateChallenge(c.id, { title: 'Desafio Renomeado', targetDays: 45 });
+    const after = useChallengeStore.getState().challenges[0];
+    expect(after).toMatchObject({ title: 'Desafio Renomeado', targetDays: 45 });
+    expect(after.updatedAt! >= c.updatedAt!).toBe(true);
   });
 
-  it('permite excluir ciclos individuais do histórico e limpar o histórico', () => {
-    useUserStore.getState().startChallenge({ targetDays: 21 });
-    useUserStore.getState().abandonChallenge();
-    expect(useUserStore.getState().profile.challengeHistory?.length).toBe(1);
+  it('retirar hábito com histórico guarda o histórico; sem histórico, exclui', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 10, 2, 10, 0, 0));
+    resetAll();
+    const c = startChallenge({ targetDays: 21 });
+    const [a, b] = useHabitStore.getState().missions;
+    useHabitStore.getState().toggleCompleteMission(a.id);
+    vi.setSystemTime(new Date(2026, 10, 3, 10, 0, 0));
+    useUserStore.getState().checkDayTransition();
 
-    const cycleId = useUserStore.getState().profile.challengeHistory![0].id;
-    useUserStore.getState().deleteHistoryCycle(cycleId);
-    expect(useUserStore.getState().profile.challengeHistory?.length).toBe(0);
+    useHabitStore.getState().deleteMission(a.id);
+    expect(useHabitStore.getState().missions.find((m) => m.id === a.id)?.completedDates).toEqual(['2026-11-02']);
+    expect(useUserStore.getState().profile.habitLinks?.[a.id]?.until).toBe('2026-11-02');
+    expect(activeToday().some((m) => m.id === a.id)).toBe(false);
 
+    useHabitStore.getState().deleteMission(b.id);
+    expect(useHabitStore.getState().missions.find((m) => m.id === b.id)).toBeUndefined();
+    expect(viewOf(c.id).days[0].pct).toBeGreaterThan(0);
+    vi.useRealTimers();
+  });
+
+  it('conversão local: o antigo desafio principal e suas missões passam para o modelo único', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 10, 19, 10, 0, 0));
+    resetAll();
     useUserStore.setState((s) => ({
       profile: {
         ...s.profile,
+        habitLinks: {},
         challengeHistory: [
           {
-            id: 'c1',
+            id: 'cycle_1',
             cycleNumber: 1,
-            startDate: '2026-01-01',
+            title: 'Protocolo',
+            targetDays: 66,
+            startDate: '2026-11-08',
             status: 'failed',
-            currentDay: 5,
-            daysCompleted: 4,
+            failedReason: '2 faltas na Semana 1',
+            endDate: '2026-11-11',
+            currentDay: 4,
+            daysCompleted: 1,
             checkIns: {},
-            totalXpEarned: 100,
-            createdAt: '2026-01-01',
+            totalXpEarned: 0,
+            createdAt: '2026-11-09T16:53:56.839Z',
           },
         ],
       },
     }));
-    expect(useUserStore.getState().profile.challengeHistory?.length).toBe(1);
-    useUserStore.getState().clearChallengeHistory();
-    expect(useUserStore.getState().profile.challengeHistory?.length).toBe(0);
+    migrateLegacyChallenges();
+    const p = useUserStore.getState().profile;
+    expect(p.challengeHistory).toEqual([]);
+    expect(useChallengeStore.getState().challenges).toHaveLength(1);
+    expect(viewOf('cycle_1').state).toBe('active');
+    expect(Object.values(p.habitLinks || {}).every((l) => l.challengeId === 'cycle_1')).toBe(true);
+    // Rodar de novo não muda nada
+    const challenges = useChallengeStore.getState().challenges;
+    migrateLegacyChallenges();
+    expect(useChallengeStore.getState().challenges).toBe(challenges);
+    vi.useRealTimers();
   });
 
   it('permite marcar todas e desmarcar todas as missões de hoje com liberdade', () => {

@@ -1,39 +1,27 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { UserChallenge, ChallengeHabit, UserProfile, Mission, BoardSection, BoardMilestone } from '../core/types';
+import { UserChallenge, Mission, BoardSection, BoardMilestone } from '../core/types';
 import {
   BOARD_TEMPLATES,
-  boardEndDate,
   boardGrantPrefix,
   desiredBoardGrants,
   instantiateTemplate,
   isBoard,
   sanitizeSections,
 } from '../core/board';
-import { PillarId } from '../theme/types';
-import { getTodayString } from '../core/dateUtils';
-import { getCycleTargetDays } from '../core/streakEngine';
-import { addDaysToDateString } from '../core/dateUtils';
+import {
+  CHALLENGE_MODEL_VERSION,
+  challengeRewardKey,
+  clampTargetDays,
+  lastCountedDate,
+  missionsOfChallenge,
+  normalizeChallengeData,
+} from '../core/challenges';
+import { addDaysToDateString, daysBetween, getTodayString, isValidDateString } from '../core/dateUtils';
 import { soundFx } from '../utils/audio';
 import { triggerDayCompleteConfetti, triggerMissionConfetti } from '../utils/confetti';
 import { useUserStore } from './useUserStore';
 import { useHabitStore } from './useHabitStore';
-
-export const HABIT_XP_REWARD = 25;
-export const HABIT_RYO_REWARD = 15;
-
-/** Estorna as recompensas de hoje dos hábitos informados (hábito ou desafio excluído). */
-function revokeTodayHabitGrants(challengeId: string, habitIds: string[]) {
-  const todayStr = getTodayString();
-  habitIds.forEach((habitId) => useUserStore.getState().revokeReward(`habit:${challengeId}:${habitId}:${todayStr}`));
-}
-
-/** Remove todas as recompensas vinculadas a um desafio personalizado. */
-function revokeChallengeHabitGrants(challengeId: string) {
-  Object.keys(useUserStore.getState().profile.grants || {})
-    .filter((key) => key.startsWith(`habit:${challengeId}:`) || key.startsWith(`board:${challengeId}:`))
-    .forEach((key) => useUserStore.getState().revokeReward(key));
-}
 
 /**
  * Deixa os lançamentos de HOJE de um quadro iguais ao que as marcações merecem
@@ -45,7 +33,7 @@ function syncBoardRewards(challenge: UserChallenge): { sections: string[]; day: 
   if (!isBoard(challenge) || challenge.status !== 'active') return gained;
   const today = getTodayString();
   const prefix = boardGrantPrefix(challenge.id, today);
-  const inRange = today >= challenge.startDate && today <= boardEndDate(challenge);
+  const inRange = today >= challenge.startDate && today <= lastCountedDate(challenge);
   const desired = inRange ? desiredBoardGrants(challenge, today) : [];
   const desiredKeys = new Set(desired.map((d) => d.key));
 
@@ -292,93 +280,50 @@ export function generate6MonthHeatmap(completedDates: string[] = []): HeatmapDay
   return weeks;
 }
 
-const pillarColorMap: Record<PillarId, string> = {
-  taijutsu: '#e11d48',
-  ninjutsu: '#06b6d4',
-  chakra: '#10b981',
-  espirito: '#f59e0b',
-  genjutsu: '#8b5cf6',
-};
+// ─────────────────────────────────────────────────────────────
+// Store
+// ─────────────────────────────────────────────────────────────
 
-/**
- * Constrói o objeto do Desafio de 66 Dias em sincronização perfeita e em tempo real
- * com a tela inicial (useUserStore.profile e useHabitStore.missions).
- */
-export function buildSyncedOfficial66Challenge(profile: UserProfile, missions: Mission[]): UserChallenge {
-  const habits: ChallengeHabit[] = (missions || []).map((m) => ({
-    id: m.id,
-    title: m.title,
-    description: m.description,
-    pillarId: m.pillarId,
-    color: pillarColorMap[m.pillarId] || '#10b981',
-    completedDates: m.completedDates || [],
-    createdAt: m.createdAt,
-  }));
+/** Rascunho de hábito ao criar um desafio. */
+export type HabitDraft = Omit<Mission, 'id' | 'isCompletedToday' | 'completedDates' | 'order' | 'createdAt'>;
 
-  const cycle = profile.activeChallenge;
-  const history = profile.challengeHistory || [];
-  const cycleNumber = cycle?.cycleNumber || (history.length + 1);
-  const isActive = Boolean(cycle && cycle.status === 'active');
-
-  const targetDays = cycle ? getCycleTargetDays(cycle) : 66;
-  return {
-    id: 'challenge_official_66',
-    title: cycle?.title || `Desafio ${targetDays} Dias — Ciclo #${cycleNumber}`,
-    description: isActive
-      ? 'Seu desafio principal: as missões diárias da tela inicial. Cumpra 50% do XP do dia para marcar presença.'
-      : 'Sugestão de protocolo: monte suas missões e inicie quando estiver pronto.',
-    category: 'Neuroplasticidade & Hábitos',
-    icon: '⚡',
-    targetDays,
-    startDate: cycle?.startDate || getTodayString(),
-    status: isActive ? 'active' : 'paused',
-    isOfficial66: true,
-    habits,
-    createdAt: cycle?.createdAt || profile.createdAt || new Date().toISOString(),
-  };
+export interface NewChallengeInput {
+  title: string;
+  description?: string;
+  targetDays: number;
+  /** Padrão: hoje. Pode ser no passado (para registrar dias já feitos) ou até 30 dias no futuro. */
+  startDate?: string;
+  isEliteMode?: boolean;
+  /** Hábitos novos do desafio (inclusive cópias dos hábitos de outro desafio). */
+  habits?: HabitDraft[];
+  /** Hábitos avulsos que passam a pertencer ao desafio. */
+  moveMissionIds?: string[];
 }
 
 interface ChallengeStoreState {
   challenges: UserChallenge[];
-  activeChallengeId: string | null;
-  selectedChallengeForModal: UserChallenge | null;
+  selectedChallengeId: string | null;
   isCreateModalOpen: boolean;
   isDetailModalOpen: boolean;
 
-  // Actions
   openCreateModal: () => void;
   closeCreateModal: () => void;
   openDetailModal: (challengeId: string) => void;
   closeDetailModal: () => void;
 
-  createChallenge: (data: {
-    title: string;
-    description?: string;
-    targetDays: number;
-    category?: string;
-    icon?: string;
-    initialHabits?: { title: string; description?: string; color?: string; pillarId?: PillarId }[];
-  }) => { success: boolean; error?: string; challenge?: UserChallenge };
-
-  updateChallenge: (challengeId: string, updates: Partial<UserChallenge>) => void;
-  deleteChallenge: (challengeId: string) => void;
-  toggleChallengeStatus: (challengeId: string) => void;
-
-  addHabitToChallenge: (
+  /** Desafio de hábitos (o formato padrão). */
+  createChallenge: (data: NewChallengeInput) => { success: boolean; error?: string; challenge?: UserChallenge };
+  /** Título, descrição, duração, início e Modo Elite. */
+  updateChallenge: (
     challengeId: string,
-    habitData: { title: string; description?: string; color?: string; pillarId?: PillarId }
+    updates: Partial<Pick<UserChallenge, 'title' | 'description' | 'targetDays' | 'startDate' | 'isEliteMode' | 'icon' | 'category'>>
   ) => void;
-
-  removeHabitFromChallenge: (challengeId: string, habitId: string) => void;
-  updateHabit: (challengeId: string, habitId: string, updates: Partial<ChallengeHabit>) => void;
-
-  toggleHabitDay: (
-    challengeId: string,
-    habitId: string,
-    dateStr: string
-  ) => { isCompleted: boolean; currentStreak: number; bestStreak: number; blockedReason?: string };
-
-  autoCompleteExpiredChallenges: () => void;
+  /** Encerra por decisão do shinobi: concluído antes do fim ou abandonado. */
+  closeChallenge: (challengeId: string, kind: 'completed' | 'abandoned') => void;
+  /** Desfaz o encerramento feito pelo shinobi. */
+  reopenChallenge: (challengeId: string) => void;
+  /** Apaga o desafio como se nunca tivesse existido (hábitos, marcações e recompensas dele). */
+  deleteChallenge: (challengeId: string) => void;
 
   // ── Quadro de operação ──
   /** Cria um desafio em formato de quadro a partir de um modelo (começa hoje, salvo `startDate`). */
@@ -398,543 +343,291 @@ interface ChallengeStoreState {
   ) => void;
 }
 
+const stamp = () => new Date().toISOString();
+
+const nextCycleNumber = (challenges: UserChallenge[]) =>
+  challenges.reduce((max, c) => Math.max(max, c.cycleNumber || 0), 0) + 1;
+
 export const useChallengeStore = create<ChallengeStoreState>()(
   persist(
-    (set, get) => ({
-      challenges: [],
-      activeChallengeId: 'challenge_official_66',
-      selectedChallengeForModal: null,
-      isCreateModalOpen: false,
-      isDetailModalOpen: false,
+    (set, get) => {
+      /** Troca um desafio da lista (edição do shinobi neste aparelho). */
+      const replace = (updated: UserChallenge) =>
+        set((state) => ({ challenges: state.challenges.map((c) => (c.id === updated.id ? updated : c)) }));
 
-      openCreateModal: () => set({ isCreateModalOpen: true }),
-      closeCreateModal: () => set({ isCreateModalOpen: false }),
+      const afterChange = () => useUserStore.getState().reconcile({ silent: true });
 
-      openDetailModal: (challengeId: string) => {
-        if (challengeId === 'challenge_official_66') {
-          const profile = useUserStore.getState().profile;
-          if (!profile.activeChallenge || profile.activeChallenge.status !== 'active') {
-            useUserStore.getState().openStartChallengeModal();
-            return;
-          }
-          const missions = useHabitStore.getState().missions;
-          const official = buildSyncedOfficial66Challenge(profile, missions);
-          set({
-            selectedChallengeForModal: official,
-            isDetailModalOpen: true,
-          });
-          return;
-        }
+      return {
+        challenges: [],
+        selectedChallengeId: null,
+        isCreateModalOpen: false,
+        isDetailModalOpen: false,
 
-        const { challenges } = get();
-        const found = challenges.find((c) => c.id === challengeId);
-        if (found) {
-          set({
-            selectedChallengeForModal: found,
-            isDetailModalOpen: true,
-          });
-        }
-      },
+        openCreateModal: () => set({ isCreateModalOpen: true }),
+        closeCreateModal: () => set({ isCreateModalOpen: false }),
+        openDetailModal: (challengeId) => {
+          if (!get().challenges.some((c) => c.id === challengeId)) return;
+          set({ selectedChallengeId: challengeId, isDetailModalOpen: true });
+        },
+        closeDetailModal: () => set({ isDetailModalOpen: false, selectedChallengeId: null }),
 
-      closeDetailModal: () => set({ isDetailModalOpen: false, selectedChallengeForModal: null }),
+        createChallenge: (data) => {
+          const title = data.title.trim();
+          if (!title) return { success: false, error: 'Dê um nome ao desafio.' };
+          const habits = data.habits || [];
+          const moveIds = data.moveMissionIds || [];
+          if (habits.length + moveIds.length === 0) return { success: false, error: 'Inclua pelo menos um hábito.' };
 
-      createChallenge: (data) => {
-        const minDays = 21;
-        const targetDays = Math.round(Number(data.targetDays));
+          const today = getTodayString();
+          let startDate = data.startDate && isValidDateString(data.startDate) ? data.startDate : today;
+          if (daysBetween(today, startDate) > 30) startDate = addDaysToDateString(today, 30);
+          const targetDays = clampTargetDays(data.targetDays);
+          const createdAt = stamp();
 
-        if (isNaN(targetDays) || targetDays < minDays) {
-          return {
-            success: false,
-            error: `O desafio deve ter no mínimo ${minDays} dias para gerar transformação real de hábitos.`,
+          const challenge: UserChallenge = {
+            v: CHALLENGE_MODEL_VERSION,
+            id: `challenge_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            title,
+            description: data.description?.trim() || undefined,
+            category: 'Hábitos',
+            targetDays,
+            startDate,
+            status: 'active',
+            habits: [],
+            format: 'habits',
+            isEliteMode: Boolean(data.isEliteMode),
+            createdOn: today,
+            // Começar no passado serve para registrar o que já foi feito, sem gerar faltas
+            ...(startDate < today ? { graceBefore: today } : {}),
+            cycleNumber: nextCycleNumber(get().challenges),
+            createdAt,
+            updatedAt: createdAt,
           };
-        }
+          if (!challenge.description) delete challenge.description;
 
-        if (!data.title.trim()) {
-          return {
-            success: false,
-            error: 'Por favor, dê um título ao seu desafio.',
-          };
-        }
-
-        const todayStr = getTodayString();
-        const newChallengeId = `challenge_custom_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
-
-        const habits: ChallengeHabit[] = (data.initialHabits && data.initialHabits.length > 0)
-          ? data.initialHabits.map((h, idx) => ({
-              id: `hab_${Date.now()}_${idx}`,
-              title: h.title.trim(),
-              description: h.description?.trim() || '',
-              color: h.color || '#10b981',
-              pillarId: h.pillarId || 'chakra',
-              completedDates: [],
-              createdAt: new Date().toISOString(),
-            }))
-          : [
-              {
-                id: `hab_${Date.now()}_default`,
-                title: 'Hábito Principal',
-                description: 'Executar diariamente sem desculpas',
-                color: '#10b981',
-                pillarId: 'chakra',
-                completedDates: [],
-                createdAt: new Date().toISOString(),
-              },
-            ];
-
-        const newChallenge: UserChallenge = {
-          id: newChallengeId,
-          title: data.title.trim(),
-          description: data.description?.trim() || '',
-          category: data.category?.trim() || 'Transformação Pessoal',
-          icon: data.icon || '🔥',
-          targetDays,
-          startDate: todayStr,
-          status: 'active',
-          isOfficial66: false,
-          habits,
-          createdAt: new Date().toISOString(),
-        };
-
-        set((state) => ({
-          challenges: [newChallenge, ...state.challenges],
-          isCreateModalOpen: false,
-          selectedChallengeForModal: newChallenge,
-          isDetailModalOpen: true,
-        }));
-
-        soundFx.playChallengeStart();
-        triggerMissionConfetti();
-
-        return { success: true, challenge: newChallenge };
-      },
-
-      updateChallenge: (challengeId, updates) => {
-        set((state) => {
-          const updatedChallenges = state.challenges.map((c) => {
-            if (c.id === challengeId) {
-              return { ...c, ...updates };
-            }
-            return c;
-          });
-
-          return {
-            challenges: updatedChallenges,
-            selectedChallengeForModal:
-              state.selectedChallengeForModal?.id === challengeId
-                ? { ...state.selectedChallengeForModal, ...updates }
-                : state.selectedChallengeForModal,
-          };
-        });
-        const after = get().challenges.find((c) => c.id === challengeId);
-        if (after && isBoard(after)) syncBoardRewards(after);
-      },
-
-      deleteChallenge: (challengeId) => {
-        const target = get().challenges.find((c) => c.id === challengeId);
-        if (target) revokeChallengeHabitGrants(challengeId);
-        set((state) => {
-          const remaining = state.challenges.filter((c) => c.id !== challengeId);
-          return {
-            challenges: remaining,
-            isDetailModalOpen: state.selectedChallengeForModal?.id === challengeId ? false : state.isDetailModalOpen,
-            selectedChallengeForModal: state.selectedChallengeForModal?.id === challengeId ? null : state.selectedChallengeForModal,
-          };
-        });
-      },
-
-      toggleChallengeStatus: (challengeId) => {
-        set((state) => {
-          const updatedChallenges = state.challenges.map((c) => {
-            if (c.id === challengeId) {
-              const nextStatus: 'active' | 'completed' = c.status === 'active' ? 'completed' : 'active';
-              return {
-                ...c,
-                status: nextStatus,
-                completedAt: nextStatus === 'completed' ? new Date().toISOString() : undefined,
-              };
-            }
-            return c;
-          });
-
-          return {
-            challenges: updatedChallenges,
-            selectedChallengeForModal:
-              state.selectedChallengeForModal?.id === challengeId
-                ? updatedChallenges.find((c) => c.id === challengeId) || null
-                : state.selectedChallengeForModal,
-          };
-        });
-      },
-
-      addHabitToChallenge: (challengeId, habitData) => {
-        if (!habitData.title.trim()) return;
-
-        const isOfficial = challengeId === 'challenge_official_66' || challengeId.includes('official');
-        if (isOfficial) {
-          useHabitStore.getState().addMission({
-            title: habitData.title.trim(),
-            description: habitData.description?.trim() || '',
-            pillarId: habitData.pillarId || 'chakra',
-            rank: 'D',
-            xpReward: 50,
-            ryoReward: 35,
-            timeOfDay: 'anytime',
-            isCustom: true,
-          });
-          soundFx.playScrollOpen();
-          return;
-        }
-
-        const newHabit: ChallengeHabit = {
-          id: `hab_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
-          title: habitData.title.trim(),
-          description: habitData.description?.trim() || '',
-          color: habitData.color || '#10b981',
-          pillarId: habitData.pillarId || 'chakra',
-          completedDates: [],
-          createdAt: new Date().toISOString(),
-        };
-
-        set((state) => {
-          const updated = state.challenges.map((c) => {
-            if (c.id === challengeId) {
-              return {
-                ...c,
-                habits: [...c.habits, newHabit],
-              };
-            }
-            return c;
-          });
-
-          return {
-            challenges: updated,
-            selectedChallengeForModal:
-              state.selectedChallengeForModal?.id === challengeId
-                ? {
-                    ...state.selectedChallengeForModal,
-                    habits: [...state.selectedChallengeForModal.habits, newHabit],
-                  }
-                : state.selectedChallengeForModal,
-          };
-        });
-
-        soundFx.playScrollOpen();
-      },
-
-      removeHabitFromChallenge: (challengeId, habitId) => {
-        const isOfficial = challengeId === 'challenge_official_66' || challengeId.includes('official');
-        if (isOfficial) {
-          useHabitStore.getState().deleteMission(habitId);
-          return;
-        }
-
-        revokeTodayHabitGrants(challengeId, [habitId]);
-        set((state) => {
-          const updated = state.challenges.map((c) => {
-            if (c.id === challengeId) {
-              return {
-                ...c,
-                habits: c.habits.filter((h) => h.id !== habitId),
-              };
-            }
-            return c;
-          });
-
-          return {
-            challenges: updated,
-            selectedChallengeForModal:
-              state.selectedChallengeForModal?.id === challengeId
-                ? {
-                    ...state.selectedChallengeForModal,
-                    habits: state.selectedChallengeForModal.habits.filter((h) => h.id !== habitId),
-                  }
-                : state.selectedChallengeForModal,
-          };
-        });
-      },
-
-      updateHabit: (challengeId, habitId, updates) => {
-        const isOfficial = challengeId === 'challenge_official_66' || challengeId.includes('official');
-        if (isOfficial) {
-          useHabitStore.getState().updateMission(habitId, {
-            title: updates.title,
-            description: updates.description,
-            pillarId: updates.pillarId,
-          });
-          return;
-        }
-
-        set((state) => {
-          const updated = state.challenges.map((c) => {
-            if (c.id === challengeId) {
-              return {
-                ...c,
-                habits: c.habits.map((h) => (h.id === habitId ? { ...h, ...updates } : h)),
-              };
-            }
-            return c;
-          });
-
-          return {
-            challenges: updated,
-            selectedChallengeForModal:
-              state.selectedChallengeForModal?.id === challengeId
-                ? {
-                    ...state.selectedChallengeForModal,
-                    habits: state.selectedChallengeForModal.habits.map((h) =>
-                      h.id === habitId ? { ...h, ...updates } : h
-                    ),
-                  }
-                : state.selectedChallengeForModal,
-          };
-        });
-      },
-
-      toggleHabitDay: (challengeId, habitId, dateStr) => {
-        const todayStr = getTodayString();
-        const isOfficial = challengeId === 'challenge_official_66' || challengeId.includes('official');
-
-        if (isOfficial) {
+          set((state) => ({ challenges: [challenge, ...state.challenges], isCreateModalOpen: false }));
           const habitStore = useHabitStore.getState();
-          const mission = habitStore.missions.find((m) => m.id === habitId);
+          if (habits.length > 0) habitStore.addMissionsToChallenge(habits, challenge.id);
+          if (moveIds.length > 0) habitStore.moveMissionsToChallenge(moveIds, challenge.id);
+          afterChange();
 
-          if (dateStr > todayStr) {
-            const streaks = calculateHabitStreaks(mission?.completedDates || []);
-            soundFx.playError();
-            return {
-              isCompleted: Boolean(mission?.completedDates?.includes(dateStr)),
-              currentStreak: streaks.currentStreak,
-              bestStreak: streaks.bestStreak,
-              blockedReason: 'Dias futuros ainda não podem ser marcados.',
-            };
-          }
-          const result = habitStore.toggleMissionOnDate(habitId, dateStr);
-          if (!result.success) {
-            const streaks = calculateHabitStreaks(mission?.completedDates || []);
-            return { isCompleted: false, currentStreak: streaks.currentStreak, bestStreak: streaks.bestStreak, blockedReason: result.reason };
-          }
-          const updatedMission = useHabitStore.getState().missions.find((m) => m.id === habitId);
-          const streaks = calculateHabitStreaks(updatedMission?.completedDates || []);
-          return {
-            isCompleted: Boolean(updatedMission?.isCompletedToday),
-            currentStreak: streaks.currentStreak,
-            bestStreak: streaks.bestStreak,
-          };
-        }
+          soundFx.playChallengeStart();
+          triggerMissionConfetti();
+          return { success: true, challenge: get().challenges.find((c) => c.id === challenge.id) || challenge };
+        },
 
-        // Desafio Personalizado
-        const { challenges } = get();
-        const challenge = challenges.find((c) => c.id === challengeId);
-        const habit = challenge?.habits.find((h) => h.id === habitId);
+        updateChallenge: (challengeId, updates) => {
+          const current = get().challenges.find((c) => c.id === challengeId);
+          if (!current) return;
+          const next: UserChallenge = { ...current, updatedAt: stamp() };
+          if (updates.title !== undefined && updates.title.trim()) next.title = updates.title.trim();
+          if (updates.description !== undefined) next.description = updates.description.trim() || undefined;
+          if (updates.targetDays !== undefined) next.targetDays = clampTargetDays(updates.targetDays);
+          if (updates.startDate !== undefined && isValidDateString(updates.startDate)) next.startDate = updates.startDate;
+          if (updates.isEliteMode !== undefined) next.isEliteMode = updates.isEliteMode;
+          if (updates.icon !== undefined) next.icon = updates.icon;
+          if (updates.category !== undefined) next.category = updates.category;
+          if (!next.description) delete next.description;
+          replace(next);
+          if (isBoard(next)) syncBoardRewards(get().challenges.find((c) => c.id === challengeId)!);
+          afterChange();
+        },
 
-        if (dateStr > todayStr || (challenge && dateStr < challenge.startDate)) {
-          const streaks = calculateHabitStreaks(habit?.completedDates || []);
-          return {
-            isCompleted: false,
-            currentStreak: streaks.currentStreak,
-            bestStreak: streaks.bestStreak,
-            blockedReason: 'Só é possível marcar dias entre o início do desafio e hoje.',
-          };
-        }
+        closeChallenge: (challengeId, kind) => {
+          const current = get().challenges.find((c) => c.id === challengeId);
+          if (!current || current.closedAt) return;
+          const today = getTodayString();
+          const at = stamp();
+          // O último dia que conta: hoje, se já houve marcação hoje; senão ontem (os hábitos saem de Hoje na hora).
+          // Desafio que nem começou: o dia anterior ao início.
+          const links = useUserStore.getState().profile.habitLinks;
+          const markedToday = isBoard(current)
+            ? (current.marks?.[today] || []).length > 0
+            : missionsOfChallenge(current.id, useHabitStore.getState().missions, links).some((m) =>
+                (m.completedDates || []).includes(today)
+              );
+          const closedOn =
+            today < current.startDate
+              ? addDaysToDateString(current.startDate, -1)
+              : markedToday
+              ? today
+              : addDaysToDateString(today, -1);
+          replace({ ...current, closedAt: at, closedOn, closeKind: kind, updatedAt: at });
+          if (isBoard(current)) syncBoardRewards(get().challenges.find((c) => c.id === challengeId)!);
+          afterChange();
+        },
 
-        const currentDates = habit?.completedDates || [];
-        const isCompleted = currentDates.includes(dateStr);
-        const willBeCompleted = !isCompleted;
+        reopenChallenge: (challengeId) => {
+          const current = get().challenges.find((c) => c.id === challengeId);
+          if (!current || !current.closedAt) return;
+          const next: UserChallenge = { ...current, updatedAt: stamp() };
+          delete next.closedAt;
+          delete next.closedOn;
+          delete next.closeKind;
+          replace(next);
+          afterChange();
+        },
 
-        const updatedDates = willBeCompleted
-          ? Array.from(new Set([...currentDates, dateStr])).sort()
-          : currentDates.filter((d) => d !== dateStr);
-
-        const streaks = calculateHabitStreaks(updatedDates);
-
-        set((state) => {
-          const updatedChallenges = state.challenges.map((c) => {
-            if (c.id === challengeId) {
-              return {
-                ...c,
-                habits: c.habits.map((h) => {
-                  if (h.id === habitId) {
-                    return {
-                      ...h,
-                      completedDates: updatedDates,
-                    };
-                  }
-                  return h;
-                }),
-              };
-            }
-            return c;
-          });
-
-          return {
-            challenges: updatedChallenges,
-            selectedChallengeForModal:
-              state.selectedChallengeForModal?.id === challengeId
-                ? {
-                    ...state.selectedChallengeForModal,
-                    habits: state.selectedChallengeForModal.habits.map((h) => {
-                      if (h.id === habitId) {
-                        return { ...h, completedDates: updatedDates };
-                      }
-                      return h;
-                    }),
-                  }
-                : state.selectedChallengeForModal,
-          };
-        });
-
-        // Recompensa apenas para o dia de hoje — e estornável ao desmarcar.
-        const grantKey = `habit:${challengeId}:${habitId}:${dateStr}`;
-        const userStore = useUserStore.getState();
-        if (willBeCompleted) {
-          soundFx.playMissionComplete();
-          if (dateStr === todayStr) {
-            triggerMissionConfetti();
-            userStore.grantReward({
-              key: grantKey,
-              label: habit?.title || 'Hábito do desafio',
-              baseXp: HABIT_XP_REWARD,
-              baseRyo: HABIT_RYO_REWARD,
-              pillarId: habit?.pillarId || 'chakra',
-            });
-          }
-        } else {
-          soundFx.playMissionUndo();
-          userStore.revokeReward(grantKey);
-        }
-
-        return {
-          isCompleted: willBeCompleted,
-          currentStreak: streaks.currentStreak,
-          bestStreak: streaks.bestStreak,
-        };
-      },
-
-      autoCompleteExpiredChallenges: () => {
-        const todayStr = getTodayString();
-        let changed = false;
-        const updated = get().challenges.map((c) => {
-          if (c.status !== 'active' || c.isOfficial66) return c;
-          const endDate = c.endDate || addDaysToDateString(c.startDate, c.targetDays - 1);
-          if (todayStr > endDate) {
-            changed = true;
-            return { ...c, status: 'completed' as const, endDate, completedAt: new Date().toISOString() };
-          }
-          return c;
-        });
-        if (changed) setChallengesSilently(updated);
-      },
-
-      createBoardChallenge: (templateId, overrides = {}) => {
-        const template = BOARD_TEMPLATES.find((t) => t.id === templateId);
-        if (!template) return null;
-        const startDate = overrides.startDate || getTodayString();
-        const targetDays = Math.max(7, Math.round(overrides.targetDays || template.targetDays));
-        const { sections, milestones } = instantiateTemplate(template, startDate, targetDays);
-        const challenge: UserChallenge = {
-          id: `challenge_board_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-          title: overrides.title?.trim() || template.title,
-          description: template.description,
-          category: template.category,
-          icon: template.icon,
-          targetDays,
-          startDate,
-          status: 'active',
-          isOfficial66: false,
-          habits: [],
-          createdAt: new Date().toISOString(),
-          format: 'board',
-          sections,
-          marks: {},
-          dailyGoalPct: template.dailyGoalPct,
-          milestones,
-        };
-        set((state) => ({
-          challenges: [challenge, ...state.challenges],
-          isCreateModalOpen: false,
-          selectedChallengeForModal: challenge,
-          isDetailModalOpen: true,
-        }));
-        soundFx.playChallengeStart();
-        triggerMissionConfetti();
-        return challenge;
-      },
-
-      toggleBoardCells: (challengeId, keys, date, value) => {
-        const todayStr = getTodayString();
-        const challenge = get().challenges.find((c) => c.id === challengeId);
-        if (!challenge || !isBoard(challenge) || keys.length === 0) return {};
-        if (date > todayStr) {
-          soundFx.playError();
-          return { blockedReason: 'Dias futuros ainda não podem ser marcados.' };
-        }
-        if (date < challenge.startDate || date > boardEndDate(challenge)) {
-          soundFx.playError();
-          return { blockedReason: 'Esse dia está fora do período do desafio.' };
-        }
-
-        const current = new Set(challenge.marks?.[date] || []);
-        const next = value ?? !keys.every((k) => current.has(k));
-        keys.forEach((k) => (next ? current.add(k) : current.delete(k)));
-        const marks = { ...(challenge.marks || {}) };
-        if (current.size > 0) marks[date] = Array.from(current).sort();
-        else delete marks[date];
-
-        const updated: UserChallenge = { ...challenge, marks };
-        set((state) => ({
-          challenges: state.challenges.map((c) => (c.id === challengeId ? updated : c)),
-          selectedChallengeForModal:
-            state.selectedChallengeForModal?.id === challengeId ? updated : state.selectedChallengeForModal,
-        }));
-
-        if (next) soundFx.playMissionComplete();
-        else soundFx.playMissionUndo();
-
-        // Recompensa só no próprio dia (dias passados: só corrige o registro)
-        if (date === todayStr) {
-          const gained = syncBoardRewards(updated);
+        deleteChallenge: (challengeId) => {
+          const target = get().challenges.find((c) => c.id === challengeId);
+          if (!target) return;
           const user = useUserStore.getState();
-          if (gained.day) {
-            soundFx.playDayComplete();
-            triggerDayCompleteConfetti();
-            user.pushToast({ kind: 'reward', title: 'Dia cumprido na operação', message: `${challenge.title}: meta do dia batida.` });
-          } else if (gained.sections.length > 0) {
-            triggerMissionConfetti();
-            user.pushToast({ kind: 'success', title: 'Seção completa', message: gained.sections.join(' · ') });
-          }
-        }
-        return {};
-      },
+          const habitStore = useHabitStore.getState();
+          const today = getTodayString();
+          const ownIds = new Set(missionsOfChallenge(challengeId, habitStore.missions, user.profile.habitLinks).map((m) => m.id));
 
-      updateBoard: (challengeId, updates) => {
-        const challenge = get().challenges.find((c) => c.id === challengeId);
-        if (!challenge || !isBoard(challenge)) return;
-        const updated: UserChallenge = {
-          ...challenge,
-          ...(updates.sections ? { sections: sanitizeSections(updates.sections) } : {}),
-          ...(updates.dailyGoalPct !== undefined
-            ? { dailyGoalPct: Math.min(100, Math.max(1, Math.round(updates.dailyGoalPct))) }
-            : {}),
-          ...(updates.milestones
-            ? {
-                milestones: updates.milestones
-                  .filter((m) => m.label.trim() && /^\d{4}-\d{2}-\d{2}$/.test(m.date))
-                  .map((m) => ({ ...m, label: m.label.trim() }))
-                  .sort((a, b) => a.date.localeCompare(b.date)),
-              }
-            : {}),
-        };
-        set((state) => ({
-          challenges: state.challenges.map((c) => (c.id === challengeId ? updated : c)),
-          selectedChallengeForModal:
-            state.selectedChallengeForModal?.id === challengeId ? updated : state.selectedChallengeForModal,
-        }));
-        syncBoardRewards(updated);
-      },
-    }),
+          // 1. Recompensas do próprio desafio (bônus, quadro, hábitos antigos e as missões dele)
+          const ownKey = (key: string) =>
+            key === challengeRewardKey(challengeId) ||
+            key.startsWith(`board:${challengeId}:`) ||
+            key.startsWith(`habit:${challengeId}:`) ||
+            Array.from(ownIds).some((id) => key.startsWith(`mission:${id}:`) || key.startsWith(`retro:${id}:`));
+          Object.keys(user.profile.grants || {})
+            .filter(ownKey)
+            .forEach((key) => useUserStore.getState().revokeReward(key));
+
+          // 2. Os hábitos dele somem (lápides para os outros aparelhos)
+          const touchedDates = new Set<string>();
+          habitStore.missions
+            .filter((m) => ownIds.has(m.id))
+            .forEach((m) => (m.completedDates || []).forEach((d) => d < today && touchedDates.add(d)));
+          const at = stamp();
+          const deletedMissions = { ...useUserStore.getState().profile.deletedMissions };
+          ownIds.forEach((id) => (deletedMissions[id] = at));
+          useHabitStore.setState((state) => ({ missions: state.missions.filter((m) => !ownIds.has(m.id)) }));
+
+          // 3. O desafio some (lápide) e os dias em que os hábitos dele contavam são recalculados
+          set((state) => ({
+            challenges: state.challenges.filter((c) => c.id !== challengeId),
+            isDetailModalOpen: state.selectedChallengeId === challengeId ? false : state.isDetailModalOpen,
+            selectedChallengeId: state.selectedChallengeId === challengeId ? null : state.selectedChallengeId,
+          }));
+          const profile = useUserStore.getState().profile;
+          useUserStore.getState().updateProfile({
+            deletedMissions,
+            deletedCycles: { ...profile.deletedCycles, [challengeId]: at },
+          });
+          useUserStore.getState().recomputePastDays(Array.from(touchedDates));
+          afterChange();
+        },
+
+        createBoardChallenge: (templateId, overrides = {}) => {
+          const template = BOARD_TEMPLATES.find((t) => t.id === templateId);
+          if (!template) return null;
+          const today = getTodayString();
+          const startDate = overrides.startDate || today;
+          const targetDays = Math.max(7, Math.round(overrides.targetDays || template.targetDays));
+          const { sections, milestones } = instantiateTemplate(template, startDate, targetDays);
+          const createdAt = stamp();
+          const challenge: UserChallenge = {
+            v: CHALLENGE_MODEL_VERSION,
+            id: `challenge_board_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            title: overrides.title?.trim() || template.title,
+            description: template.description,
+            category: template.category,
+            icon: template.icon,
+            targetDays,
+            startDate,
+            status: 'active',
+            isOfficial66: false,
+            habits: [],
+            createdAt,
+            createdOn: today,
+            cycleNumber: nextCycleNumber(get().challenges),
+            updatedAt: createdAt,
+            format: 'board',
+            sections,
+            marks: {},
+            dailyGoalPct: template.dailyGoalPct,
+            milestones,
+          };
+          set((state) => ({
+            challenges: [challenge, ...state.challenges],
+            isCreateModalOpen: false,
+            selectedChallengeId: challenge.id,
+            isDetailModalOpen: true,
+          }));
+          afterChange();
+          soundFx.playChallengeStart();
+          triggerMissionConfetti();
+          return challenge;
+        },
+
+        toggleBoardCells: (challengeId, keys, date, value) => {
+          const todayStr = getTodayString();
+          const challenge = get().challenges.find((c) => c.id === challengeId);
+          if (!challenge || !isBoard(challenge) || keys.length === 0) return {};
+          if (date > todayStr) {
+            soundFx.playError();
+            return { blockedReason: 'Dias futuros ainda não podem ser marcados.' };
+          }
+          if (date < challenge.startDate || date > lastCountedDate(challenge)) {
+            soundFx.playError();
+            return { blockedReason: 'Esse dia está fora do período do desafio.' };
+          }
+
+          const current = new Set(challenge.marks?.[date] || []);
+          const next = value ?? !keys.every((k) => current.has(k));
+          keys.forEach((k) => (next ? current.add(k) : current.delete(k)));
+          const marks = { ...(challenge.marks || {}) };
+          if (current.size > 0) marks[date] = Array.from(current).sort();
+          else delete marks[date];
+          // Cada célula guarda o instante da mudança: é o que permite mesclar dois aparelhos
+          const at = stamp();
+          const cellStamps = { ...(challenge.cellStamps || {}) };
+          keys.forEach((k) => (cellStamps[`${date}|${k}`] = { on: next, at }));
+
+          const updated: UserChallenge = { ...challenge, marks, cellStamps };
+          replace(updated);
+
+          if (next) soundFx.playMissionComplete();
+          else soundFx.playMissionUndo();
+
+          // Recompensa só no próprio dia (dias passados: só corrige o registro)
+          if (date === todayStr) {
+            const gained = syncBoardRewards(updated);
+            const user = useUserStore.getState();
+            if (gained.day) {
+              soundFx.playDayComplete();
+              triggerDayCompleteConfetti();
+              user.pushToast({ kind: 'reward', title: 'Dia cumprido na operação', message: `${challenge.title}: meta do dia batida.` });
+            } else if (gained.sections.length > 0) {
+              triggerMissionConfetti();
+              user.pushToast({ kind: 'success', title: 'Seção completa', message: gained.sections.join(' · ') });
+            }
+          }
+          afterChange();
+          return {};
+        },
+
+        updateBoard: (challengeId, updates) => {
+          const challenge = get().challenges.find((c) => c.id === challengeId);
+          if (!challenge || !isBoard(challenge)) return;
+          const updated: UserChallenge = {
+            ...challenge,
+            updatedAt: stamp(),
+            ...(updates.sections ? { sections: sanitizeSections(updates.sections) } : {}),
+            ...(updates.dailyGoalPct !== undefined
+              ? { dailyGoalPct: Math.min(100, Math.max(1, Math.round(updates.dailyGoalPct))) }
+              : {}),
+            ...(updates.milestones
+              ? {
+                  milestones: updates.milestones
+                    .filter((m) => m.label.trim() && /^\d{4}-\d{2}-\d{2}$/.test(m.date))
+                    .map((m) => ({ ...m, label: m.label.trim() }))
+                    .sort((a, b) => a.date.localeCompare(b.date)),
+                }
+              : {}),
+          };
+          replace(updated);
+          syncBoardRewards(updated);
+          afterChange();
+        },
+      };
+    },
     {
       name: 'shinobi_challenge_store_v1',
-      version: 2,
+      version: 3,
       partialize: (state) => ({ challenges: state.challenges }) as unknown as ChallengeStoreState,
       migrate: (persisted) => persisted as ChallengeStoreState,
       merge: (persisted, current) => {
@@ -949,6 +642,42 @@ export const useChallengeStore = create<ChallengeStoreState>()(
     }
   )
 );
+
+// ─────────────────────────────────────────────────────────────
+// Conversão do formato antigo (uma vez por aparelho; idempotente)
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Leva os dados locais para o modelo único: o antigo "desafio principal"
+ * (ciclos no perfil), os desafios personalizados com hábitos próprios e o
+ * vínculo de cada missão. Não conta como edição do shinobi.
+ */
+export function migrateLegacyChallenges(today: string = getTodayString()): void {
+  const user = useUserStore.getState();
+  const profile = user.profile;
+  const missions = useHabitStore.getState().missions;
+  const challenges = useChallengeStore.getState().challenges;
+  const hasLegacyCycles = Boolean(profile.activeChallenge) || (profile.challengeHistory || []).length > 0;
+  const hasLegacyCustom = challenges.some((c) => c.v !== CHALLENGE_MODEL_VERSION);
+  const missingLinks = missions.some((m) => !profile.habitLinks?.[m.id]);
+  if (!hasLegacyCycles && !hasLegacyCustom && !missingLinks) return;
+
+  const result = normalizeChallengeData({
+    challenges,
+    missions,
+    links: profile.habitLinks,
+    activeCycle: profile.activeChallenge,
+    cycleHistory: profile.challengeHistory,
+    today,
+  });
+
+  setChallengesSilently(result.challenges);
+  if (result.missions.length !== missions.length) useHabitStore.getState().replaceMissions(result.missions);
+  useUserStore.setState((state) => ({
+    profile: { ...state.profile, habitLinks: result.links, activeChallenge: undefined, challengeHistory: [] },
+  }));
+  useUserStore.getState().reconcile({ silent: true });
+}
 
 // ─────────────────────────────────────────────────────────────
 // Sincronização

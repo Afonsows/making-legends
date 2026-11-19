@@ -3,7 +3,7 @@ import { useUserStore } from '../../state/useUserStore';
 import { useHabitStore } from '../../state/useHabitStore';
 import { useUIStore } from '../../state/useUIStore';
 import { useTheme } from '../../theme/ThemeContext';
-import { calculateDailyXpProgress } from '../../core/streakEngine';
+import { useTodayXp } from '../../state/challengeSelectors';
 import { buildWeekSummary, getRecapWeek, WeekSummary } from '../../core/weeklySummary';
 import { addDaysToDateString, getTodayString, getWeekKey, parseDate } from '../../core/dateUtils';
 import { Sheet, pillarColor } from '../ui/kit';
@@ -20,7 +20,8 @@ function useWeekSummary(dateInWeek: string): WeekSummary {
   const profile = useUserStore((s) => s.profile);
   const missions = useHabitStore((s) => s.missions);
   const today = getTodayString();
-  return buildWeekSummary(profile, missions, dateInWeek, today, { completed: calculateDailyXpProgress(missions).isUnlocked });
+  const todayXp = useTodayXp();
+  return buildWeekSummary(profile, missions, dateInWeek, today, { completed: todayXp.isUnlocked });
 }
 
 /** Variação em relação à semana anterior, em palavras (nunca só por cor). */

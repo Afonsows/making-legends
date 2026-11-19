@@ -1,8 +1,8 @@
-import { UserProfile, Mission, UserChallenge, ProtocolChallengeCycle, DayRecord } from './types';
+import { UserProfile, Mission, UserChallenge, DayRecord } from './types';
 import { mergeLedgers, deriveTotals, LedgerState } from './ledger';
 import { mergeDayLogs } from './dayLog';
-import { isUserEndedCycle, REPLACED_REASON } from './cycle';
 import { isValidDateString } from './dateUtils';
+import { mergeChallengeLists, mergeHabitLinks } from './challenges';
 import { mergeMeasures } from './measures';
 
 /**
@@ -15,7 +15,9 @@ import { mergeMeasures } from './measures';
  *  - Datas das missões        união, respeitando o que foi desmarcado
  *  - Registro diário          por dia: um dia cumprido nunca vira falta
  *  - Escudos, compras         união
- *  - Desafios                 por id; "ativo" vence "encerrado pela regra"
+ *  - Desafios                 por id; definição/decisão mais recente vence;
+ *                              marcações do quadro, célula a célula
+ *  - Vínculo hábito → desafio  o mais recente vence
  *  - Preferências e textos    vence o lado editado por último
  *  - Reset completo           o reset mais recente vence por inteiro
  *
@@ -149,60 +151,6 @@ export function mergeMissions(
   return { missions, deletedMissions: deleted };
 }
 
-// ── Desafios ─────────────────────────────────────────────────
-
-/** Precedência do estado do mesmo ciclo visto por dois aparelhos. */
-function cycleRank(cycle: ProtocolChallengeCycle): number {
-  if (cycle.status === 'failed' && isUserEndedCycle(cycle)) return 4; // decisão do shinobi é definitiva
-  if (cycle.status === 'completed') return 3;
-  if (cycle.status === 'active') return 2;
-  return 1; // encerrado pela regra: é derivado, será reavaliado com os dados mesclados
-}
-
-export function mergeCycles(
-  local: Pick<UserProfile, 'activeChallenge' | 'challengeHistory'>,
-  cloud: Pick<UserProfile, 'activeChallenge' | 'challengeHistory'>,
-  preferCloud: boolean,
-  deletedCycles: Stamps,
-  now: string
-): { activeChallenge?: ProtocolChallengeCycle; challengeHistory: ProtocolChallengeCycle[] } {
-  const listOf = (p: Pick<UserProfile, 'activeChallenge' | 'challengeHistory'>) =>
-    [...(p.activeChallenge ? [p.activeChallenge] : []), ...(p.challengeHistory || [])].filter((c) => c && c.id);
-  const primary = listOf(preferCloud ? cloud : local);
-  const secondary = listOf(preferCloud ? local : cloud);
-
-  const byId = new Map<string, ProtocolChallengeCycle>();
-  primary.forEach((c) => byId.set(c.id, c));
-  secondary.forEach((c) => {
-    const current = byId.get(c.id);
-    if (!current) {
-      byId.set(c.id, c);
-      return;
-    }
-    if (cycleRank(c) > cycleRank(current)) {
-      // Mantém título/duração editados no lado mais recente
-      byId.set(c.id, { ...c, title: current.title ?? c.title, targetDays: current.targetDays ?? c.targetDays });
-    }
-  });
-
-  const all = Array.from(byId.values())
-    .filter((c) => !(deletedCycles[c.id] && deletedCycles[c.id] >= (c.createdAt || '')))
-    .sort((a, b) => ((a.createdAt || '') < (b.createdAt || '') ? 1 : (a.createdAt || '') > (b.createdAt || '') ? -1 : a.id < b.id ? 1 : -1));
-
-  const actives = all.filter((c) => c.status === 'active');
-  const activeChallenge = actives[0];
-  const today = now.slice(0, 10);
-  const challengeHistory = all
-    .filter((c) => c !== activeChallenge)
-    .map((c) =>
-      c.status === 'active'
-        ? { ...c, status: 'failed' as const, endedBy: 'user' as const, endDate: c.endDate || today, failedReason: REPLACED_REASON }
-        : c
-    );
-
-  return { activeChallenge, challengeHistory };
-}
-
 // ── Perfil ───────────────────────────────────────────────────
 
 function withoutWiped<T extends { dayLog: Record<string, DayRecord>; shieldedDates: string[]; dayWipe?: UserProfile['dayWipe'] }>(
@@ -250,7 +198,6 @@ export function mergeSnapshots(local: SyncSnapshot, cloud: SyncSnapshot, options
     { ...options, now }
   );
 
-  const cycles = mergeCycles(lp, cp, preferCloud, deletedCycles, now);
   const totals = deriveTotals(ledger.grants);
 
   // 2. Preferências: lado editado por último; o resto: união / máximo
@@ -273,11 +220,13 @@ export function mergeSnapshots(local: SyncSnapshot, cloud: SyncSnapshot, options
     shieldsThrough: [lp.shieldsThrough, cp.shieldsThrough].filter(isValidDateString).sort().pop(),
     dayWipe,
     measures: mergeMeasures(lp.measures, cp.measures),
+    habitLinks: mergeHabitLinks(lp.habitLinks, cp.habitLinks),
     deletedMissions,
     deletedCycles,
 
-    activeChallenge: cycles.activeChallenge,
-    challengeHistory: cycles.challengeHistory,
+    // Formato antigo: os ciclos já foram convertidos em desafios (ver normalizeChallengeData)
+    activeChallenge: undefined,
+    challengeHistory: [],
 
     purchasedItems: union(lp.purchasedItems, cp.purchasedItems),
     extraShieldWeeks: union(lp.extraShieldWeeks, cp.extraShieldWeeks),
@@ -290,7 +239,7 @@ export function mergeSnapshots(local: SyncSnapshot, cloud: SyncSnapshot, options
   return {
     profile,
     missions,
-    challenges: primary.challenges,
+    challenges: mergeChallengeLists(local.challenges, cloud.challenges, deletedCycles),
     bossHp: primary.bossHp,
   };
 }

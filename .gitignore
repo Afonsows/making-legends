@@ -36,3 +36,6 @@ dist-ssr
 *.tsbuildinfo
 
 .claude
+
+# Cópias de segurança de dados reais (nunca versionar)
+backups/

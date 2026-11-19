@@ -13,6 +13,8 @@ interface MissionCardProps {
   onToggle: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  /** Pergunta de confirmação antes de excluir/retirar. */
+  deleteConfirm?: string;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   canMoveUp?: boolean;
@@ -41,6 +43,7 @@ export const MissionCard: React.FC<MissionCardProps> = ({
   onToggle,
   onEdit,
   onDelete,
+  deleteConfirm,
   onMoveUp,
   onMoveDown,
   canMoveUp = false,
@@ -65,7 +68,7 @@ export const MissionCard: React.FC<MissionCardProps> = ({
   const shownRyo = grant ? grant.ryo : mission.ryoReward || rankInfo.ryoReward || getDefaultRyoReward(mission.rank);
 
   const handleDelete = () => {
-    if (window.confirm(`Excluir a missão "${mission.title}"?`)) onDelete?.();
+    if (window.confirm(deleteConfirm || `Excluir o hábito "${mission.title}"?`)) onDelete?.();
   };
 
   return (

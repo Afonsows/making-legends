@@ -3,9 +3,10 @@ import { UserProfile, Mission, ProtocolChallengeCycle, UserChallenge, DayRecord,
 import { getTodayString } from '../core/dateUtils';
 import { getDefaultRyoReward } from '../core/ryoEngine';
 import { mergeSnapshots, stableStringify, SyncSnapshot } from '../core/syncMerge';
+import { normalizeChallengeData } from '../core/challenges';
 import { useUserStore, migrateProfile } from '../state/useUserStore';
 import { useHabitStore } from '../state/useHabitStore';
-import { useChallengeStore, setChallengesSilently } from '../state/useChallengeStore';
+import { useChallengeStore, setChallengesSilently, migrateLegacyChallenges } from '../state/useChallengeStore';
 import { useDuelStore } from '../state/useDuelStore';
 import { useToolStore } from '../state/useToolStore';
 
@@ -21,6 +22,11 @@ import { useToolStore } from '../state/useToolStore';
 /** Dados extras guardados dentro de `avatar_config` (JSON) para não exigir migração de schema. */
 interface CloudExtras {
   _v?: number;
+  /** Desafios no modelo único (v4+). */
+  _challenges?: UserChallenge[];
+  /** Vínculo de cada hábito com o seu desafio (v4+). */
+  _habitLinks?: UserProfile['habitLinks'];
+  // Formato antigo (até v3): lido e convertido, não é mais gravado
   _activeChallenge?: ProtocolChallengeCycle;
   _challengeHistory?: ProtocolChallengeCycle[];
   _customChallenges?: UserChallenge[];
@@ -87,7 +93,11 @@ function comparable(snapshot: SyncSnapshot): unknown {
       void isCompletedToday;
       return rest;
     }),
-    challenges: snapshot.challenges,
+    // `status` é só um espelho do estado calculado: não é diferença entre aparelhos
+    challenges: snapshot.challenges.map(({ status, ...rest }) => {
+      void status;
+      return rest;
+    }),
     bossHp: snapshot.bossHp,
   };
 }
@@ -192,6 +202,8 @@ class SyncService {
   }
 
   private async runSync(userId: string) {
+    // Dados locais ainda no formato antigo são convertidos antes de mesclar
+    migrateLegacyChallenges();
     const [{ data: profileRow, error: profileErr }, { data: missionRows, error: missionsErr }] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
       supabase.from('missions').select('*').eq('user_id', userId).order('mission_order', { ascending: true }),
@@ -317,8 +329,6 @@ class SyncService {
       bestStreak: row.best_streak || 0,
       createdAt: toIso(row.created_at) || lp.createdAt,
       updatedAt: extras._updatedAt || toIso(row.updated_at),
-      activeChallenge: extras._activeChallenge,
-      challengeHistory: extras._challengeHistory || [],
       dayLog: extras._dayLog || {},
       shieldedDates: extras._shieldedDates || [],
       shieldsThrough: extras._shieldsThrough,
@@ -343,10 +353,24 @@ class SyncService {
       raw.pillarXp = row.pillar_xp || undefined;
     }
 
-    return {
-      profile: migrateProfile(raw, missions),
+    // Desafios: modelo único + o que ainda estiver no formato antigo (convertido aqui, sem gravar)
+    const normalized = normalizeChallengeData({
+      challenges: [
+        ...(Array.isArray(extras._challenges) ? extras._challenges : []),
+        ...(Array.isArray(extras._customChallenges) ? extras._customChallenges : []),
+      ],
       missions,
-      challenges: Array.isArray(extras._customChallenges) ? extras._customChallenges : local.challenges,
+      links: extras._habitLinks,
+      activeCycle: extras._activeChallenge,
+      cycleHistory: extras._challengeHistory,
+      today: todayStr,
+    });
+    raw.habitLinks = normalized.links;
+
+    return {
+      profile: migrateProfile(raw, normalized.missions),
+      missions: normalized.missions,
+      challenges: normalized.challenges,
       bossHp: extras._bossHp && typeof extras._bossHp === 'object' ? extras._bossHp : local.bossHp,
     };
   }
@@ -354,10 +378,9 @@ class SyncService {
   private profileToRow(snapshot: SyncSnapshot, userId: string): Row {
     const profile = snapshot.profile;
     const extras: CloudExtras = {
-      _v: 3,
-      _activeChallenge: profile.activeChallenge,
-      _challengeHistory: profile.challengeHistory,
-      _customChallenges: snapshot.challenges,
+      _v: 4,
+      _challenges: snapshot.challenges,
+      _habitLinks: profile.habitLinks,
       _dayLog: profile.dayLog,
       _shieldedDates: profile.shieldedDates,
       _shieldsThrough: profile.shieldsThrough,

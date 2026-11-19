@@ -12,12 +12,11 @@ import {
 } from '../core/ledger';
 import { settleDay, settleDayLog, recomputeDay, mergeDayRecords, mergeDayLogs } from '../core/dayLog';
 import { allocateShields } from '../core/streak';
-import { evaluateChallengeCycle, getCycleGraceBefore, ABANDONED_REASON } from '../core/cycle';
 import { reconcileProgression, ProgressionState } from '../core/progression';
 import { mergeSnapshots, mergeMissions, stableStringify, SyncSnapshot } from '../core/syncMerge';
 import { getLevelFromTotalXp } from '../core/xpEngine';
 import { addDaysToDateString } from '../core/dateUtils';
-import { DayRecord, Mission, ProtocolChallengeCycle, RewardGrant, UserProfile } from '../core/types';
+import { DayRecord, Mission, RewardGrant, UserProfile } from '../core/types';
 
 // ── Fábricas ─────────────────────────────────────────────────
 
@@ -55,21 +54,6 @@ const day = (date: string, completed: boolean, closed = true): DayRecord => ({
   xpTarget: 300,
   completed,
   closed,
-});
-
-const cycle = (startDate: string, extra: Partial<ProtocolChallengeCycle> = {}): ProtocolChallengeCycle => ({
-  id: 'c1',
-  cycleNumber: 1,
-  startDate,
-  targetDays: 66,
-  isEliteMode: false,
-  status: 'active',
-  currentDay: 1,
-  daysCompleted: 0,
-  checkIns: {},
-  totalXpEarned: 0,
-  createdAt: '',
-  ...extra,
 });
 
 const shield = { isEliteMode: false, equippedItems: [], extraShieldWeeks: [] };
@@ -256,50 +240,6 @@ describe('registro diário: fatos, não o momento em que o app abriu', () => {
   });
 });
 
-describe('desafio: o dia de criação nunca conta como falta', () => {
-  const start = '2026-11-09';
-
-  it('cenário real: criado no dia 9, cumpriu o dia 10, faltou no dia 11 → segue ativo', () => {
-    const c = cycle(start, { createdAt: new Date(2026, 10, 9, 22, 30).toISOString() });
-    const log = {
-      [start]: day(start, false),
-      '2026-11-10': day('2026-11-10', true),
-      '2026-11-11': day('2026-11-11', false),
-    };
-    const res = evaluateChallengeCycle(c, log, '2026-11-12');
-    expect(res.outcome).toBe('active');
-    expect(res.missesByWeek[1]).toBe(1);
-    expect(getCycleGraceBefore(c)).toBe('2026-11-10');
-  });
-
-  it('duas faltas reais na mesma semana continuam encerrando o ciclo', () => {
-    const c = cycle(start, { createdOn: start });
-    const log = {
-      [start]: day(start, true),
-      '2026-11-10': day('2026-11-10', false),
-      '2026-11-11': day('2026-11-11', false),
-    };
-    const res = evaluateChallengeCycle(c, log, '2026-11-12');
-    expect(res.outcome).toBe('failed');
-    expect(res.cycle.endedBy).toBe('rule');
-    expect(res.cycle.failedReason).toBe('2 faltas na Semana 1');
-  });
-
-  it('desafio agendado: o primeiro dia já vale (não foi criado nele)', () => {
-    const c = cycle(start, { createdOn: '2026-11-07', isEliteMode: true });
-    expect(getCycleGraceBefore(c)).toBeUndefined();
-    expect(evaluateChallengeCycle(c, { [start]: day(start, false) }, '2026-11-10').outcome).toBe('failed');
-  });
-
-  it('avaliar duas vezes os mesmos dados dá o mesmo resultado', () => {
-    const c = cycle(start, { createdOn: start });
-    const log = { [start]: day(start, true), '2026-11-10': day('2026-11-10', true) };
-    const once = evaluateChallengeCycle(c, log, '2026-11-11');
-    const twice = evaluateChallengeCycle(once.cycle, log, '2026-11-11');
-    expect(stableStringify(twice.cycle)).toBe(stableStringify(once.cycle));
-  });
-});
-
 describe('reconciliação única da progressão', () => {
   const today = '2026-11-12';
   const start = '2026-11-09';
@@ -309,8 +249,6 @@ describe('reconciliação única da progressão', () => {
     dayLog: { [start]: day(start, true) },
     shieldedDates: [],
     shieldsThrough: '2026-11-09',
-    activeChallenge: cycle(start, { createdOn: '2026-11-08' }),
-    challengeHistory: [],
     bestStreak: 0,
     ...extra,
   });
@@ -320,43 +258,35 @@ describe('reconciliação única da progressão', () => {
     const second = reconcileProgression(first, { today, missions: fullMissions, shield });
     expect(second.events).toEqual([]);
     expect(second.dayLog).toBe(first.dayLog);
-    expect(stableStringify(second.activeChallenge)).toBe(stableStringify(first.activeChallenge));
   });
 
-  it('enquanto a nuvem não chega, nada é fechado nem encerrado', () => {
+  it('enquanto a nuvem não chega, nada é fechado', () => {
     const res = reconcileProgression(base(), { today, missions: staleMissions, shield, settlePast: false });
     expect(res.events).toEqual([]);
-    expect(res.activeChallenge?.status).toBe('active');
     expect(res.dayLog['2026-11-10']).toBeUndefined();
   });
 
-  it('autocorreção: ciclo encerrado com dados atrasados volta quando os dados chegam', () => {
-    // 1. Aparelho atrasado fecha os dias 10 e 11 como faltas → encerra o ciclo
+  it('autocorreção: dia fechado como falta se corrige quando a marcação chega, e o escudo volta', () => {
     const stale = reconcileProgression(base(), { today, missions: staleMissions, shield });
-    expect(stale.events.map((e) => e.type)).toContain('cycle_failed');
-    expect(stale.activeChallenge).toBeUndefined();
-    expect(stale.challengeHistory[0].failedReason).toBe('2 faltas na Semana 1');
+    expect(stale.shieldedDates).toEqual(['2026-11-10']);
+    expect(stale.dayLog['2026-11-10'].completed).toBe(false);
 
-    // 2. Chega a marcação do dia 10 (feita no outro aparelho)
     const healed = reconcileProgression(stale, { today, missions: fullMissions, shield });
-    // (o escudo que tinha sido gasto no dia 10 é devolvido e passa a cobrir o dia 11)
-    expect(healed.events.map((e) => e.type)).toContain('cycle_restored');
-    expect(healed.shieldedDates).toEqual(['2026-11-11']);
-    expect(healed.activeChallenge?.status).toBe('active');
-    expect(healed.activeChallenge?.daysCompleted).toBe(2);
-    expect(healed.challengeHistory).toEqual([]);
     expect(healed.dayLog['2026-11-10'].completed).toBe(true);
+    // o escudo gasto no dia 10 é devolvido e passa a cobrir o dia 11
+    expect(healed.shieldedDates).toEqual(['2026-11-11']);
+    expect(healed.currentStreak).toBe(2);
   });
 
-  it('ciclo encerrado pelo próprio shinobi nunca volta sozinho', () => {
-    const abandoned = cycle(start, { status: 'failed', endedBy: 'user', failedReason: ABANDONED_REASON, createdOn: '2026-11-08' });
-    const res = reconcileProgression(base({ activeChallenge: undefined, challengeHistory: [abandoned] }), {
+  it('hábitos que não valem no dia (desafio encerrado) não entram na meta', () => {
+    const missions = [mission('a', 100, [today]), mission('old', 300)];
+    const res = reconcileProgression(base(), {
       today,
-      missions: [mission('a', 100, [start, '2026-11-10', '2026-11-11']), mission('b', 100)],
+      missions,
       shield,
+      isActive: (m) => m.id !== 'old',
     });
-    expect(res.activeChallenge).toBeUndefined();
-    expect(res.events).toEqual([]);
+    expect(res.dayLog[today]).toMatchObject({ xpTarget: 100, xpEarned: 100, completed: true });
   });
 
   it('escudo gasto em um dia que depois se revelou cumprido é devolvido', () => {
@@ -375,13 +305,12 @@ describe('sincronização: mesclar em vez de sobrescrever', () => {
   const start = '2026-11-09';
   const g = (key: string, at: string) => grant(key, 100, 50, at);
 
-  it('PC atrasado + celular em dia → o dia cumprido e o ciclo sobrevivem', () => {
-    // PC: abriu depois, fechou o dia 10 como falta e encerrou o ciclo (e é o lado "mais recente")
+  it('PC atrasado + celular em dia → o dia cumprido sobrevive', () => {
+    // PC: abriu depois e fechou o dia 10 como falta (e é o lado "mais recente")
     const pc = snapshot(
       profile({
         updatedAt: '2026-11-12T09:00:00.000Z',
         dayLog: { [start]: day(start, true), '2026-11-10': day('2026-11-10', false), '2026-11-11': day('2026-11-11', false) },
-        challengeHistory: [cycle(start, { status: 'failed', endedBy: 'rule', failedReason: '2 faltas na Semana 1' })],
         grants: { [`mission:a:${start}`]: g(`mission:a:${start}`, '2026-11-09T10:00:00.000Z') },
       }),
       [mission('a', 100, [start])]
@@ -391,7 +320,6 @@ describe('sincronização: mesclar em vez de sobrescrever', () => {
       profile({
         updatedAt: '2026-11-10T21:00:00.000Z',
         dayLog: { [start]: day(start, true), '2026-11-10': day('2026-11-10', true, false) },
-        activeChallenge: cycle(start),
         grants: {
           [`mission:a:${start}`]: g(`mission:a:${start}`, '2026-11-09T10:00:00.000Z'),
           'mission:a:2026-11-10': g('mission:a:2026-11-10', '2026-11-10T20:00:00.000Z'),
@@ -402,24 +330,8 @@ describe('sincronização: mesclar em vez de sobrescrever', () => {
 
     const merged = mergeSnapshots(pc, phone);
     expect(merged.profile.dayLog['2026-11-10'].completed).toBe(true);
-    expect(merged.profile.activeChallenge?.status).toBe('active');
-    expect(merged.profile.challengeHistory).toEqual([]);
     expect(merged.missions[0].completedDates).toEqual([start, '2026-11-10']);
     expect(merged.profile.totalXp).toBe(200);
-
-    // E a reconciliação confirma: 1 falta só (dia 11) → ciclo ativo
-    const result = reconcileProgression(
-      {
-        dayLog: merged.profile.dayLog,
-        shieldedDates: merged.profile.shieldedDates,
-        activeChallenge: merged.profile.activeChallenge,
-        challengeHistory: merged.profile.challengeHistory || [],
-        bestStreak: 0,
-      },
-      { today: '2026-11-12', missions: merged.missions, shield }
-    );
-    expect(result.activeChallenge?.status).toBe('active');
-    expect(result.events.filter((e) => e.type === 'cycle_failed')).toEqual([]);
   });
 
   it('é idempotente — o resultado mesclado não muda ao mesclar de novo com qualquer lado', () => {
@@ -490,13 +402,22 @@ describe('sincronização: mesclar em vez de sobrescrever', () => {
     expect(merged.profile.shieldedDates).toEqual([]);
   });
 
-  it('dois desafios ativos criados em aparelhos diferentes: fica o mais novo', () => {
-    const a = snapshot(profile({ activeChallenge: cycle(start, { id: 'old', createdAt: '2026-11-09T10:00:00.000Z' }) }));
-    const b = snapshot(
-      profile({ activeChallenge: cycle(addDaysToDateString(start, 2), { id: 'new', createdAt: '2026-11-11T10:00:00.000Z' }) })
-    );
+  it('desafios criados em aparelhos diferentes: os dois ficam (não há mais "o mais novo vence")', () => {
+    const mk = (id: string, createdAt: string) => ({
+      v: 2,
+      id,
+      title: id,
+      targetDays: 30,
+      startDate: start,
+      status: 'active' as const,
+      habits: [],
+      format: 'habits' as const,
+      createdAt,
+      updatedAt: createdAt,
+    });
+    const a = { ...snapshot(profile()), challenges: [mk('old', '2026-11-09T10:00:00.000Z')] };
+    const b = { ...snapshot(profile()), challenges: [mk('new', '2026-11-11T10:00:00.000Z')] };
     const merged = mergeSnapshots(a, b, { now: '2026-11-12T10:00:00.000Z' });
-    expect(merged.profile.activeChallenge?.id).toBe('new');
-    expect(merged.profile.challengeHistory?.[0]).toMatchObject({ id: 'old', status: 'failed', endedBy: 'user' });
+    expect(merged.challenges.map((c) => c.id)).toEqual(['new', 'old']);
   });
 });

@@ -142,6 +142,18 @@ export interface Measure {
   deletedAt?: string;  // lápide de exclusão
 }
 
+/**
+ * Vínculo de um hábito (missão) com um desafio.
+ *  - `challengeId: null` = hábito avulso (fora de desafio);
+ *  - `until` = último dia em que o hábito vale (hábito retirado, histórico preservado).
+ * Vence na mesclagem o vínculo com `at` mais recente.
+ */
+export interface HabitLink {
+  challengeId: string | null;
+  until?: string;
+  at: string;
+}
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -187,6 +199,7 @@ export interface UserProfile {
   bossesDefeated: number;
   missionsCompletedTotal: number;
   measures?: Record<string, Measure>;          // medidas do "antes e depois"
+  habitLinks?: Record<string, HabitLink>;      // a que desafio cada hábito (missão) pertence
   updatedAt?: string;                          // ISO — usado na sincronização
 }
 
@@ -321,27 +334,62 @@ export interface BoardMilestone {
   label: string;
 }
 
+/** Estado de um desafio — sempre CALCULADO (ver `core/challenges.ts`), nunca decidido na hora. */
+export type ChallengeState = 'scheduled' | 'active' | 'completed' | 'failed' | 'abandoned';
+
+/**
+ * Desafio (modelo único). Guarda só DEFINIÇÃO e DECISÕES do shinobi.
+ * Dia atual, dias cumpridos, faltas, adesão e o estado (em curso, concluído…)
+ * são derivados das marcações.
+ */
 export interface UserChallenge {
+  /** 2 = modelo único. Registros sem `v` vêm do formato antigo e são convertidos. */
+  v?: number;
   id: string;
   title: string;
   description?: string;
   category?: string;
   icon?: string;
-  targetDays: number; // Mínimo 21 dias
+  targetDays: number;
   startDate: string;
   endDate?: string;
+  /** Espelho do estado calculado, para telas antigas. Não é um fato: nunca é mesclado. */
   status: 'active' | 'completed' | 'paused' | 'archived';
   isOfficial66?: boolean;
+  /** Formato antigo dos hábitos de desafios personalizados (convertidos em missões). */
   habits: ChallengeHabit[];
   createdAt: string;
   completedAt?: string;
+
+  // ── Regras ──
+  /** Modo Elite: +20% de XP, sem escudo e qualquer falta encerra o desafio. */
+  isEliteMode?: boolean;
+  /** Dia (local) em que o desafio foi criado — esse dia nunca conta como falta. */
+  createdOn?: string;
+  /** Dias anteriores a esta data não contam como falta. */
+  graceBefore?: string;
+  cycleNumber?: number;
+
+  // ── Decisões do shinobi ──
+  /** Encerrado pelo shinobi antes do fim (concluído antes ou abandonado). */
+  closedAt?: string;
+  /** Último dia que conta (YYYY-MM-DD) quando encerrado pelo shinobi. */
+  closedOn?: string;
+  closeKind?: 'completed' | 'abandoned';
+  /** Última edição de título, duração, regras, estrutura ou decisão (vence na mesclagem). */
+  updatedAt?: string;
+
+  rewardXp?: number;
+  rewardRyo?: number;
 
   // ── Quadro de operação (format = 'board') ──
   /** 'habits' (padrão): um cartão por hábito. 'board': seções compactas com listas e tabelas. */
   format?: 'habits' | 'board';
   sections?: BoardSection[];
-  /** Marcações do quadro: data → chaves das células marcadas. */
+  /** Marcações do quadro: data → chaves das células marcadas (derivado de `cellStamps`). */
   marks?: Record<string, string[]>;
+  /** Cada marcar/desmarcar de célula com seu instante: `data|célula` → registro. Vence o mais recente. */
+  cellStamps?: Record<string, { on: boolean; at: string }>;
   /** % das tarefas obrigatórias para o dia contar como cumprido (padrão 80). */
   dailyGoalPct?: number;
   milestones?: BoardMilestone[];

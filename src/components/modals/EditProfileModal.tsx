@@ -180,7 +180,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
       missionLogs: [],
       lastCompletion: null,
     });
-    useChallengeStore.setState({ challenges: [], isDetailModalOpen: false, selectedChallengeForModal: null });
+    useChallengeStore.setState({ challenges: [], isDetailModalOpen: false, selectedChallengeId: null });
     useToolStore.setState({
       nutritionLogs: {},
       currentCalorieTarget: 2200,

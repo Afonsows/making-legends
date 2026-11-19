@@ -80,11 +80,13 @@ vi.mock('../utils/confetti', () => ({
 
 import { syncService } from '../services/syncService';
 import { useUserStore, createDefaultProfile } from '../state/useUserStore';
-import { useHabitStore, initialMissions } from '../state/useHabitStore';
+import { useHabitStore, initialMissions, isMissionActiveOn } from '../state/useHabitStore';
 import { useDuelStore } from '../state/useDuelStore';
 import { useChallengeStore } from '../state/useChallengeStore';
 import { originalAdversaries } from '../core/adversariesData';
 import { deriveTotals } from '../core/ledger';
+import { challengeStats, makeChallengeContext } from '../core/challenges';
+import { getTodayString } from '../core/dateUtils';
 import { Mission, UserProfile, Adversary, UserChallenge } from '../core/types';
 
 const USER = 'user-1';
@@ -152,6 +154,20 @@ const tick = (...indexes: number[]) => {
 const totals = () => {
   const p = useUserStore.getState().profile;
   return { totalXp: p.totalXp, ryo: p.ryo, level: p.level };
+};
+
+
+/** Desafio que leva os hábitos avulsos atuais (como era o antigo desafio principal). */
+const startChallenge = (opts: { targetDays: number; startDate?: string; isEliteMode?: boolean }) =>
+  useChallengeStore.getState().createChallenge({
+    title: 'Desafio',
+    ...opts,
+    moveMissionIds: useHabitStore.getState().missions.map((m) => m.id),
+  }).challenge!;
+const stateOf = (id: string) => {
+  const { challenges } = useChallengeStore.getState();
+  const ctx = makeChallengeContext(challenges, useHabitStore.getState().missions, useUserStore.getState().profile.habitLinks);
+  return challengeStats(challenges.find((c) => c.id === id)!, ctx, getTodayString());
 };
 
 describe('sincronização de ponta a ponta', () => {
@@ -239,77 +255,174 @@ describe('sincronização de ponta a ponta', () => {
     expect(totals()).toEqual(phoneTotals);
   });
 
-  it('BUG ORIGINAL: PC atrasado abre no dia seguinte e NÃO derruba o desafio', async () => {
-    // Dia 8: desafio agendado para o dia 9 (sem carência de criação), nos dois aparelhos
+  it('BUG ORIGINAL: PC atrasado abre no dia seguinte e NÃO derruba o desafio (Modo Elite)', async () => {
+    // Dia 8: desafio Elite agendado para o dia 9 (sem carência de criação), nos dois aparelhos
     at(8, 10);
-    useUserStore.getState().startChallenge({ targetDays: 66, startDate: '2026-11-09' });
+    const c = startChallenge({ targetDays: 66, startDate: '2026-11-09', isEliteMode: true });
     await sync();
     const pc = capture();
 
-    // Celular cumpre os dias 9 e 10; falta no dia 11
-    at(9, 20);
-    useUserStore.getState().checkDayTransition();
-    tick(3, 1);
-    await sync();
-    at(10, 20);
-    useUserStore.getState().checkDayTransition();
-    tick(3, 1);
-    await sync();
+    // Celular cumpre os dias 9, 10 e 11
+    for (const day of [9, 10, 11]) {
+      at(day, 20);
+      useUserStore.getState().checkDayTransition();
+      tick(3, 1);
+      await sync();
+    }
 
     // PC, fechado desde o dia 8, é aberto no dia 12 — a nuvem ainda não respondeu
     load(pc);
     at(12, 9);
     useUserStore.getState().setCloudGate('pending');
     useUserStore.getState().checkDayTransition();
-    expect(useUserStore.getState().profile.activeChallenge?.status).toBe('active');
     expect(useUserStore.getState().activeResetModal).toBeNull();
 
-    // A nuvem responde: os dias 9 e 10 chegam cumpridos
+    // A nuvem responde: os dias chegam cumpridos
     await sync();
     useUserStore.getState().setCloudGate('open');
     const state = useUserStore.getState();
-    expect(state.profile.dayLog['2026-11-09'].completed).toBe(true);
-    expect(state.profile.dayLog['2026-11-10'].completed).toBe(true);
-    expect(state.profile.dayLog['2026-11-11'].completed).toBe(false);
-    expect(state.profile.activeChallenge?.status).toBe('active');
-    expect(state.profile.activeChallenge?.daysCompleted).toBe(2);
+    expect(state.profile.dayLog['2026-11-11'].completed).toBe(true);
+    expect(stateOf(c.id).state).toBe('active');
+    expect(stateOf(c.id).daysCompleted).toBe(3);
     expect(state.activeResetModal).toBeNull();
   });
 
-  it('pior caso: PC offline encerra o ciclo por engano e ele é restaurado ao sincronizar', async () => {
+  it('pior caso: PC offline "encerra" o desafio Elite por engano e ele volta ao sincronizar', async () => {
     at(8, 10);
-    useUserStore.getState().startChallenge({ targetDays: 66, startDate: '2026-11-09' });
+    const c = startChallenge({ targetDays: 66, startDate: '2026-11-09', isEliteMode: true });
     await sync();
     const pc = capture();
 
-    at(9, 20);
-    useUserStore.getState().checkDayTransition();
-    tick(3, 1);
-    await sync();
-    at(10, 20);
-    useUserStore.getState().checkDayTransition();
-    tick(3, 1);
-    await sync();
+    for (const day of [9, 10, 11]) {
+      at(day, 20);
+      useUserStore.getState().checkDayTransition();
+      tick(3, 1);
+      await sync();
+    }
 
-    // PC abre SEM internet no dia 12: com o que ele sabe, foram 2 faltas → ciclo encerrado
+    // PC abre SEM internet no dia 12: com o que ele sabe, faltou no dia 9 → encerrado
     load(pc);
     at(12, 9);
     useUserStore.getState().checkDayTransition();
-    expect(useUserStore.getState().profile.activeChallenge).toBeUndefined();
+    expect(stateOf(c.id).state).toBe('failed');
     expect(useUserStore.getState().activeResetModal).not.toBeNull();
 
-    // A internet volta
+    // A internet volta: nada a restaurar à mão — o estado é recalculado das marcações
     await sync();
-    const state = useUserStore.getState();
-    expect(state.profile.activeChallenge?.status).toBe('active');
-    expect(state.profile.challengeHistory).toEqual([]);
-    expect(state.activeResetModal).toBeNull();
+    expect(stateOf(c.id).state).toBe('active');
+    expect(useUserStore.getState().activeResetModal).toBeNull();
 
-    // E o celular, ao sincronizar depois, continua com o ciclo ativo
+    // A nuvem guarda o desafio no formato novo (definição, sem estado gravado)
+    const row = cloud.tables.profiles.get(USER) as { avatar_config: Record<string, unknown> };
+    expect(row.avatar_config._v).toBe(4);
+    expect((row.avatar_config._challenges as UserChallenge[]).map((x) => x.id)).toEqual([c.id]);
+    expect(row.avatar_config._activeChallenge).toBeUndefined();
+  });
+
+  it('desafio criado no celular não some quando o PC atrasado edita algo antes de sincronizar', async () => {
+    at(9, 10);
     await sync();
-    const row = cloud.tables.profiles.get(USER) as { avatar_config: { _activeChallenge?: { status: string }; _v: number } };
-    expect(row.avatar_config._activeChallenge?.status).toBe('active');
-    expect(row.avatar_config._v).toBe(3);
+    const pc = capture();
+
+    // Celular cria um desafio e sincroniza
+    useChallengeStore.getState().createChallenge({ title: 'Leitura', targetDays: 30, habits: [{ ...initialMissions[2], title: 'Ler' }] });
+    await sync();
+    const phone = capture();
+
+    // PC (sem o desafio) faz uma edição e é o lado "mais recente"
+    load(pc);
+    at(9, 11);
+    useUserStore.getState().setProfileName('Afonso');
+    await sync();
+    expect(useChallengeStore.getState().challenges.map((x) => x.title)).toEqual(['Leitura']);
+    expect(useHabitStore.getState().missions.some((m) => m.title === 'Ler')).toBe(true);
+
+    // E o celular continua com ele
+    load(phone);
+    await sync();
+    expect(useChallengeStore.getState().challenges.map((x) => x.title)).toEqual(['Leitura']);
+  });
+
+  it('quadro de operação marcado nos dois aparelhos no mesmo dia: nada se perde', async () => {
+    at(9, 10);
+    const board = useChallengeStore.getState().createBoardChallenge('blank')!;
+    await sync();
+    const pc = capture();
+
+    // Celular marca a tarefa 1
+    useChallengeStore.getState().toggleBoardCells(board.id, ['tarefas.t1'], '2026-11-09');
+    await sync();
+
+    // PC (sem a marcação do celular) marca a tarefa 2
+    load(pc);
+    at(9, 11);
+    useChallengeStore.getState().toggleBoardCells(board.id, ['tarefas.t2'], '2026-11-09');
+    await sync();
+    const marks = useChallengeStore.getState().challenges.find((x) => x.id === board.id)!.marks;
+    expect(marks?.['2026-11-09']).toEqual(['tarefas.t1', 'tarefas.t2']);
+  });
+
+  it('nuvem com o antigo desafio principal encerrado pela regra: volta ativo, com as missões dentro', async () => {
+    const legacyMissions = initialMissions.slice(0, 3).map((m, i) => ({
+      id: m.id,
+      user_id: USER,
+      title: m.title,
+      pillar_id: m.pillarId,
+      rank: m.rank,
+      xp_reward: m.xpReward,
+      ryo_reward: m.ryoReward,
+      time_of_day: m.timeOfDay,
+      completed_dates: ['2026-11-02', '2026-11-03'],
+      is_custom: true,
+      mission_order: i + 1,
+      created_at: '2026-11-01T00:00:00+00:00',
+    }));
+    legacyMissions.forEach((m) => cloud.tables.missions.set(m.id, m));
+    cloud.tables.profiles.set(USER, {
+      id: USER,
+      name: 'Afonso',
+      has_completed_onboarding: true,
+      avatar_config: {
+        _v: 3,
+        _updatedAt: '2026-11-05T22:00:00.000Z',
+        _grants: {},
+        _revoked: {},
+        _challengeHistory: [
+          {
+            id: 'cycle_1',
+            cycleNumber: 1,
+            title: 'Protocolo',
+            targetDays: 66,
+            startDate: '2026-11-02',
+            status: 'failed',
+            failedReason: '2 faltas na Semana 1',
+            endDate: '2026-11-05',
+            currentDay: 4,
+            daysCompleted: 2,
+            checkIns: {},
+            totalXpEarned: 0,
+            createdAt: '2026-11-01T10:00:00.000Z',
+          },
+        ],
+        _customChallenges: [],
+      },
+      updated_at: '2026-11-05T22:00:00+00:00',
+    });
+
+    load(freshDevice(false));
+    await sync();
+    expect(useChallengeStore.getState().challenges.map((x) => x.id)).toEqual(['cycle_1']);
+    expect(stateOf('cycle_1').state).toBe('active');
+    expect(stateOf('cycle_1').daysCompleted).toBe(2);
+    expect(useHabitStore.getState().missions.filter((m) => isMissionActiveOn(m))).toHaveLength(3);
+
+    // A nuvem passa para o formato novo e estabiliza
+    const row = cloud.tables.profiles.get(USER) as { avatar_config: Record<string, unknown> };
+    expect(row.avatar_config._v).toBe(4);
+    expect(row.avatar_config._challengeHistory).toBeUndefined();
+    const links = row.avatar_config._habitLinks as Record<string, { challengeId: string | null }>;
+    expect(['mis_01', 'mis_02', 'mis_03'].map((id) => links[id].challengeId)).toEqual(['cycle_1', 'cycle_1', 'cycle_1']);
+    expect(await sync()).toBe(0);
   });
 
   it('nuvem no formato antigo: totais preservados na migração', async () => {
@@ -358,7 +471,7 @@ describe('sincronização de ponta a ponta', () => {
     expect(p.bestStreak).toBe(4);
 
     // A nuvem passa para o formato novo e estabiliza
-    expect((cloud.tables.profiles.get(USER) as { avatar_config: { _v: number } }).avatar_config._v).toBe(3);
+    expect((cloud.tables.profiles.get(USER) as { avatar_config: { _v: number } }).avatar_config._v).toBe(4);
     expect(await sync()).toBe(0);
   });
 

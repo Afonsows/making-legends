@@ -3,7 +3,9 @@ import { persist } from 'zustand/middleware';
 import { Mission, MissionLogEntry, TimeOfDay } from '../core/types';
 import { PillarId, MissionRank } from '../theme/types';
 import { shinobiTheme } from '../theme/shinobi.theme';
-import { getTodayString, isValidDateString } from '../core/dateUtils';
+import { addDaysToDateString, getTodayString, isValidDateString } from '../core/dateUtils';
+import { habitActiveOn, makeChallengeContext } from '../core/challenges';
+import { useChallengeStore } from './useChallengeStore';
 import { getDefaultRyoReward, calculateRyoGainWithBuffs } from '../core/ryoEngine';
 import { useUserStore } from './useUserStore';
 import { soundFx } from '../utils/audio';
@@ -66,6 +68,23 @@ function sanitizeMission(m: Mission, todayStr: string): Mission {
 }
 
 export const missionGrantKey = (missionId: string, date: string) => `mission:${missionId}:${date}`;
+
+/** A missão vale nesta data (desafio em curso, não retirada)? */
+export function isMissionActiveOn(mission: Mission, date: string = getTodayString()): boolean {
+  const links = useUserStore.getState().profile.habitLinks;
+  const ctx = makeChallengeContext(useChallengeStore.getState().challenges, useHabitStore.getState().missions, links);
+  return habitActiveOn(mission, links, ctx.index, date);
+}
+
+/** Grava o vínculo de hábitos com um desafio (`null` = avulso). */
+function linkHabits(ids: string[], challengeId: string | null) {
+  if (ids.length === 0) return;
+  const user = useUserStore.getState();
+  const at = new Date().toISOString();
+  const habitLinks = { ...(user.profile.habitLinks || {}) };
+  ids.forEach((id) => (habitLinks[id] = { challengeId, at }));
+  user.updateProfile({ habitLinks });
+}
 /** Marcação feita depois que o dia já passou: registra o fato, sem recompensa. */
 export const retroMarkKey = (missionId: string, date: string) => `retro:${missionId}:${date}`;
 
@@ -84,9 +103,20 @@ interface HabitStoreState {
   toggleCompleteMission: (missionId: string) => void;
   /** Marca uma missão em uma data já ocorrida, sem conceder recompensa retroativa. */
   toggleMissionOnDate: (missionId: string, date: string) => { success: boolean; isCompleted: boolean; reason?: string };
-  completeAllMissionsToday: () => void;
-  uncompleteAllMissionsToday: () => void;
-  addMission: (mission: Omit<Mission, 'id' | 'isCompletedToday' | 'completedDates' | 'order' | 'createdAt'>) => void;
+  completeAllMissionsToday: (ids?: string[]) => void;
+  uncompleteAllMissionsToday: (ids?: string[]) => void;
+  /** Cria um hábito em um desafio (ou avulso, com `challengeId` nulo). Devolve o id. */
+  addMission: (
+    mission: Omit<Mission, 'id' | 'isCompletedToday' | 'completedDates' | 'order' | 'createdAt'>,
+    challengeId?: string | null
+  ) => string;
+  /** Cria vários hábitos de uma vez em um desafio (sem som). Devolve os ids. */
+  addMissionsToChallenge: (
+    missions: Omit<Mission, 'id' | 'isCompletedToday' | 'completedDates' | 'order' | 'createdAt'>[],
+    challengeId: string | null
+  ) => string[];
+  /** Leva hábitos (avulsos) para um desafio. */
+  moveMissionsToChallenge: (ids: string[], challengeId: string) => void;
   updateMission: (id: string, updates: Partial<Mission>) => void;
   deleteMission: (id: string) => void;
   resetDailyMissionsIfNewDay: () => void;
@@ -128,6 +158,10 @@ export const useHabitStore = create<HabitStoreState>()(
         const userStore = useUserStore.getState();
         const key = missionGrantKey(mission.id, getTodayString());
         const grant = userStore.revokeReward(key);
+        // Hábito convertido do formato antigo: a recompensa de hoje pode estar na chave antiga
+        Object.keys(useUserStore.getState().profile.grants || {})
+          .filter((k) => k.startsWith('habit:') && k.endsWith(`:${mission.id}:${getTodayString()}`))
+          .forEach((k) => useUserStore.getState().revokeReward(k));
         if (grant) {
           log(mission, -grant.xp, -grant.ryo, 'reverted');
           return;
@@ -158,6 +192,8 @@ export const useHabitStore = create<HabitStoreState>()(
           if (!mission) return;
           const todayStr = getTodayString();
           const willBeCompleted = !(mission.completedDates || []).includes(todayStr);
+          // Hábito de desafio encerrado, agendado ou retirado não é marcado hoje
+          if (willBeCompleted && !isMissionActiveOn(mission, todayStr)) return;
 
           set((state) => ({
             missions: state.missions.map((m) => {
@@ -203,6 +239,9 @@ export const useHabitStore = create<HabitStoreState>()(
           if (!mission || !isValidDateString(date) || date > todayStr) {
             return { success: false, isCompleted: false, reason: 'Escolha uma data válida que não esteja no futuro.' };
           }
+          if (!(mission.completedDates || []).includes(date) && !isMissionActiveOn(mission, date)) {
+            return { success: false, isCompleted: false, reason: 'Esse hábito não fazia parte do desafio nesse dia.' };
+          }
           if (date === todayStr) {
             get().toggleCompleteMission(missionId);
             return { success: true, isCompleted: Boolean(get().missions.find((m) => m.id === missionId)?.isCompletedToday) };
@@ -239,37 +278,59 @@ export const useHabitStore = create<HabitStoreState>()(
           return { success: true, isCompleted: willBeCompleted };
         },
 
-        completeAllMissionsToday: () => {
-          const pending = get().missions.filter((m) => !m.isCompletedToday);
+        completeAllMissionsToday: (ids) => {
+          const pending = get().missions.filter(
+            (m) => !m.isCompletedToday && (!ids || ids.includes(m.id)) && isMissionActiveOn(m)
+          );
           if (pending.length === 0) return;
           pending.forEach((m) => {
             get().toggleCompleteMission(m.id);
           });
         },
 
-        uncompleteAllMissionsToday: () => {
-          const completed = get().missions.filter((m) => m.isCompletedToday);
+        uncompleteAllMissionsToday: (ids) => {
+          const completed = get().missions.filter((m) => m.isCompletedToday && (!ids || ids.includes(m.id)));
           if (completed.length === 0) return;
           completed.forEach((m) => {
             get().toggleCompleteMission(m.id);
           });
         },
 
-        addMission: (missionData) => {
-          const rewards = getRankRewards(missionData.rank);
-          const newMission: Mission = {
-            ...missionData,
-            id: `mis_custom_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-            xpReward: rewards.xp,
-            ryoReward: rewards.ryo,
-            isCompletedToday: false,
-            completedDates: [],
-            order: get().missions.length + 1,
-            createdAt: new Date().toISOString(),
-          };
-          set((state) => ({ missions: [...state.missions, newMission] }));
+        addMission: (missionData, challengeId = null) => {
+          const [id] = get().addMissionsToChallenge([missionData], challengeId);
           soundFx.playScrollOpen();
-          useUserStore.getState().touch();
+          return id;
+        },
+
+        addMissionsToChallenge: (list, challengeId) => {
+          const now = new Date().toISOString();
+          const created: Mission[] = list.map((data, i) => {
+            const rewards = getRankRewards(data.rank);
+            return {
+              ...data,
+              id: `mis_custom_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 6)}`,
+              xpReward: rewards.xp,
+              ryoReward: rewards.ryo,
+              timeOfDay: data.timeOfDay || 'anytime',
+              isCustom: true,
+              isCompletedToday: false,
+              completedDates: [],
+              order: get().missions.length + i + 1,
+              createdAt: now,
+            };
+          });
+          if (created.length === 0) return [];
+          set((state) => ({ missions: [...state.missions, ...created] }));
+          linkHabits(
+            created.map((m) => m.id),
+            challengeId
+          );
+          useUserStore.getState().reconcile({ silent: true });
+          return created.map((m) => m.id);
+        },
+
+        moveMissionsToChallenge: (ids, challengeId) => {
+          linkHabits(ids, challengeId);
           useUserStore.getState().reconcile({ silent: true });
         },
 
@@ -320,13 +381,38 @@ export const useHabitStore = create<HabitStoreState>()(
         deleteMission: (id) => {
           const mission = get().missions.find((m) => m.id === id);
           if (!mission) return;
-          if ((mission.completedDates || []).includes(getTodayString())) revertTodayReward(mission);
+          const todayStr = getTodayString();
+          if ((mission.completedDates || []).includes(todayStr)) revertTodayReward(mission);
+
+          // Hábito de desafio com histórico: é retirado (some de Hoje), mas o histórico
+          // do desafio continua contando os dias em que ele valeu.
+          const user = useUserStore.getState();
+          const link = user.profile.habitLinks?.[id];
+          const hasHistory = (mission.completedDates || []).some((d) => d < todayStr);
+          if (link?.challengeId && hasHistory) {
+            set((state) => ({
+              missions: state.missions.map((m) =>
+                m.id === id
+                  ? { ...m, completedDates: (m.completedDates || []).filter((d) => d !== todayStr), isCompletedToday: false }
+                  : m
+              ),
+            }));
+            user.updateProfile({
+              habitLinks: {
+                ...user.profile.habitLinks,
+                [id]: { ...link, until: addDaysToDateString(todayStr, -1), at: new Date().toISOString() },
+              },
+            });
+            useUserStore.getState().reconcile({ silent: true });
+            return;
+          }
+
           set((state) => ({
             missions: state.missions.filter((m) => m.id !== id).map((m, idx) => ({ ...m, order: idx + 1 })),
           }));
           // Lápide: garante que a exclusão chegue aos outros aparelhos e à nuvem
-          const user = useUserStore.getState();
-          user.updateProfile({ deletedMissions: { ...user.profile.deletedMissions, [id]: new Date().toISOString() } });
+          const latest = useUserStore.getState();
+          latest.updateProfile({ deletedMissions: { ...latest.profile.deletedMissions, [id]: new Date().toISOString() } });
           useUserStore.getState().reconcile({ silent: true });
         },
 
@@ -355,7 +441,11 @@ export const useHabitStore = create<HabitStoreState>()(
               )
             ),
           });
-          user.updateProfile({ deletedMissions: deleted });
+          const habitLinks = { ...(user.profile.habitLinks || {}) };
+          newMissions.forEach((m) => {
+            if (!habitLinks[m.id]) habitLinks[m.id] = { challengeId: null, at: now };
+          });
+          user.updateProfile({ deletedMissions: deleted, habitLinks });
         },
 
         replaceMissions: (newMissions) => {

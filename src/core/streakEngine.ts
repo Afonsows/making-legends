@@ -5,9 +5,10 @@
  *
  *  dayLog.ts       registro diário (fatos → Dia Cumprido)
  *  streak.ts       sequência e Escudo de Chakra
- *  cycle.ts        desafio: regra semanal de faltas, conclusão, restauração
+ *  challenges.ts   desafios: estado e indicadores derivados das marcações
+ *  cycle.ts        leitura dos ciclos do formato antigo
  *  ledger.ts       livro-razão de XP/Ryō (totais sempre derivados)
- *  progression.ts  reconciliação única + status para a interface
+ *  progression.ts  reconciliação única de dias, escudos e sequência
  *  syncMerge.ts    mesclagem entre aparelhos
  */
 
@@ -25,15 +26,11 @@ export * from './dayLog';
 export * from './streak';
 export * from './cycle';
 export * from './progression';
+export * from './challenges';
 
-import { UserProfile, Mission, DayRecord, ProtocolChallengeCycle } from './types';
+import { UserProfile, Mission, DayRecord } from './types';
 import { getTodayString, isValidDateString } from './dateUtils';
 import { settleDay } from './dayLog';
-
-/** Retorna o ciclo ativo, se houver. */
-export function ensureActiveChallenge(profile: UserProfile): ProtocolChallengeCycle | undefined {
-  return profile.activeChallenge && profile.activeChallenge.status === 'active' ? profile.activeChallenge : undefined;
-}
 
 /**
  * Migração de dados legados (v1 → v2): reconstrói o histórico diário a partir
