@@ -393,4 +393,6 @@ export interface UserChallenge {
   /** % das tarefas obrigatórias para o dia contar como cumprido (padrão 80). */
   dailyGoalPct?: number;
   milestones?: BoardMilestone[];
+  /** Ajustes automáticos já aplicados a este quadro (ids de `BOARD_FIXES`). */
+  boardFixes?: string[];
 }

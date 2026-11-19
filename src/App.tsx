@@ -27,7 +27,7 @@ import { ToastHost } from './components/ui/ToastHost';
 import { useApplyTheme } from './components/ui/kit';
 import { useUIStore } from './state/useUIStore';
 import { useAchievementToasts } from './components/status/Achievements';
-import { useChallengeStore, migrateLegacyChallenges } from './state/useChallengeStore';
+import { useChallengeStore, migrateLegacyChallenges, applyBoardFixes } from './state/useChallengeStore';
 import { useChallengeContext } from './state/challengeSelectors';
 import { activeMissionsOn } from './core/challenges';
 import { soundFx } from './utils/audio';
@@ -55,6 +55,8 @@ export const AppContent: React.FC = () => {
   useEffect(() => {
     // Dados guardados no formato antigo de desafios passam para o modelo único
     migrateLegacyChallenges();
+    // Ajustes pontuais em quadros já criados (ex.: rede retirada de uma marca)
+    applyBoardFixes();
     const user = useUserStore.getState();
     soundFx.setSoundEnabled(user.profile.notificationSettings.soundEnabled !== false);
     user.syncInventory();

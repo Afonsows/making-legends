@@ -6,7 +6,7 @@ import { mergeSnapshots, stableStringify, SyncSnapshot } from '../core/syncMerge
 import { normalizeChallengeData } from '../core/challenges';
 import { useUserStore, migrateProfile } from '../state/useUserStore';
 import { useHabitStore } from '../state/useHabitStore';
-import { useChallengeStore, setChallengesSilently, migrateLegacyChallenges } from '../state/useChallengeStore';
+import { useChallengeStore, setChallengesSilently, migrateLegacyChallenges, applyBoardFixes } from '../state/useChallengeStore';
 import { useDuelStore } from '../state/useDuelStore';
 import { useToolStore } from '../state/useToolStore';
 
@@ -466,6 +466,8 @@ class SyncService {
 
     if (stableStringify(merged.challenges) !== stableStringify(local.challenges)) {
       setChallengesSilently(merged.challenges);
+      // Um quadro vindo de outro aparelho pode ainda não ter os ajustes pontuais
+      applyBoardFixes();
     }
 
     if (stableStringify(merged.bossHp) !== stableStringify(local.bossHp)) {

@@ -31,7 +31,7 @@ vi.mock('../services/syncService', () => ({
 import { useUserStore, createDefaultProfile } from '../state/useUserStore';
 import { useHabitStore, initialMissions } from '../state/useHabitStore';
 import { useDuelStore } from '../state/useDuelStore';
-import { useChallengeStore } from '../state/useChallengeStore';
+import { useChallengeStore, applyBoardFixes } from '../state/useChallengeStore';
 import { originalAdversaries } from '../core/adversariesData';
 import { getTodayString, addDaysToDateString } from '../core/dateUtils';
 import { deriveTotals } from '../core/ledger';
@@ -102,11 +102,15 @@ describe('quadro de operação: regras puras', () => {
   const thu = '2026-11-19'; // quinta-feira
   const sun = '2026-11-22'; // domingo
 
-  it('modelo de afiliado: 3 relâmpago + 45 vídeos + 6 métricas obrigatórias; revisão semanal só no domingo', () => {
+  it('modelo de afiliado: 3 relâmpago + 42 vídeos (Setup sem Pinterest) + 6 métricas; revisão semanal só no domingo', () => {
     const c = makeBoard(thu);
-    expect(boardDayProgress(c, thu).total).toBe(54);
+    expect(boardDayProgress(c, thu).total).toBe(51);
     expect(boardDayProgress(c, thu).optionalTotal).toBe(3);
-    expect(boardDayProgress(c, sun).total).toBe(55);
+    expect(boardDayProgress(c, sun).total).toBe(52);
+    const cols = (id: string) => c.sections!.find((s) => s.id === id)!.columns!.map((col) => col.id);
+    expect(cols('aps')).toEqual(['rev', 'tt', 'ig', 'yt']);
+    expect(cols('apc')).toContain('pin');
+    expect(cols('apm')).toContain('pin');
   });
 
   it('marcos fora do período não entram', () => {
@@ -245,6 +249,42 @@ describe('quadro de operação: loja e recompensas', () => {
       .challenges[0].sections!.map((s) => (s.id === 'met' ? { ...s, rows: s.rows.filter((r) => r.id !== 'ml') } : s));
     useChallengeStore.getState().updateBoard(ch.id, { sections });
     expect(xp()).toBe(before);
+  });
+
+  it('quadro antigo perde o Pinterest do Setup uma vez só, com estorno; Casa e pra Mim mantêm', () => {
+    const ch = useChallengeStore.getState().createBoardChallenge('afiliado-40')!;
+    const today = getTodayString();
+    // Simula o quadro criado antes do ajuste: Setup com Pinterest e sem a marca do ajuste
+    useChallengeStore.setState((s) => ({
+      challenges: s.challenges.map((c) => ({
+        ...c,
+        boardFixes: undefined,
+        sections: c.sections!.map((sec) =>
+          sec.id === 'aps' ? { ...sec, columns: [...sec.columns!, { id: 'pin', label: 'Pinterest' }] } : sec
+        ),
+      })),
+    }));
+    const before = xp();
+    useChallengeStore.getState().toggleBoardCells(ch.id, ['aps.v1.pin'], today);
+    expect(xp()).toBeGreaterThan(before);
+
+    applyBoardFixes();
+    const fixed = useChallengeStore.getState().challenges[0];
+    const cols = (id: string) => fixed.sections!.find((s) => s.id === id)!.columns!.map((c) => c.id);
+    expect(cols('aps')).toEqual(['rev', 'tt', 'ig', 'yt']);
+    expect(cols('apc')).toContain('pin');
+    expect(cols('apm')).toContain('pin');
+    expect(fixed.boardFixes).toEqual(['afiliado-aps-sem-pinterest']);
+    expect(xp()).toBe(before);
+
+    // Se o dono devolver o Pinterest depois, o ajuste não o tira de novo
+    useChallengeStore.getState().updateBoard(ch.id, {
+      sections: fixed.sections!.map((sec) =>
+        sec.id === 'aps' ? { ...sec, columns: [...sec.columns!, { id: 'pin', label: 'Pinterest' }] } : sec
+      ),
+    });
+    applyBoardFixes();
+    expect(useChallengeStore.getState().challenges[0].sections!.find((s) => s.id === 'aps')!.columns).toHaveLength(5);
   });
 
   it('excluir o quadro estorna tudo o que ele deu', () => {

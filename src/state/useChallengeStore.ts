@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { UserChallenge, Mission, BoardSection, BoardMilestone } from '../core/types';
 import {
+  BOARD_FIXES,
   BOARD_TEMPLATES,
   boardGrantPrefix,
   desiredBoardGrants,
@@ -339,7 +340,7 @@ interface ChallengeStoreState {
   /** Salva a estrutura do quadro (seções, meta do dia, marcos). */
   updateBoard: (
     challengeId: string,
-    updates: { sections?: BoardSection[]; dailyGoalPct?: number; milestones?: BoardMilestone[] }
+    updates: { sections?: BoardSection[]; dailyGoalPct?: number; milestones?: BoardMilestone[]; boardFixes?: string[] }
   ) => void;
 }
 
@@ -540,6 +541,8 @@ export const useChallengeStore = create<ChallengeStoreState>()(
             marks: {},
             dailyGoalPct: template.dailyGoalPct,
             milestones,
+            // O modelo já vem com os ajustes da sua categoria
+            boardFixes: BOARD_FIXES.filter((f) => f.category === template.category).map((f) => f.id),
           };
           set((state) => ({
             challenges: [challenge, ...state.challenges],
@@ -618,6 +621,7 @@ export const useChallengeStore = create<ChallengeStoreState>()(
                     .sort((a, b) => a.date.localeCompare(b.date)),
                 }
               : {}),
+            ...(updates.boardFixes ? { boardFixes: updates.boardFixes } : {}),
           };
           replace(updated);
           syncBoardRewards(updated);
@@ -677,6 +681,21 @@ export function migrateLegacyChallenges(today: string = getTodayString()): void 
     profile: { ...state.profile, habitLinks: result.links, activeChallenge: undefined, challengeHistory: [] },
   }));
   useUserStore.getState().reconcile({ silent: true });
+}
+
+/**
+ * Aplica em quadros já criados os ajustes de `BOARD_FIXES` que ainda faltam
+ * (uma vez por quadro: o id do ajuste fica gravado no próprio desafio e viaja na sincronização).
+ */
+export function applyBoardFixes(): void {
+  const store = useChallengeStore.getState();
+  store.challenges.forEach((c) => {
+    if (!isBoard(c)) return;
+    const pending = BOARD_FIXES.filter((f) => f.category === c.category && !(c.boardFixes || []).includes(f.id));
+    if (!pending.length) return;
+    const sections = pending.reduce((acc, f) => f.apply(acc), c.sections || []);
+    store.updateBoard(c.id, { sections, boardFixes: [...(c.boardFixes || []), ...pending.map((f) => f.id)] });
+  });
 }
 
 // ─────────────────────────────────────────────────────────────

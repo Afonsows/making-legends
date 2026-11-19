@@ -313,23 +313,36 @@ const NETWORKS = [
   { id: 'pin', label: 'Pinterest' },
 ];
 
-const brandMatrix = (id: string, title: string, code: string, color: string): BoardSection => ({
+const brandMatrix = (id: string, title: string, code: string, color: string, skip: string[] = []): BoardSection => ({
   id,
   title,
   kind: 'matrix',
   pillarId: 'genjutsu',
   color,
   rows: [1, 2, 3].map((n) => ({ id: `v${n}`, label: `${code} 0${n}` })),
-  columns: NETWORKS.map((n) => ({ ...n })),
+  columns: NETWORKS.filter((n) => !skip.includes(n.id)).map((n) => ({ ...n })),
 });
+
+/** Ajustes pontuais em quadros já criados (aplicados uma vez por quadro, marcados em `boardFixes`). */
+export const BOARD_FIXES: { id: string; category: string; apply: (sections: BoardSection[]) => BoardSection[] }[] = [
+  {
+    // 19/11/2026: o Achei pro Setup não posta no Pinterest
+    id: 'afiliado-aps-sem-pinterest',
+    category: 'Operação Afiliado',
+    apply: (sections) =>
+      sections.map((s) =>
+        s.id === 'aps' && s.kind === 'matrix' ? { ...s, columns: (s.columns || []).filter((c) => c.id !== 'pin') } : s
+      ),
+  },
+];
 
 export const BOARD_TEMPLATES: BoardTemplate[] = [
   {
     id: 'afiliado-40',
     title: 'Operação Afiliado · 40 dias',
-    subtitle: '9 vídeos/dia nas 4 redes, métricas, relâmpago e curadoria',
+    subtitle: '9 vídeos/dia nas redes, métricas, relâmpago e curadoria',
     description:
-      '40 dias de operação: 3 vídeos por marca revisados e postados no TikTok, Instagram, YouTube e Pinterest, métricas acompanhadas todo dia e ofertas relâmpago atualizadas nos 3 sites. Rumo à Black Friday, ao 12.12 e ao Natal.',
+      '40 dias de operação: 3 vídeos por marca revisados e postados no TikTok, Instagram e YouTube (e no Pinterest, para Casa e pra Mim), métricas acompanhadas todo dia e ofertas relâmpago atualizadas nos 3 sites. Rumo à Black Friday, ao 12.12 e ao Natal.',
     category: 'Operação Afiliado',
     icon: '🎬',
     targetDays: 40,
@@ -349,14 +362,14 @@ export const BOARD_TEMPLATES: BoardTemplate[] = [
       },
       brandMatrix('apc', 'Achei em Casa', 'APC', '#6F8F72'),
       brandMatrix('apm', 'Achei pra Mim', 'APM', '#C4877F'),
-      brandMatrix('aps', 'Achei pro Setup', 'APS', '#2F5BEA'),
+      brandMatrix('aps', 'Achei pro Setup', 'APS', '#2F5BEA', ['pin']),
       {
         id: 'met',
         title: 'Métricas do dia',
         kind: 'list',
         pillarId: 'ninjutsu',
         rows: [
-          { id: 'redes', label: 'Views, seguidores e salvamentos nas 4 redes' },
+          { id: 'redes', label: 'Views, seguidores e salvamentos nas redes' },
           { id: 'ml', label: 'Cliques e vendas no Mercado Livre' },
           { id: 'amz', label: 'Cliques e vendas na Amazon' },
           { id: 'top', label: 'Vídeo campeão do dia: anotar o gancho' },
