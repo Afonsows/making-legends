@@ -284,6 +284,43 @@ export interface ChallengeHabit {
   createdAt: string;
 }
 
+/** Uma linha de uma seção do quadro (tarefa na lista, ou linha da tabela). */
+export interface BoardRow {
+  id: string;
+  label: string;
+  /** Tarefa opcional: dá recompensa, mas não entra na meta do dia. */
+  optional?: boolean;
+  /** Dias da semana em que a linha aparece (0 = domingo). Vazio/ausente = todos os dias. */
+  weekdays?: number[];
+}
+
+export interface BoardColumn {
+  id: string;
+  label: string;
+}
+
+/**
+ * Seção do quadro de operação.
+ *  - `list`: cada linha é uma tarefa com um único check.
+ *  - `matrix`: tabela linhas × colunas (ex.: vídeo × rede social); cada célula é um check.
+ */
+export interface BoardSection {
+  id: string;
+  title: string;
+  kind: 'list' | 'matrix';
+  pillarId?: PillarId;
+  color?: string;
+  rows: BoardRow[];
+  columns?: BoardColumn[];
+}
+
+/** Data marcante dentro do desafio (ex.: Black Friday). */
+export interface BoardMilestone {
+  id: string;
+  date: string; // YYYY-MM-DD
+  label: string;
+}
+
 export interface UserChallenge {
   id: string;
   title: string;
@@ -298,4 +335,14 @@ export interface UserChallenge {
   habits: ChallengeHabit[];
   createdAt: string;
   completedAt?: string;
+
+  // ── Quadro de operação (format = 'board') ──
+  /** 'habits' (padrão): um cartão por hábito. 'board': seções compactas com listas e tabelas. */
+  format?: 'habits' | 'board';
+  sections?: BoardSection[];
+  /** Marcações do quadro: data → chaves das células marcadas. */
+  marks?: Record<string, string[]>;
+  /** % das tarefas obrigatórias para o dia contar como cumprido (padrão 80). */
+  dailyGoalPct?: number;
+  milestones?: BoardMilestone[];
 }

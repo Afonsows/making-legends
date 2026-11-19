@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useChallengeStore } from '../../state/useChallengeStore';
 import { PillarId } from '../../theme/types';
+import { BOARD_TEMPLATES } from '../../core/board';
+import { LayoutGrid } from 'lucide-react';
 import { 
   X, 
   Sparkles, 
@@ -32,7 +34,7 @@ export const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({
   isOpen,
   onClose,
 }) => {
-  const { createChallenge } = useChallengeStore();
+  const { createChallenge, createBoardChallenge } = useChallengeStore();
 
   const suggestions: DurationSuggestion[] = [
     { days: 21, label: 'Hábito Básico', color: 'bg-blue-600/30 border-blue-500/50' },
@@ -144,8 +146,8 @@ export const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({
   };
 
   return (
-    <div className="modal-overlay z-[100] bg-slate-950/40 animate-in fade-in duration-300">
-      <div className="liquid-glass-card bg-slate-900/45 border border-white/20 w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col modal-panel my-auto relative z-[101]">
+    <div className="modal-overlay z-[100] animate-in fade-in">
+      <div className="bg-bg border border-line w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col modal-panel my-auto relative z-[101]">
         {/* Sheen superior */}
         <div className="absolute top-0 inset-x-0 h-[1.5px] bg-transparent pointer-events-none" />
         <div className="hidden" />
@@ -184,6 +186,43 @@ export const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({
             </div>
           )}
 
+          {/* Quadro de operação (modelos prontos) */}
+          <div className="space-y-2">
+            <div>
+              <h4 className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                <LayoutGrid className="w-3.5 h-3.5 text-shinobi-gold" />
+                <span>Quadro de operação</span>
+              </h4>
+              <p className="text-[11px] text-slate-400">
+                Para rotinas com muitas tarefas por dia: seções que se fecham sozinhas, listas e tabelas compactas. Começa hoje e é todo personalizável.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {BOARD_TEMPLATES.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => {
+                    createBoardChallenge(t.id);
+                    onClose();
+                  }}
+                  className="p-3 rounded-2xl border border-slate-800 bg-slate-950/70 hover:border-shinobi-gold text-left transition-colors"
+                >
+                  <span className="block text-sm font-bold text-slate-100">
+                    {t.icon} {t.title}
+                  </span>
+                  <span className="block text-[11px] text-slate-400 mt-1 leading-snug">{t.subtitle}</span>
+                  <span className="block text-[10px] font-mono text-shinobi-gold mt-1.5">{t.targetDays} dias · começa hoje</span>
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-3 pt-2">
+              <span className="h-px flex-1 bg-slate-800" />
+              <span className="text-[10px] uppercase tracking-widest text-slate-500">ou desafio de hábitos</span>
+              <span className="h-px flex-1 bg-slate-800" />
+            </div>
+          </div>
+
           {/* Título e Categoria */}
           <div className="space-y-3">
             <div>
@@ -195,7 +234,6 @@ export const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Ex: Desafio 21 Dias de Foco Total, Protocolo 90 Dias..."
-                required
                 className="w-full bg-slate-950/90 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-shinobi-gold transition-colors"
               />
             </div>

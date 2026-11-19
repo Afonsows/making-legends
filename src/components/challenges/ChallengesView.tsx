@@ -9,6 +9,7 @@ import { EditChallengeModal } from './EditChallengeModal';
 import { UserChallenge } from '../../core/types';
 import { Bar, Menu, SectionHeader, Stat } from '../ui/kit';
 import { ChevronRight, History, Map, Pencil, Plus, Trash2 } from 'lucide-react';
+import { boardCells, boardStats, isBoard } from '../../core/board';
 
 /** Dia corrente e percentual de um desafio personalizado. */
 export function getChallengeProgress(challenge: Pick<UserChallenge, 'startDate' | 'targetDays'>, today: string) {
@@ -50,7 +51,9 @@ export const ChallengesView: React.FC = () => {
   const customChallenges = challenges.filter((c) => !c.isOfficial66 && c.id !== 'challenge_official_66');
 
   const activeCount = (status.hasActiveChallenge ? 1 : 0) + customChallenges.filter((c) => c.status === 'active').length;
-  const habitsCount = missions.length + customChallenges.reduce((acc, c) => acc + (c.habits?.length || 0), 0);
+  const habitsCount =
+    missions.length +
+    customChallenges.reduce((acc, c) => acc + (isBoard(c) ? boardCells(c, todayStr).length : c.habits?.length || 0), 0);
   const doneToday = missions.filter((m) => m.isCompletedToday).length;
   const daysCompleted = profile.activeChallenge?.daysCompleted ?? 0;
 
@@ -147,9 +150,12 @@ export const ChallengesView: React.FC = () => {
         {customChallenges.length > 0 ? (
           <div className="mt-2 space-y-2.5">
             {customChallenges.map((challenge) => {
-              const { daysElapsed, percent } = getChallengeProgress(challenge, todayStr);
-              const total = challenge.habits?.length || 0;
-              const done = challenge.habits?.filter((h) => h.completedDates.includes(todayStr)).length || 0;
+              const board = isBoard(challenge) ? boardStats(challenge, todayStr) : null;
+              const { daysElapsed, percent } = board
+                ? { daysElapsed: board.dayNumber, percent: board.timePct }
+                : getChallengeProgress(challenge, todayStr);
+              const total = board ? board.today.total : challenge.habits?.length || 0;
+              const done = board ? board.today.done : challenge.habits?.filter((h) => h.completedDates.includes(todayStr)).length || 0;
               const completed = challenge.status === 'completed';
               return (
                 <div
@@ -175,6 +181,12 @@ export const ChallengesView: React.FC = () => {
                           {' '}
                           · {done}/{total} hoje
                         </span>
+                        {board && (
+                          <span className={board.today.completed ? 'text-ok font-semibold' : 'text-ink3'}>
+                            {' '}
+                            · {board.today.completed ? 'meta batida' : `${board.today.pct}%`}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="-mt-2 -mr-2" onClick={(e) => e.stopPropagation()}>

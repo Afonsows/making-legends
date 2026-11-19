@@ -1,12 +1,21 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { UserChallenge, ChallengeHabit, UserProfile, Mission } from '../core/types';
+import { UserChallenge, ChallengeHabit, UserProfile, Mission, BoardSection, BoardMilestone } from '../core/types';
+import {
+  BOARD_TEMPLATES,
+  boardEndDate,
+  boardGrantPrefix,
+  desiredBoardGrants,
+  instantiateTemplate,
+  isBoard,
+  sanitizeSections,
+} from '../core/board';
 import { PillarId } from '../theme/types';
 import { getTodayString } from '../core/dateUtils';
 import { getCycleTargetDays } from '../core/streakEngine';
 import { addDaysToDateString } from '../core/dateUtils';
 import { soundFx } from '../utils/audio';
-import { triggerMissionConfetti } from '../utils/confetti';
+import { triggerDayCompleteConfetti, triggerMissionConfetti } from '../utils/confetti';
 import { useUserStore } from './useUserStore';
 import { useHabitStore } from './useHabitStore';
 
@@ -22,8 +31,43 @@ function revokeTodayHabitGrants(challengeId: string, habitIds: string[]) {
 /** Remove todas as recompensas vinculadas a um desafio personalizado. */
 function revokeChallengeHabitGrants(challengeId: string) {
   Object.keys(useUserStore.getState().profile.grants || {})
-    .filter((key) => key.startsWith(`habit:${challengeId}:`))
+    .filter((key) => key.startsWith(`habit:${challengeId}:`) || key.startsWith(`board:${challengeId}:`))
     .forEach((key) => useUserStore.getState().revokeReward(key));
+}
+
+/**
+ * Deixa os lançamentos de HOJE de um quadro iguais ao que as marcações merecem
+ * (células, seções completas e dia cumprido). Idempotente: rodar de novo não muda nada.
+ * Retorna as conquistas novas (seções/dia) para a celebração.
+ */
+function syncBoardRewards(challenge: UserChallenge): { sections: string[]; day: boolean } {
+  const gained = { sections: [] as string[], day: false };
+  if (!isBoard(challenge) || challenge.status !== 'active') return gained;
+  const today = getTodayString();
+  const prefix = boardGrantPrefix(challenge.id, today);
+  const inRange = today >= challenge.startDate && today <= boardEndDate(challenge);
+  const desired = inRange ? desiredBoardGrants(challenge, today) : [];
+  const desiredKeys = new Set(desired.map((d) => d.key));
+
+  Object.keys(useUserStore.getState().profile.grants || {})
+    .filter((key) => key.startsWith(prefix) && !desiredKeys.has(key))
+    .forEach((key) => useUserStore.getState().revokeReward(key));
+
+  desired.forEach((d) => {
+    if (useUserStore.getState().profile.grants?.[d.key]) return;
+    const grant = useUserStore.getState().grantReward({
+      key: d.key,
+      label: d.label,
+      baseXp: d.xp,
+      baseRyo: d.ryo,
+      pillarId: d.pillarId,
+      dealDamage: d.dealDamage,
+    });
+    if (!grant) return;
+    if (d.kind === 'section') gained.sections.push(d.label.replace(/^Seção completa: /, ''));
+    if (d.kind === 'day') gained.day = true;
+  });
+  return gained;
 }
 
 export interface DayStripInfo {
@@ -335,6 +379,23 @@ interface ChallengeStoreState {
   ) => { isCompleted: boolean; currentStreak: number; bestStreak: number; blockedReason?: string };
 
   autoCompleteExpiredChallenges: () => void;
+
+  // ── Quadro de operação ──
+  /** Cria um desafio em formato de quadro a partir de um modelo (começa hoje, salvo `startDate`). */
+  createBoardChallenge: (
+    templateId: string,
+    overrides?: { title?: string; targetDays?: number; startDate?: string }
+  ) => UserChallenge | null;
+  /**
+   * Marca/desmarca células do quadro em uma data. Sem `value`, inverte o grupo
+   * (marca tudo se faltar alguma; senão desmarca tudo).
+   */
+  toggleBoardCells: (challengeId: string, keys: string[], date: string, value?: boolean) => { blockedReason?: string };
+  /** Salva a estrutura do quadro (seções, meta do dia, marcos). */
+  updateBoard: (
+    challengeId: string,
+    updates: { sections?: BoardSection[]; dailyGoalPct?: number; milestones?: BoardMilestone[] }
+  ) => void;
 }
 
 export const useChallengeStore = create<ChallengeStoreState>()(
@@ -464,6 +525,8 @@ export const useChallengeStore = create<ChallengeStoreState>()(
                 : state.selectedChallengeForModal,
           };
         });
+        const after = get().challenges.find((c) => c.id === challengeId);
+        if (after && isBoard(after)) syncBoardRewards(after);
       },
 
       deleteChallenge: (challengeId) => {
@@ -760,6 +823,113 @@ export const useChallengeStore = create<ChallengeStoreState>()(
           return c;
         });
         if (changed) setChallengesSilently(updated);
+      },
+
+      createBoardChallenge: (templateId, overrides = {}) => {
+        const template = BOARD_TEMPLATES.find((t) => t.id === templateId);
+        if (!template) return null;
+        const startDate = overrides.startDate || getTodayString();
+        const targetDays = Math.max(7, Math.round(overrides.targetDays || template.targetDays));
+        const { sections, milestones } = instantiateTemplate(template, startDate, targetDays);
+        const challenge: UserChallenge = {
+          id: `challenge_board_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          title: overrides.title?.trim() || template.title,
+          description: template.description,
+          category: template.category,
+          icon: template.icon,
+          targetDays,
+          startDate,
+          status: 'active',
+          isOfficial66: false,
+          habits: [],
+          createdAt: new Date().toISOString(),
+          format: 'board',
+          sections,
+          marks: {},
+          dailyGoalPct: template.dailyGoalPct,
+          milestones,
+        };
+        set((state) => ({
+          challenges: [challenge, ...state.challenges],
+          isCreateModalOpen: false,
+          selectedChallengeForModal: challenge,
+          isDetailModalOpen: true,
+        }));
+        soundFx.playChallengeStart();
+        triggerMissionConfetti();
+        return challenge;
+      },
+
+      toggleBoardCells: (challengeId, keys, date, value) => {
+        const todayStr = getTodayString();
+        const challenge = get().challenges.find((c) => c.id === challengeId);
+        if (!challenge || !isBoard(challenge) || keys.length === 0) return {};
+        if (date > todayStr) {
+          soundFx.playError();
+          return { blockedReason: 'Dias futuros ainda não podem ser marcados.' };
+        }
+        if (date < challenge.startDate || date > boardEndDate(challenge)) {
+          soundFx.playError();
+          return { blockedReason: 'Esse dia está fora do período do desafio.' };
+        }
+
+        const current = new Set(challenge.marks?.[date] || []);
+        const next = value ?? !keys.every((k) => current.has(k));
+        keys.forEach((k) => (next ? current.add(k) : current.delete(k)));
+        const marks = { ...(challenge.marks || {}) };
+        if (current.size > 0) marks[date] = Array.from(current).sort();
+        else delete marks[date];
+
+        const updated: UserChallenge = { ...challenge, marks };
+        set((state) => ({
+          challenges: state.challenges.map((c) => (c.id === challengeId ? updated : c)),
+          selectedChallengeForModal:
+            state.selectedChallengeForModal?.id === challengeId ? updated : state.selectedChallengeForModal,
+        }));
+
+        if (next) soundFx.playMissionComplete();
+        else soundFx.playMissionUndo();
+
+        // Recompensa só no próprio dia (dias passados: só corrige o registro)
+        if (date === todayStr) {
+          const gained = syncBoardRewards(updated);
+          const user = useUserStore.getState();
+          if (gained.day) {
+            soundFx.playDayComplete();
+            triggerDayCompleteConfetti();
+            user.pushToast({ kind: 'reward', title: 'Dia cumprido na operação', message: `${challenge.title}: meta do dia batida.` });
+          } else if (gained.sections.length > 0) {
+            triggerMissionConfetti();
+            user.pushToast({ kind: 'success', title: 'Seção completa', message: gained.sections.join(' · ') });
+          }
+        }
+        return {};
+      },
+
+      updateBoard: (challengeId, updates) => {
+        const challenge = get().challenges.find((c) => c.id === challengeId);
+        if (!challenge || !isBoard(challenge)) return;
+        const updated: UserChallenge = {
+          ...challenge,
+          ...(updates.sections ? { sections: sanitizeSections(updates.sections) } : {}),
+          ...(updates.dailyGoalPct !== undefined
+            ? { dailyGoalPct: Math.min(100, Math.max(1, Math.round(updates.dailyGoalPct))) }
+            : {}),
+          ...(updates.milestones
+            ? {
+                milestones: updates.milestones
+                  .filter((m) => m.label.trim() && /^\d{4}-\d{2}-\d{2}$/.test(m.date))
+                  .map((m) => ({ ...m, label: m.label.trim() }))
+                  .sort((a, b) => a.date.localeCompare(b.date)),
+              }
+            : {}),
+        };
+        set((state) => ({
+          challenges: state.challenges.map((c) => (c.id === challengeId ? updated : c)),
+          selectedChallengeForModal:
+            state.selectedChallengeForModal?.id === challengeId ? updated : state.selectedChallengeForModal,
+        }));
+        syncBoardRewards(updated);
       },
     }),
     {

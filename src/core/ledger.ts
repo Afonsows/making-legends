@@ -117,6 +117,7 @@ export function isFoldableKey(key: string): boolean {
     key.startsWith('mission:') ||
     key.startsWith('tool:') ||
     key.startsWith('habit:') ||
+    key.startsWith('board:') ||
     key.startsWith('checkin:') ||
     key.startsWith('retro:')
   );

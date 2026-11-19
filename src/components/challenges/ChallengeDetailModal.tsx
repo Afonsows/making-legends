@@ -8,7 +8,10 @@ import { ChallengeHabitCard } from './ChallengeHabitCard';
 import { EditChallengeModal } from './EditChallengeModal';
 import { getChallengeProgress } from './ChallengesView';
 import { Bar, Menu, SectionHeader, Stat } from '../ui/kit';
-import { CheckCircle2, Map, Pencil, Plus, RotateCcw, Trash2, X } from 'lucide-react';
+import { CheckCircle2, LayoutGrid, Map, Pencil, Plus, RotateCcw, Trash2, X } from 'lucide-react';
+import { isBoard } from '../../core/board';
+import { BoardChallengeView } from './board/BoardChallengeView';
+import { BoardEditorModal } from './board/BoardEditorModal';
 
 interface ChallengeDetailModalProps {
   isOpen: boolean;
@@ -38,6 +41,8 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({ isOp
 
   const [isAddingHabit, setIsAddingHabit] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isBoardEditorOpen, setIsBoardEditorOpen] = useState(false);
+  const liveChallenge = useChallengeStore((s) => (challenge ? s.challenges.find((c) => c.id === challenge.id) : undefined));
   const [newHabitTitle, setNewHabitTitle] = useState('');
   const [newHabitDesc, setNewHabitDesc] = useState('');
   const [newHabitColor, setNewHabitColor] = useState('#10b981');
@@ -50,7 +55,8 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({ isOp
 
   // O desafio principal é sempre lido do motor de hábitos (missões + perfil)
   const protocolStatus = evaluateProtocolStatus(profile, missions);
-  const current: UserChallenge = isOfficial ? buildSyncedOfficial66Challenge(profile, missions) : challenge;
+  const current: UserChallenge = isOfficial ? buildSyncedOfficial66Challenge(profile, missions) : liveChallenge || challenge;
+  const board = !isOfficial && isBoard(current);
   const awaitingStart = isOfficial && (!profile.activeChallenge || current.status === 'paused');
 
   const daysElapsed = isOfficial ? protocolStatus.currentDay : getChallengeProgress(current, todayStr).daysElapsed;
@@ -127,6 +133,7 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({ isOp
                   label="Opções do desafio"
                   items={[
                     { label: 'Mapa do desafio', icon: Map, onSelect: openChallengeMapModal, hidden: !isOfficial || awaitingStart },
+                    { label: 'Editar quadro', icon: LayoutGrid, onSelect: () => setIsBoardEditorOpen(true), hidden: !board },
                     { label: 'Editar desafio', icon: Pencil, onSelect: () => setIsEditModalOpen(true) },
                     {
                       label: current.status === 'completed' ? 'Reabrir desafio' : 'Marcar como concluído',
@@ -145,6 +152,14 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({ isOp
             {current.description && !isOfficial && <p className="text-sm text-ink2 mt-2 leading-snug">{current.description}</p>}
           </div>
 
+          {board ? (
+            <div className="overflow-y-auto overscroll-contain px-5 py-5">
+              <BoardChallengeView challengeId={current.id} />
+              <button type="button" onClick={() => setIsBoardEditorOpen(true)} className="btn btn-ghost w-full mt-5">
+                <LayoutGrid className="w-4 h-4" /> Editar quadro
+              </button>
+            </div>
+          ) : (
           <div className="overflow-y-auto overscroll-contain px-5 py-5 space-y-6">
             {/* Resumo */}
             {awaitingStart ? (
@@ -272,8 +287,13 @@ export const ChallengeDetailModal: React.FC<ChallengeDetailModalProps> = ({ isOp
               )}
             </section>
           </div>
+          )}
         </div>
       </div>
+
+      {board && (
+        <BoardEditorModal isOpen={isBoardEditorOpen} onClose={() => setIsBoardEditorOpen(false)} challenge={current} />
+      )}
 
       <EditChallengeModal
         isOpen={isEditModalOpen}

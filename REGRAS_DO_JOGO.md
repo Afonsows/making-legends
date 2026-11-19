@@ -48,6 +48,19 @@ Todos os números abaixo vêm do código (`src/core/*`) e são cobertos por test
 - O Modo Elite é escolhido no início e fica travado até o desafio terminar.
 - Fases: Despertar, Forja e Mestria — cada uma com 1/3 da duração escolhida.
 
+## 4.1 Quadro de operação (desafio personalizado em formato de quadro)
+
+Para rotinas com muitas tarefas por dia (ex.: **Operação Afiliado · 40 dias**). Criado em *Desafios → + → Quadro de operação*.
+
+- O quadro tem **seções**: *lista* (uma tarefa por linha) ou *tabela* (linhas × colunas, ex.: vídeo × rede social). Seções completas se fecham sozinhas.
+- Tudo é editável em **Editar quadro**: seções, linhas, colunas, cor, atributo que recebe o XP, tarefas **extra** (dão recompensa mas não entram na meta) e **dias da semana** de cada linha (ex.: revisão só no domingo).
+- **Dia cumprido** = marcar a **meta do dia** (padrão 80%, ajustável) das tarefas obrigatórias.
+- Recompensas (só no próprio dia, estornáveis ao desmarcar): **+5 XP e +3 Ryō por tarefa**, **+25 XP e +15 Ryō por seção completa** e **+60 XP e +40 Ryō pelo dia cumprido** (seção e dia também causam dano no chefe).
+- Dias passados podem ser corrigidos pelo seletor de dia ou pelo mapa: contam para o desafio, sem XP nem Ryō.
+- Indicadores: dia N, fase (Despertar, Forja e Mestria), dias cumpridos, sequência (hoje em andamento não quebra), adesão média e **datas marcantes** com contagem regressiva.
+- O quadro é independente do desafio principal: não altera a presença diária nem a regra de faltas.
+- Regras em `src/core/board.ts` (testes em `src/tests/board.test.ts`).
+
 ## 5. Níveis e patentes
 
 Curva contínua (custo do nível *n* ≈ 220 × n^0,75). Com ~400 XP por dia:
