@@ -2,9 +2,24 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
+import { execSync } from 'child_process';
+
+/** Commit em uso: na Vercel vem da variável do deploy; localmente, do git. */
+function currentCommit(): string {
+  const fromVercel = process.env.VERCEL_GIT_COMMIT_SHA;
+  if (fromVercel) return fromVercel.slice(0, 7);
+  try {
+    return execSync('git rev-parse --short=7 HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+  } catch {
+    return 'dev';
+  }
+}
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  define: {
+    __APP_BUILD__: JSON.stringify({ sha: currentCommit(), builtAt: new Date().toISOString() }),
+  },
   plugins: [
     react(),
     VitePWA({

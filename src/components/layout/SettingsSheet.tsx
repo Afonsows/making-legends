@@ -3,6 +3,7 @@ import { Bell, ChevronRight, Cloud, CloudOff } from 'lucide-react';
 import { useUserStore } from '../../state/useUserStore';
 import { ThemeMode, useUIStore } from '../../state/useUIStore';
 import { Segmented, Sheet, Switch } from '../ui/kit';
+import { appVersionLabel } from '../../utils/appUpdates';
 
 interface SettingsSheetProps {
   isOpen: boolean;
@@ -89,6 +90,9 @@ export const SettingsSheet: React.FC<SettingsSheetProps> = ({
             }}
           />
         </section>
+
+        {/* Mesma versão nos dois aparelhos = mesmos recursos e mesmos dados */}
+        <p className="text-[12px] text-ink3 text-center tabular pb-1">Versão {appVersionLabel()}</p>
       </div>
     </Sheet>
   );
